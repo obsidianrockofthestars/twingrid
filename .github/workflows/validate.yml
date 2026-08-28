@@ -1,0 +1,35 @@
+name: validate grids
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test deps
+        run: pip install pytest
+      - name: Run the engine test suite
+        run: |
+          cd engine && python -m pytest tests -q
+      - name: Validate every complete grid
+        run: |
+          set -e
+          failed=0
+          for d in grids/*/; do
+            name="${d%/}"
+            if [ -f "${d}.template" ]; then echo "SKIP ${name} (.template marker present)"; continue; fi
+            if [ ! -f "${d}manifest.yaml" ]; then echo "SKIP ${name} (no manifest.yaml)"; continue; fi
+            echo "== validate ${name} =="
+            python engine/grid.py validate "${name}" || failed=1
+            echo "== check drift ${name} =="
+            python engine/grid.py check "${name}" || failed=1
+          done
+          exit $failed

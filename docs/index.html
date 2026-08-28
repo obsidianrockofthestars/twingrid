@@ -1,0 +1,512 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TwinGrid</title>
+<meta name="description" content="Build an AI twin of yourself from a grid of small, inspectable cells. Pick a template, fill it with AI help, and own it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root{
+  --bg1:#FFF6EE; --bg2:#FDECF3; --bg3:#EEF3FF;
+  --surface:#FFFFFF; --surface2:#FFF9F4; --line:#EAD9CC;
+  --ink:#2B2320; --muted:#6A5D54; --dim:#7A6C5E;
+  --accent:#CE3B26; --accent-ink:#FFFFFF; --ring:#CE3B26;
+  --good:#2E9E6B;
+}
+:root[data-theme="dark"], :root.dark{
+  --bg1:#1A1418; --bg2:#171A22; --bg3:#141118;
+  --surface:#221C22; --surface2:#2A2230; --line:#3A2F3A;
+  --ink:#F3ECE6; --muted:#B6A99F; --dim:#9C9088;
+  --accent:#FF7A63; --accent-ink:#1A1014; --ring:#FF7A63; --good:#5BD39A;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg1:#1A1418; --bg2:#171A22; --bg3:#141118;
+  --surface:#221C22; --surface2:#2A2230; --line:#3A2F3A;
+  --ink:#F3ECE6; --muted:#B6A99F; --dim:#9C9088;
+  --accent:#FF7A63; --accent-ink:#1A1014; --ring:#FF7A63; --good:#5BD39A;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:Nunito,system-ui,Arial,sans-serif;color:var(--ink);
+  background:linear-gradient(160deg,var(--bg1),var(--bg2) 55%,var(--bg3));
+  background-attachment:fixed;-webkit-font-smoothing:antialiased;line-height:1.55}
+a{color:inherit}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.1;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--ring);outline-offset:2px;border-radius:8px}
+
+/* top bar */
+.nav{display:flex;align-items:center;gap:14px;padding:18px 0}
+.logo{font-family:Fraunces,serif;font-weight:800;font-size:24px;letter-spacing:-.02em}
+.logo span{color:var(--accent)}
+.nav .sp{flex:1}
+.ghost{background:none;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:9px 16px;font-weight:700;font-size:14px;min-height:40px}
+.ghost:hover{background:var(--surface2)}
+.solid{background:var(--accent);border:1px solid var(--accent);color:var(--accent-ink);border-radius:999px;padding:9px 18px;font-weight:800;font-size:14px;min-height:40px}
+.solid:hover{filter:brightness(.96)}
+
+/* hero */
+.hero{padding:34px 0 20px;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+.hero h1{font-size:clamp(38px,6vw,62px);font-weight:800;letter-spacing:-.02em}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p.lead{font-size:19px;color:var(--muted);margin:18px 0 24px;max-width:34ch}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap}
+.pill-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+.pb{font-size:12.5px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+/* hero art: a little grid of cells */
+.gridart{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 30px 60px -30px rgba(120,60,40,.35)}
+.gridart .row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.gridart .cell{height:34px;border-radius:9px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--dim);background:var(--surface2)}
+.gridart .cell.on{color:var(--accent-ink)}
+.c-do{background:#3FA37E;border-color:#3FA37E;color:#fff}
+.c-dont{background:#E0685C;border-color:#E0685C;color:#fff}
+.c-ctx{background:#6E86D6;border-color:#6E86D6;color:#fff}
+.c-gate{background:#D6A63C;border-color:#D6A63C;color:#3a2b00}
+.c-voice{background:#B678B0;border-color:#B678B0;color:#fff}
+
+/* sections */
+section{padding:30px 0}
+.eyebrow{font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h2.title{font-size:clamp(26px,4vw,38px);font-weight:800;margin:8px 0 6px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:16px;max-width:60ch}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.step .n{font-family:Fraunces,serif;font-weight:800;font-size:26px;color:var(--accent)}
+.step h3{font-size:19px;margin:6px 0}
+.step p{color:var(--muted);font-size:14.5px;margin:0}
+
+/* auth card */
+.authcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px;max-width:440px;box-shadow:0 30px 60px -34px rgba(120,60,40,.35)}
+.authcard h3{font-size:22px;font-weight:800;margin-bottom:6px}
+.authcard p{color:var(--muted);font-size:14.5px;margin:0 0 16px}
+.field{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--surface2);border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:12px}
+.field:focus{border-color:var(--accent);outline:none}
+.full{width:100%;justify-content:center;display:flex}
+.msg{font-size:13.5px;color:var(--muted);margin-top:12px;min-height:18px}
+.msg.err{color:#c0392b}
+:root[data-theme="dark"] .msg.err, :root:not([data-theme="light"]) .msg.err{color:#ff8a75}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .msg.err{color:#ff8a75}}
+.gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1f1f1f;border:1.5px solid #dcdce0;border-radius:12px;padding:12px;font-weight:700;font-size:15px;min-height:46px}
+.gbtn:hover{background:#f6f6f8}
+.gicon{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;font-family:Arial,sans-serif;font-weight:800;color:#4285F4}
+.divider{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:12.5px;margin:14px 0}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.authtabs{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.authtabs button{flex:1;background:none;border:none;padding:9px;font-weight:700;font-size:13.5px;color:var(--muted);cursor:pointer}
+.authtabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+
+/* home / picker */
+.home-hd{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0 4px}
+.home-hd h2{font-size:28px;font-weight:800}
+.mine{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin:14px 0 8px}
+.twin{display:block;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--accent);border-radius:14px;padding:16px;text-decoration:none;min-height:74px}
+.twin:hover{background:var(--surface2)}
+.twin .tn{font-weight:800;font-size:16px}
+.twin .tt{color:var(--muted);font-size:13px;margin-top:3px}
+.twin .badge{display:inline-block;font-size:11px;font-weight:800;color:var(--good);margin-top:8px}
+.empty{color:var(--muted);font-size:15px;background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:18px}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:16px}
+.tile{position:relative;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;min-height:132px;display:flex;flex-direction:column;gap:6px;transition:transform .08s}
+.tile.live{cursor:pointer}
+.tile.live:hover{transform:translateY(-2px);box-shadow:0 18px 30px -20px rgba(80,40,20,.4)}
+.tile .dot{width:34px;height:34px;border-radius:10px;margin-bottom:4px}
+.tile .tname{font-family:Fraunces,serif;font-weight:800;font-size:19px;color:var(--ink)}
+.tile .tdesc{color:var(--muted);font-size:13px;line-height:1.4}
+.tile.soon{opacity:.62}
+.tile .soonbadge{position:absolute;top:12px;right:12px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+
+/* footer */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13.5px;border-top:1px solid var(--line);margin-top:20px}
+footer a{color:var(--accent);font-weight:700;text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(20,10,14,.5);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal.open{display:flex}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px;max-width:640px;width:100%;max-height:86vh;overflow:auto;padding:24px}
+.sheet h3{font-size:22px;font-weight:800;margin-bottom:8px}
+.sheet p{color:var(--muted);font-size:14.5px}
+.code{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap;max-height:300px;overflow:auto;margin:12px 0}
+.hide{display:none!important}
+.ob-sub{color:var(--muted);font-size:14.5px;margin:0 0 18px}
+.ob-sec{margin:16px 0}
+.ob-sec h4{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+.ob-sec ul{margin:0;padding-left:20px}
+.ob-sec li{font-size:14.5px;line-height:1.5;margin-bottom:6px;color:var(--ink)}
+.ob-sec li b{font-weight:800}
+.ob-sec code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:var(--surface2);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.ob-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.ob-links a{font-weight:700;font-size:13.5px;text-decoration:none;color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+.ob-links a:hover{background:var(--surface2)}
+@media(max-width:820px){ .hero{grid-template-columns:1fr;gap:24px} .steps{grid-template-columns:1fr} .gridart{order:-1} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <div class="logo">Twin<span>Grid</span></div>
+    <div class="sp"></div>
+    <button class="ghost" id="aihelp">Get AI help</button>
+    <span id="navauth"></span>
+  </nav>
+</div>
+
+<!-- LANDING (logged out) -->
+<div id="landing">
+ <div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>Build a <em>twin</em> of yourself you can actually read.</h1>
+      <p class="lead">Most "AI twin" apps are a black box you pour yourself into. TwinGrid is a grid of small, inspectable cells. Pick a template, fill it with AI help, and own every rule.</p>
+      <div class="cta-row">
+        <button class="solid" id="startbtn">Start free</button>
+        <a class="ghost" href="#how" style="text-decoration:none;display:inline-flex;align-items:center">See how it works</a>
+      </div>
+      <div class="pill-badges">
+        <span class="pb">19 facets, small cells</span>
+        <span class="pb">Open source engine</span>
+        <span class="pb">Export & self-host</span>
+      </div>
+    </div>
+    <div class="gridart" aria-hidden="true">
+      <div class="row"><div class="cell c-ctx">CTX</div><div class="cell c-do">DO</div><div class="cell c-dont">DON'T</div><div class="cell c-voice">VOICE</div></div>
+      <div class="row"><div class="cell">core</div><div class="cell c-gate">GATE</div><div class="cell">mgr</div><div class="cell">eng</div></div>
+      <div class="row"><div class="cell c-do">DO</div><div class="cell">writer</div><div class="cell c-dont">DON'T</div><div class="cell">qa</div></div>
+      <div class="row"><div class="cell">vibe</div><div class="cell c-voice">VOICE</div><div class="cell">role</div><div class="cell c-ctx">CTX</div></div>
+    </div>
+  </div>
+ </div>
+
+ <div class="wrap" id="how">
+  <section>
+    <div class="eyebrow">How it works</div>
+    <h2 class="title">Three steps to a twin that sounds like you</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Pick a template</h3><p>Start from a ready-made archetype — Creator, Founder, Coach, and more — instead of a blank page.</p></div>
+      <div class="step"><div class="n">2</div><h3>Fill it with AI help</h3><p>Copy our interview prompt into Claude or ChatGPT (or connect the TwinGrid MCP) and let it ask you the questions.</p></div>
+      <div class="step"><div class="n">3</div><h3>Share or self-host</h3><p>Make your twin public with a warm profile page, or export the grid and run the open-source engine yourself.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div style="display:grid;grid-template-columns:1fr .9fr;gap:34px;align-items:center" class="signin-grid">
+      <div>
+        <div class="eyebrow">Get started</div>
+        <h2 class="title">Sign in your way.</h2>
+        <p class="sub">Continue with Google, use a password, or get a one-time magic link. Your grid is private until you decide to publish it. Nothing about you is shared without your say-so.</p>
+      </div>
+      <div class="authcard">
+        <h3>Sign in or sign up</h3>
+        <button class="gbtn" id="googlebtn" type="button"><span class="gicon">G</span> Continue with Google</button>
+        <div class="divider"><span>or</span></div>
+        <div class="authtabs" id="authtabs">
+          <button data-t="password" aria-pressed="true">Password</button>
+          <button data-t="magic" aria-pressed="false">Magic link</button>
+        </div>
+        <input class="field" id="email" type="email" placeholder="you@example.com" autocomplete="email">
+        <input class="field" id="password" type="password" placeholder="Password (at least 6 characters)" autocomplete="current-password">
+        <div id="pwbtns">
+          <button class="solid full" id="signinbtn">Sign in</button>
+          <button class="ghost full" id="signupbtn" style="margin-top:8px">Create account</button>
+        </div>
+        <button class="solid full" id="sendlink" style="display:none">Send my magic link</button>
+        <div class="msg" id="gatemsg"></div>
+      </div>
+    </div>
+  </section>
+ </div>
+</div>
+
+<!-- HOME (logged in) -->
+<div id="home" class="hide">
+ <div class="wrap">
+  <div class="home-hd">
+    <h2>Your twins</h2>
+    <div style="flex:1"></div>
+    <button class="ghost" id="howbtn">How it works</button>
+    <span class="pb" id="whoami"></span>
+    <button class="ghost" id="signout">Sign out</button>
+  </div>
+  <div id="mine" class="mine"></div>
+
+  <section style="padding-top:14px">
+    <div class="eyebrow">Start from a template</div>
+    <h2 class="title">Pick an archetype to begin</h2>
+    <p class="sub">Choose a starter grid — you'll personalize every cell. More templates are on the way.</p>
+    <div class="tiles" id="tiles"></div>
+  </section>
+ </div>
+</div>
+
+<div class="wrap">
+ <footer>
+   <div style="max-width:70ch">TwinGrid is an open framework for building an AI clone of a person, held as small inspectable cells instead of a black box. Built on ideas from Igor Costa's EvoGraph and the CAIO practice of Jeremy Rule.</div>
+   <div style="margin-top:10px"><a href="https://github.com/obsidianrockofthestars/twingrid" target="_blank" rel="noopener">View the open-source engine on GitHub</a> &nbsp;·&nbsp; <a href="studio.html">Open the Studio</a></div>
+ </footer>
+</div>
+
+<!-- name modal -->
+<div class="modal" id="namemodal">
+  <div class="sheet" style="max-width:440px">
+    <h3 id="nametitle">Name your twin</h3>
+    <p>Give this twin a name. You can change it any time in the Studio.</p>
+    <input class="field" id="nameinput" type="text" placeholder="My twin">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="solid" id="namecreate">Create my twin</button>
+      <button class="ghost" id="namecancel">Cancel</button>
+    </div>
+    <div class="msg" id="namemsg"></div>
+  </div>
+</div>
+
+<!-- onboarding / welcome modal -->
+<div class="modal" id="obmodal">
+  <div class="sheet">
+    <h3>Welcome to TwinGrid 👋</h3>
+    <p class="ob-sub">You're about to build an AI version of you that you can actually read and correct — not a black box. Here's the 30-second version.</p>
+
+    <div class="ob-sec">
+      <h4>What you can do</h4>
+      <ul>
+        <li>Pick a <b>template</b> (Creator, Coach, Founder…) and make it yours — or start from blank.</li>
+        <li>Fill <b>19 facets</b> of small cells: who you are, what you do, what you never do, how you sound.</li>
+        <li>Flip <b>modes</b> — Single, Multi (all specialists at once), or Queue (a council) — and <b>chat with your twin</b>.</li>
+        <li>Make a twin <b>public</b> and get a shareable profile page in its own color.</li>
+      </ul>
+    </div>
+
+    <div class="ob-sec">
+      <h4>What you get, free</h4>
+      <ul>
+        <li>8 starter templates (more on the way) + the full node <b>Studio</b> to edit every cell.</li>
+        <li>Sign in with <b>Google, password, or a magic link</b>.</li>
+        <li>A public profile page for any twin.</li>
+        <li><b>Export</b> your grid and run the open-source engine yourself — you own it.</li>
+      </ul>
+    </div>
+
+    <div class="ob-sec">
+      <h4>Let an AI fill it for you (MCP)</h4>
+      <ul>
+        <li><b>Quick way:</b> hit <b>“Get AI help”</b> and paste the prompt into any Claude or ChatGPT chat — it interviews you.</li>
+        <li><b>Power way (MCP):</b> download the TwinGrid MCP, <code>pip install -e .</code>, add it to Claude Desktop, then say <i>“interview me and build my TwinGrid.”</i></li>
+      </ul>
+      <div class="ob-links">
+        <a href="twingrid-mcp.zip" download>⬇ Download the MCP</a>
+        <a href="https://github.com/obsidianrockofthestars/twingrid" target="_blank" rel="noopener">Full setup guide on GitHub ↗</a>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
+      <button class="solid" id="obgo">Got it — let's build</button>
+      <button class="ghost" id="obhelp">Get AI help instead</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI help modal -->
+<div class="modal" id="aimodal">
+  <div class="sheet">
+    <h3>Fill your grid with AI</h3>
+    <p>Two ways to let an AI interview you and draft your cells. Copy the prompt below into Claude or ChatGPT — or connect the TwinGrid MCP (coming) to do it in-app.</p>
+    <div class="code" id="interviewtext"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="solid" id="copyint">Copy the prompt</button>
+      <button class="ghost" id="closeai">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="tplindex">[{"id": "analyst", "name": "The Analyst", "tagline": "Turns messy data into honest answers, shows the work, distrusts vanity metrics", "theme": "#5B6BD0"}, {"id": "author", "name": "The Author", "tagline": "A novelist who guards voice and craft while building worlds one disciplined draft at a time.", "theme": "#E0A54A"}, {"id": "character", "name": "The Companion", "tagline": "A loyal, quick-witted wanderer who guards small secrets and keeps you steady", "theme": "#C264A8"}, {"id": "coach", "name": "The Coach", "tagline": "Sharp questions, compassionate accountability, and structured guidance that helps clients unstick themselves", "theme": "#8B7BD8"}, {"id": "creator", "name": "The Creator", "tagline": "A social-first maker who turns raw ideas into posts, videos, and a living community.", "theme": "#FF6B6B"}, {"id": "founder", "name": "The Founder", "tagline": "An early-stage builder turning scarce runway into traction, honest about every risk.", "theme": "#4C86E0"}, {"id": "operator", "name": "The Operator", "tagline": "Runs a local shop hands-on, fixes problems fast, keeps customers first.", "theme": "#2CB1A6"}, {"id": "support", "name": "The Support Rep", "tagline": "Calm hands on a hot ticket, turning frustrated customers into loyal fans daily", "theme": "#4CAF7D"}]</script>
+<script type="application/json" id="coming">[{"name": "The Educator", "theme": "#3E9CC9"}, {"name": "The Podcaster", "theme": "#D96BA0"}, {"name": "The Recruiter", "theme": "#5AA469"}, {"name": "The Realtor", "theme": "#C98A3E"}, {"name": "The Fitness Coach", "theme": "#D95F5F"}, {"name": "The Chef", "theme": "#C9603E"}, {"name": "The Musician", "theme": "#7E6BD9"}, {"name": "The Game Master", "theme": "#4C7BD9"}, {"name": "The Salesperson", "theme": "#2CA6A4"}, {"name": "The Community Lead", "theme": "#B85F9E"}, {"name": "The Scientist", "theme": "#5B6BD0"}, {"name": "The Storyteller", "theme": "#C9863E"}]</script>
+<script type="application/json" id="interview">"You are helping me fill out my TwinGrid \u2014 a structured identity for an AI clone of me. A TwinGrid is a grid of 19 \"facets,\" and each facet has a few small \"cells.\" Your job is to interview me, one focused question at a time, and turn my answers into cell content. Keep it warm and conversational; do not dump all questions at once.\n\nTHE 19 FACETS\n- core \u2014 the always-on me (loads in every mode)\n- 7 specialists: manager, designer, marketer, engineer, writer, qa-skeptic, librarian \u2014 the different \"hats\" I wear\n- 5 modes: prototyper, builder, sweeper, grower, maintainer \u2014 how I work at each stage\n- 3 roles: teacher, business-partner, worker \u2014 how I shape an answer for who I'm helping\n- 3 registers: vibe, surgery, full-copy \u2014 my tone dial (soft/curious, blunt/structured, fully-as-me)\n\nTHE CELLS (what each one means)\n- CONTEXT \u2014 who I am here / what's always true / my situation\n- DO \u2014 concrete things I should do\n- DONT \u2014 hard limits, things I never do\n- GATES \u2014 checks to run BEFORE acting (quality + safety)\n- VOICE \u2014 how I sound: tone, rhythm, phrases (only core + the 3 registers have VOICE)\n\nHOW TO RUN THE INTERVIEW\n1. Start with core. Ask me about who I am, then my DOs, DONTs, GATES, and VOICE \u2014 a couple of sentences each.\n2. Then move through the specialists, modes, roles, and registers. For each, ask 1-2 questions and draft the cells from my answers.\n3. If I'm brief, help me expand; if I ramble, tighten it. Aim for 2-4 real sentences per cell \u2014 specific to me, not generic.\n4. Never invent facts about me. If you're unsure, ask.\n\nOUTPUT FORMAT\nWhen I say \"give me the grid,\" output JSON exactly like this so I can paste it into TwinGrid:\n{\"facets\":[{\"name\":\"core\",\"kind\":\"core\",\"cells\":{\"CONTEXT\":\"...\",\"DO\":\"...\",\"DONT\":\"...\",\"VOICE\":\"...\",\"GATES\":\"...\"}}, {\"name\":\"manager\",\"kind\":\"specialist\",\"cells\":{\"CONTEXT\":\"...\",\"DO\":\"...\",\"DONT\":\"...\",\"GATES\":\"...\"}}, ...all 19 facets...]}\nRules for the JSON: core and the 3 registers have 5 cells (they include VOICE); every specialist, mode, and role has 4 cells (no VOICE). Never put the sequences \"<!-- BEGIN\", \"<!-- END\", or \"## FACET:\" in any cell.\n\nBegin by asking me your first question about my core identity.\n"</script>
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const SB=createClient("https://jpepcqazscmhakxvutpg.supabase.co","sb_publishable_OJGmKJoI67e4I5Z_cib8yA_n7y5kjz2");
+const TPL=JSON.parse(document.getElementById('tplindex').textContent);
+const COMING=JSON.parse(document.getElementById('coming').textContent);
+const INTERVIEW=JSON.parse(document.getElementById('interview').textContent);
+
+const landing=document.getElementById('landing'), home=document.getElementById('home');
+function esc(s){return s==null?'':String(s);}
+
+async function refresh(){
+  const {data:{session}}=await SB.auth.getSession();
+  const nav=document.getElementById('navauth');
+  if(session){
+    landing.classList.add('hide'); home.classList.remove('hide');
+    document.getElementById('whoami').textContent=session.user.email;
+    nav.innerHTML='';
+    await loadTwins();
+    maybeOnboard();
+  } else {
+    home.classList.add('hide'); landing.classList.remove('hide');
+    nav.innerHTML='<button class="solid" id="navstart">Start free</button>';
+    document.getElementById('navstart').onclick=goSignin;
+  }
+  renderPicker();
+}
+function goSignin(){ document.getElementById('email').scrollIntoView({behavior:'smooth',block:'center'}); document.getElementById('email').focus(); }
+document.getElementById('startbtn').onclick=goSignin;
+
+const gmsg=document.getElementById('gatemsg');
+function setMsg(t,isErr){ gmsg.textContent=t; gmsg.classList.toggle('err',!!isErr); }
+const emailEl=()=>document.getElementById('email').value.trim();
+const pwEl=()=>document.getElementById('password').value;
+const REDIR={emailRedirectTo:location.origin+location.pathname};
+
+// tabs: password vs magic link
+let authMode='password';
+function setAuthMode(m){ authMode=m;
+  document.querySelectorAll('#authtabs button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.t===m));
+  const pw=m==='password';
+  document.getElementById('password').style.display=pw?'block':'none';
+  document.getElementById('pwbtns').style.display=pw?'block':'none';
+  document.getElementById('sendlink').style.display=pw?'none':'block';
+  setMsg('');
+}
+document.querySelectorAll('#authtabs button').forEach(b=>b.onclick=()=>setAuthMode(b.dataset.t));
+
+// magic link
+document.getElementById('sendlink').onclick=async()=>{
+  const email=emailEl(); if(!email){setMsg('Enter your email first.',true);return;}
+  setMsg('Sending...');
+  const {error}=await SB.auth.signInWithOtp({email,options:REDIR});
+  setMsg(error?('Error: '+error.message):'Check your email for the sign-in link.',!!error);
+};
+// password sign in
+document.getElementById('signinbtn').onclick=async()=>{
+  const email=emailEl(), password=pwEl();
+  if(!email||!password){setMsg('Enter your email and password.',true);return;}
+  setMsg('Signing in...');
+  const {error}=await SB.auth.signInWithPassword({email,password});
+  if(error) setMsg(error.message,true); // onAuthStateChange handles success
+};
+// password sign up
+document.getElementById('signupbtn').onclick=async()=>{
+  const email=emailEl(), password=pwEl();
+  if(!email||!password){setMsg('Enter an email and a password (6+ characters).',true);return;}
+  if(password.length<6){setMsg('Password must be at least 6 characters.',true);return;}
+  setMsg('Creating your account...');
+  const {data,error}=await SB.auth.signUp({email,password,options:REDIR});
+  if(error){setMsg(error.message,true);return;}
+  if(data.session){ setMsg('Account created!'); } // logged in immediately (confirmation off)
+  else { setMsg('Check your email to confirm your account, then sign in.'); }
+};
+// google SSO
+document.getElementById('googlebtn').onclick=async()=>{
+  setMsg('Redirecting to Google...');
+  const {error}=await SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
+  if(error) setMsg('Google sign-in is not set up yet: '+error.message,true);
+};
+// Enter key submits the active method
+document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('signinbtn').click();}});
+document.getElementById('email').addEventListener('keydown',e=>{if(e.key==='Enter'&&authMode==='magic'){e.preventDefault();document.getElementById('sendlink').click();}});
+setAuthMode('password');
+
+document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.reload(); };
+SB.auth.onAuthStateChange(()=>refresh());
+
+async function loadTwins(){
+  const mine=document.getElementById('mine');
+  const uid=(await SB.auth.getUser()).data.user.id;
+  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data').eq('owner',uid).order('updated_at',{ascending:false});
+  mine.innerHTML='';
+  if(error){ mine.innerHTML='<div class="empty">'+esc(error.message)+'</div>'; return; }
+  if(!data||!data.length){ mine.innerHTML='<div class="empty">No twins yet — pick a template below to make your first one.</div>'; return; }
+  data.forEach(r=>{
+    const a=document.createElement('a'); a.className='twin'; a.href='studio.html?c='+encodeURIComponent(r.id);
+    const theme=(r.data&&r.data.theme)||'var(--accent)'; a.style.borderLeftColor=theme;
+    const n=document.createElement('div'); n.className='tn'; n.textContent=r.name||'Untitled twin'; a.appendChild(n);
+    const facets=(r.data&&r.data.facets)?r.data.facets.length:0;
+    const t=document.createElement('div'); t.className='tt'; t.textContent=facets+' facets'; a.appendChild(t);
+    if(r.is_public){ const b=document.createElement('div'); b.className='badge'; b.textContent='● public'; a.appendChild(b); }
+    mine.appendChild(a);
+  });
+}
+
+function renderPicker(){
+  const box=document.getElementById('tiles'); box.innerHTML='';
+  TPL.forEach(t=>{
+    const el=document.createElement('button'); el.className='tile live'; el.type='button';
+    const d=document.createElement('div'); d.className='dot'; d.style.background=t.theme; el.appendChild(d);
+    const nm=document.createElement('div'); nm.className='tname'; nm.textContent=t.name; el.appendChild(nm);
+    const ds=document.createElement('div'); ds.className='tdesc'; ds.textContent=t.tagline; el.appendChild(ds);
+    el.onclick=()=>pickTemplate(t); box.appendChild(el);
+  });
+  COMING.forEach(t=>{
+    const el=document.createElement('div'); el.className='tile soon';
+    const sb=document.createElement('div'); sb.className='soonbadge'; sb.textContent='soon'; el.appendChild(sb);
+    const d=document.createElement('div'); d.className='dot'; d.style.background=t.theme; el.appendChild(d);
+    const nm=document.createElement('div'); nm.className='tname'; nm.textContent=t.name; el.appendChild(nm);
+    const ds=document.createElement('div'); ds.className='tdesc'; ds.textContent='Coming soon'; el.appendChild(ds);
+    box.appendChild(el);
+  });
+}
+
+let PENDING=null;
+const namemodal=document.getElementById('namemodal');
+async function pickTemplate(t){
+  const {data:{session}}=await SB.auth.getSession();
+  if(!session){ goSignin(); return; }
+  PENDING=t;
+  document.getElementById('nametitle').textContent='Name your '+t.name.replace(/^The /,'');
+  const inp=document.getElementById('nameinput');
+  inp.value='My '+t.name.replace(/^The /,'');
+  document.getElementById('namemsg').textContent='';
+  namemodal.classList.add('open'); inp.focus(); inp.select();
+}
+document.getElementById('namecancel').onclick=()=>{ namemodal.classList.remove('open'); PENDING=null; };
+namemodal.onclick=(e)=>{ if(e.target===namemodal){ namemodal.classList.remove('open'); PENDING=null; } };
+document.getElementById('nameinput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('namecreate').click(); } });
+document.getElementById('namecreate').onclick=async()=>{
+  if(!PENDING) return;
+  const t=PENDING; const btn=document.getElementById('namecreate'); const msg=document.getElementById('namemsg');
+  const name=(document.getElementById('nameinput').value||('My '+t.name)).trim();
+  btn.textContent='Creating...'; msg.textContent='';
+  let grid;
+  try{ const res=await fetch('templates/'+t.id+'.json',{cache:'no-store'}); grid=await res.json(); }
+  catch(e){ msg.textContent='Could not load that template. Please try again.'; btn.textContent='Create my twin'; return; }
+  const uid=(await SB.auth.getUser()).data.user.id;
+  const payload={facets:grid.facets, theme:t.theme, template:t.id};
+  const {data,error}=await SB.from('twingrid_grids').insert({owner:uid,name:name,data:payload}).select().single();
+  if(error){ msg.textContent=error.message; btn.textContent='Create my twin'; return; }
+  location.href='studio.html?c='+encodeURIComponent(data.id);
+};
+
+// AI help modal
+const aimodal=document.getElementById('aimodal');
+document.getElementById('interviewtext').textContent=INTERVIEW;
+function openAI(){ aimodal.classList.add('open'); }
+function closeAI(){ aimodal.classList.remove('open'); }
+document.getElementById('aihelp').onclick=openAI;
+document.getElementById('closeai').onclick=closeAI;
+aimodal.onclick=(e)=>{ if(e.target===aimodal) closeAI(); };
+document.getElementById('copyint').onclick=async()=>{
+  const b=document.getElementById('copyint');
+  try{ await navigator.clipboard.writeText(INTERVIEW); b.textContent='Copied!'; }
+  catch(e){ b.textContent='Press Ctrl/Cmd+C'; }
+  setTimeout(()=>b.textContent='Copy the prompt',1600);
+};
+
+// onboarding / welcome modal
+const obmodal=document.getElementById('obmodal');
+function openOB(){ obmodal.classList.add('open'); }
+function closeOB(){ obmodal.classList.remove('open'); }
+function maybeOnboard(){
+  let seen=false; try{ seen=localStorage.getItem('tg_onboarded')==='1'; }catch(e){}
+  if(!seen) openOB();
+}
+function markOnboarded(){ try{ localStorage.setItem('tg_onboarded','1'); }catch(e){} }
+document.getElementById('obgo').onclick=()=>{ markOnboarded(); closeOB(); };
+document.getElementById('obhelp').onclick=()=>{ markOnboarded(); closeOB(); openAI(); };
+document.getElementById('howbtn').onclick=openOB;
+obmodal.onclick=(e)=>{ if(e.target===obmodal){ markOnboarded(); closeOB(); } };
+
+refresh();
+</script>
+
+<script>document.addEventListener("keydown",function(e){if(e.key==="Escape"){document.querySelectorAll(".modal.open").forEach(function(el){el.classList.remove("open");});}});</script>
+</body></html>

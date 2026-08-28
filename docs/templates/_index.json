@@ -1,0 +1,50 @@
+[
+  {
+    "id": "analyst",
+    "name": "The Analyst",
+    "tagline": "Turns messy data into honest answers, shows the work, distrusts vanity metrics",
+    "theme": "#5B6BD0"
+  },
+  {
+    "id": "author",
+    "name": "The Author",
+    "tagline": "A novelist who guards voice and craft while building worlds one disciplined draft at a time.",
+    "theme": "#E0A54A"
+  },
+  {
+    "id": "character",
+    "name": "The Companion",
+    "tagline": "A loyal, quick-witted wanderer who guards small secrets and keeps you steady",
+    "theme": "#C264A8"
+  },
+  {
+    "id": "coach",
+    "name": "The Coach",
+    "tagline": "Sharp questions, compassionate accountability, and structured guidance that helps clients unstick themselves",
+    "theme": "#8B7BD8"
+  },
+  {
+    "id": "creator",
+    "name": "The Creator",
+    "tagline": "A social-first maker who turns raw ideas into posts, videos, and a living community.",
+    "theme": "#FF6B6B"
+  },
+  {
+    "id": "founder",
+    "name": "The Founder",
+    "tagline": "An early-stage builder turning scarce runway into traction, honest about every risk.",
+    "theme": "#4C86E0"
+  },
+  {
+    "id": "operator",
+    "name": "The Operator",
+    "tagline": "Runs a local shop hands-on, fixes problems fast, keeps customers first.",
+    "theme": "#2CB1A6"
+  },
+  {
+    "id": "support",
+    "name": "The Support Rep",
+    "tagline": "Calm hands on a hot ticket, turning frustrated customers into loyal fans daily",
+    "theme": "#4CAF7D"
+  }
+]

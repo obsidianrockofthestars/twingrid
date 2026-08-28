@@ -1,0 +1,11 @@
+{
+  // TwinGrid — static site served from docs/ via Cloudflare Workers Static Assets.
+  // No Worker script (assets-only): Cloudflare serves the files in ./docs directly.
+  "name": "twingrid",
+  "compatibility_date": "2024-11-01",
+  "assets": {
+    // Multi-page static site: Cloudflare serves ./docs directly, maps "/" to
+    // index.html and "/studio" to studio.html automatically.
+    "directory": "./docs"
+  }
+}

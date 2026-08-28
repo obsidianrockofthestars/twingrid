@@ -1,0 +1,138 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A TwinGrid twin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root{
+  --bg1:#FFF6EE; --bg2:#FDECF3; --surface:#FFFFFF; --surface2:#FFF9F4; --line:#EAD9CC;
+  --ink:#2B2320; --muted:#6A5D54; --dim:#7A6C5E; --accent:#CE3B26; --accent-ink:#fff;
+  --theme:#E8543F;
+}
+:root[data-theme="dark"]{ --bg1:#181318; --bg2:#141118; --surface:#221C22; --surface2:#2A2230; --line:#3A2F3A; --ink:#F3ECE6; --muted:#B6A99F; --dim:#9C9088; --accent:#FF7A63; --accent-ink:#1A1014; }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --bg1:#181318; --bg2:#141118; --surface:#221C22; --surface2:#2A2230; --line:#3A2F3A; --ink:#F3ECE6; --muted:#B6A99F; --dim:#9C9088; --accent:#FF7A63; --accent-ink:#1A1014; } }
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:Nunito,system-ui,Arial,sans-serif;color:var(--ink);background:linear-gradient(160deg,var(--bg1),var(--bg2));background-attachment:fixed;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.1;margin:0}
+.wrap{max-width:860px;margin:0 auto;padding:0 20px}
+a{color:var(--accent)}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--theme);outline-offset:2px;border-radius:8px}
+.nav{display:flex;align-items:center;gap:12px;padding:18px 0}
+.logo{font-family:Fraunces,serif;font-weight:800;font-size:22px}
+.logo span{color:var(--accent)}
+.sp{flex:1}
+.solid{background:var(--theme);border:1px solid var(--theme);color:#fff;border-radius:999px;padding:9px 18px;font-weight:800;font-size:14px;min-height:40px;text-decoration:none;display:inline-flex;align-items:center}
+.hero{background:var(--surface);border:1px solid var(--line);border-top:8px solid var(--theme);border-radius:20px;padding:30px;margin:6px 0 20px;box-shadow:0 30px 60px -34px rgba(120,60,40,.35)}
+.chip{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--theme);border-radius:999px;padding:4px 12px;margin-bottom:12px}
+.hero h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.02em}
+.hero .tag{color:var(--muted);font-size:18px;margin-top:10px;max-width:52ch}
+.glance{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0 22px}
+.gcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.gcard h3{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--theme);margin-bottom:8px}
+.gcard p{margin:0;color:var(--ink);font-size:15px;white-space:pre-wrap}
+.axis{margin:22px 0 6px;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+details.facet{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+details.facet>summary{list-style:none;cursor:pointer;padding:14px 18px;display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px}
+details.facet>summary::-webkit-details-marker{display:none}
+details.facet>summary .k{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+details.facet>summary .caret{color:var(--theme);transition:transform .15s}
+details.facet[open]>summary .caret{transform:rotate(90deg)}
+.cells{padding:0 18px 16px}
+.cell{margin-top:12px}
+.cell .lab{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--theme)}
+.cell .txt{margin-top:3px;font-size:14.5px;color:var(--ink);white-space:pre-wrap}
+.dot{width:12px;height:12px;border-radius:4px;background:var(--theme);flex:none}
+.note{background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:26px;text-align:center;color:var(--muted);font-size:16px;margin-top:20px}
+footer{padding:30px 0 60px;color:var(--muted);font-size:13px}
+@media(max-width:640px){ .glance{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <a class="logo" href="index.html" style="text-decoration:none">Twin<span>Grid</span></a>
+    <div class="sp"></div>
+    <a class="solid" href="index.html">Build your own twin</a>
+  </nav>
+  <div id="root"></div>
+  <footer>Made with <a href="index.html">TwinGrid</a> — an open framework for AI twins held as small, inspectable cells.</footer>
+</div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const SB=createClient("https://jpepcqazscmhakxvutpg.supabase.co","sb_publishable_OJGmKJoI67e4I5Z_cib8yA_n7y5kjz2");
+const root=document.getElementById('root');
+const AXES=[["Core",["core"]],["Specialists",["manager","designer","marketer","engineer","writer","qa-skeptic","librarian"]],["Modes",["prototyper","builder","sweeper","grower","maintainer"]],["Roles",["teacher","business-partner","worker"]],["Registers",["vibe","surgery","full-copy"]]];
+const CELLORDER=["CONTEXT","DO","DONT","GATES","VOICE"];
+function clean(t){ // strip leading "# heading" line and HTML comments for display
+  if(!t) return '';
+  let s=String(t).replace(/<!--[\s\S]*?-->/g,'');
+  s=s.split('\n').filter(l=>!l.trim().startsWith('#')).join('\n');
+  return s.trim();
+}
+function note(msg){ const d=document.createElement('div'); d.className='note'; d.textContent=msg; root.appendChild(d); }
+
+async function main(){
+  const id=new URLSearchParams(location.search).get('c');
+  if(!id){ note('No twin specified. Add ?c=<id> to the link, or build your own.'); return; }
+  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data').eq('id',id).maybeSingle();
+  if(error){ note('Could not load this twin right now.'); return; }
+  if(!data){ note('This twin is private, or the link is wrong.'); return; }
+  const theme=(data.data&&data.data.theme)||'#E8543F';
+  document.documentElement.style.setProperty('--theme',theme);
+  const facets=(data.data&&data.data.facets)||[];
+  const byName=Object.fromEntries(facets.map(f=>[f.name,f]));
+  document.title=(data.name||'A twin')+' · TwinGrid';
+
+  // hero
+  const hero=document.createElement('div'); hero.className='hero';
+  const chip=document.createElement('span'); chip.className='chip'; chip.textContent='A TwinGrid twin'; hero.appendChild(chip);
+  const h1=document.createElement('h1'); h1.textContent=data.name||'Untitled twin'; hero.appendChild(h1);
+  const core=byName['core'];
+  if(core){ const tag=document.createElement('div'); tag.className='tag';
+    tag.textContent=(clean(core.cells.CONTEXT)||'').split('\n')[0]||'An AI twin built from a grid of small, inspectable cells.'; hero.appendChild(tag); }
+  root.appendChild(hero);
+
+  // at a glance: core VOICE + core DO
+  if(core){
+    const g=document.createElement('div'); g.className='glance';
+    const mk=(label,txt)=>{ if(!txt) return; const c=document.createElement('div'); c.className='gcard';
+      const h=document.createElement('h3'); h.textContent=label; c.appendChild(h);
+      const p=document.createElement('p'); p.textContent=txt; c.appendChild(p); g.appendChild(c); };
+    mk('How they sound', clean(core.cells.VOICE));
+    mk('What they do', clean(core.cells.DO));
+    if(g.children.length) root.appendChild(g);
+  }
+
+  // full grid by axis
+  AXES.forEach(([label,names])=>{
+    const present=names.filter(n=>byName[n]);
+    if(!present.length) return;
+    const ax=document.createElement('div'); ax.className='axis'; ax.textContent=label; root.appendChild(ax);
+    present.forEach(n=>{
+      const f=byName[n];
+      const det=document.createElement('details'); det.className='facet';
+      const sum=document.createElement('summary');
+      const dot=document.createElement('span'); dot.className='dot'; sum.appendChild(dot);
+      const nm=document.createElement('span'); nm.textContent=f.name; sum.appendChild(nm);
+      const car=document.createElement('span'); car.className='caret'; car.textContent='▸'; sum.appendChild(car);
+      const kd=document.createElement('span'); kd.className='k'; kd.textContent=f.kind; sum.appendChild(kd);
+      det.appendChild(sum);
+      const cells=document.createElement('div'); cells.className='cells';
+      CELLORDER.filter(c=>f.cells[c]!==undefined).forEach(c=>{
+        const body=clean(f.cells[c]); if(!body) return;
+        const cell=document.createElement('div'); cell.className='cell';
+        const lab=document.createElement('div'); lab.className='lab'; lab.textContent=c; cell.appendChild(lab);
+        const tx=document.createElement('div'); tx.className='txt'; tx.textContent=body; cell.appendChild(tx);
+        cells.appendChild(cell);
+      });
+      det.appendChild(cells); root.appendChild(det);
+    });
+  });
+}
+main();
+</script>
+</body></html>
