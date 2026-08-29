@@ -564,7 +564,7 @@ body.route-mod{overflow:auto;background:var(--paper)}
   .mnav{padding:12px 16px;gap:10px} .mnav .btn{padding:9px 13px;font-size:13.5px} .mnav .btn.ghost{display:none} }
 
 
-/* ============ Personakind — warm & human redesign (landing + auth) ============ */
+/* ============ Personakind, warm and human redesign (landing + auth) ============ */
 :root{
   --paper:#FBF7EF; --paper-2:#F4ECDE; --ink:#211C17; --ink-soft:#5C5347; --ink-dim:#726858;
   --line-w:#E7DCC9; --card-w:#FFFFFF;
@@ -761,27 +761,27 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   <header class="pk-hero">
     <div class="pk-wrap">
       <div>
-        <span class="pk-eyebrow"><span class="dot"></span>Build a shareable AI persona</span>
+        <span class="pk-eyebrow"><span class="dot"></span>Make an AI that sounds like you</span>
         <h1 class="pk-h1">A version of you,<br>that you can <span class="u">actually read</span>.</h1>
-        <p class="pk-sub">Most AI personas are a black box you pour yourself into and never see again. Personakind builds yours as a grid of small, readable cells, so you can see every rule, fix any of it in a click, and give it a page the world can meet.</p>
+        <p class="pk-sub">A persona is a short handbook about you: who you are, what you want help with, what it should never do, and how you talk. Your AI reads it and acts like you. Every line is in plain words you can read and change, and it gets a page you can share.</p>
         <div class="pk-cta">
           <button class="pk-btn solid lg" data-auth>Build your persona free</button>
-          <a class="pk-btn ghost lg" href="#ways">See the three ways in</a>
+          <a class="pk-btn ghost lg" href="?explore">Read one first</a>
         </div>
-        <p class="pk-note">No password needed to start. Your persona stays private until you choose to share it.</p>
+        <p class="pk-note">No password to start, just an email link. About five minutes. Private until you say otherwise.</p>
         <div class="pk-trustrow">
-          <span class="pk-tag">Readable, cell by cell</span>
-          <span class="pk-tag">Yours to export</span>
-          <span class="pk-tag">Open-source engine</span>
+          <span class="pk-tag">You can read every word of it</span>
+          <span class="pk-tag">Yours to keep</span>
+          <span class="pk-tag">Free to start</span>
         </div>
       </div>
       <div class="pk-grid-card" aria-hidden="true">
-        <div class="pk-gc-head"><span class="pk-gc-dot"></span><span class="pk-gc-title">core / your identity</span></div>
+        <div class="pk-gc-head"><span class="pk-gc-dot"></span><span class="pk-gc-title">Your persona, at a glance</span></div>
         <div class="pk-cells">
-          <div class="pk-cell"><span class="lb"><i class="i-context"></i>Context</span><p>Who you are, in plain words.</p></div>
-          <div class="pk-cell"><span class="lb"><i class="i-do"></i>Do</span><p>How you want it to behave.</p></div>
-          <div class="pk-cell"><span class="lb"><i class="i-dont"></i>Don't</span><p>The lines it never crosses.</p></div>
-          <div class="pk-cell"><span class="lb"><i class="i-voice"></i>Voice</span><p>Exactly how you sound.</p></div>
+          <div class="pk-cell"><span class="lb"><i class="i-context"></i>Who I am</span><p>A calm, practical designer who ships fast.</p></div>
+          <div class="pk-cell"><span class="lb"><i class="i-do"></i>Do</span><p>Bottom line first, then the details.</p></div>
+          <div class="pk-cell"><span class="lb"><i class="i-dont"></i>Don't</span><p>Never flatter me, never bury the risk.</p></div>
+          <div class="pk-cell"><span class="lb"><i class="i-voice"></i>Voice</span><p>Dry, a little sarcastic, no jargon.</p></div>
         </div>
       </div>
     </div>
@@ -790,33 +790,33 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   <section class="pk-sec" id="ways">
     <div class="pk-wrap">
       <div class="pk-kicker">Three ways in</div>
-      <h2>Build it the way that fits you</h2>
-      <p class="pk-lede">However you start, you end up with the same thing: a readable grid that's yours to keep, edit, and publish.</p>
+      <h2>Three ways to make yours</h2>
+      <p class="pk-lede">Pick whichever feels easiest. They all end in the same place: a persona you can read, change, and share.</p>
       <div class="pk-ways">
         <div class="pk-way feat">
           <div class="badge">Most people start here</div>
           <div class="num">1</div>
           <div class="who">Easiest &middot; for anyone</div>
           <h3>Answer a few questions</h3>
-          <p>We ask you the same questions that built the first Personakind, made friendly and general. Answer at your own pace and watch your grid fill itself in. No writing from a blank page.</p>
-          <div class="foot">Best if you've never done this before.</div>
+          <p>Fourteen plain questions, in your own words, at your own pace. What should we call it, what do you spend your days doing, what should it never do. Your persona writes itself as you go.</p>
+          <div class="foot">Best if this is your first one. About five minutes.</div>
           <button class="pk-btn solid" type="button" data-path="questions">Answer the questions</button>
         </div>
         <div class="pk-way">
           <div class="num">2</div>
           <div class="who">A head start &middot; for makers</div>
           <h3>Start from a template</h3>
-          <p>Pick a ready-made archetype, Creator, Founder, Coach, Author, Analyst and more, then make it yours by editing the cells. A strong first draft you shape, instead of an empty board.</p>
-          <div class="foot">Best if you know roughly who you want.</div>
+          <p>A coach, a founder, a support rep, an author, and more, already written. Pick one, then swap in your own words wherever it does not sound like you.</p>
+          <div class="foot">Best if you know roughly who you want it to be.</div>
           <button class="pk-btn ghost" type="button" data-path="template">Browse the templates</button>
         </div>
         <div class="pk-way">
           <div class="num">3</div>
-          <div class="who">Power move &middot; for builders</div>
-          <h3>Connect your own AI</h3>
-          <p>Connect the Personakind tool to Claude or ChatGPT and build, read, and drive your persona right from the AI you already use. Your key, your machine, fully in your hands.</p>
-          <div class="foot">Best if you live in an AI already.</div>
-          <button class="pk-btn ghost" type="button" data-path="mcp">Get the connector</button>
+          <div class="who">Fastest &middot; if you already use an AI</div>
+          <h3>Let your AI build it</h3>
+          <p>Claude, ChatGPT, Gemini: the one you talk to every day already knows how you think. Copy our short interview, paste it in, and paste back what it says. Nothing to install.</p>
+          <div class="foot">Best if your AI already knows you well.</div>
+          <button class="pk-btn ghost" type="button" data-path="mcp">Let my AI answer</button>
         </div>
       </div>
     </div>
@@ -826,18 +826,18 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <div class="pk-wrap">
       <div class="pk-explain">
         <div>
-          <div class="pk-kicker" style="text-align:left">What's a grid</div>
+          <div class="pk-kicker" style="text-align:left">What a persona is</div>
           <h2>Not a black box. A page you can read.</h2>
-          <p>Every trait, rule, and turn of phrase lives in a small labeled cell you can open and read. Compose a specialist, a mood, a voice, and Personakind wires the active cells into one clear identity, and tells you honestly whether it's complete before it runs. What you read is exactly what it is.</p>
-          <p style="color:var(--ink-dim);font-size:15px">Then, if you want to get fancy, layer on your own extra grids to add more rules on top.</p>
+          <p>Most AI "personalities" are a mystery box: you type things in and hope. Yours is a page of short, labelled notes: who you are, what to do, what never to do, how you sound. Anyone can read it, including you. If a line is wrong, you change the line. What you read is exactly what it is.</p>
+          <p style="color:var(--ink-dim);font-size:15px">Want more? There is an advanced editor for people who like knobs. You never have to open it.</p>
         </div>
         <div class="pk-grid-card">
-          <div class="pk-gc-head"><span class="pk-gc-dot"></span><span class="pk-gc-title">compose() &middot; integrity: complete</span></div>
+          <div class="pk-gc-head"><span class="pk-gc-dot"></span><span class="pk-gc-title">What your AI reads</span></div>
           <div class="pk-cells">
-            <div class="pk-cell"><span class="lb"><i class="i-context"></i>core</span><p>always on</p></div>
-            <div class="pk-cell"><span class="lb"><i class="i-do"></i>coach</span><p>specialist</p></div>
-            <div class="pk-cell"><span class="lb"><i class="i-voice"></i>warm</span><p>register</p></div>
-            <div class="pk-cell"><span class="lb"><i class="i-dont"></i>guardrails</span><p>your don'ts</p></div>
+            <div class="pk-cell"><span class="lb"><i class="i-context"></i>Who I am</span><p>Always part of it.</p></div>
+            <div class="pk-cell"><span class="lb"><i class="i-do"></i>How to help</span><p>Research first, then trust my gut.</p></div>
+            <div class="pk-cell"><span class="lb"><i class="i-voice"></i>How I sound</span><p>Conversational, a bit blunt.</p></div>
+            <div class="pk-cell"><span class="lb"><i class="i-dont"></i>Hard rules</span><p>Always tell me the truth.</p></div>
           </div>
         </div>
       </div>
@@ -849,7 +849,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div class="pk-social">
         <div class="pk-kicker">New</div>
         <h2>Give your persona a home</h2>
-        <p class="pk-lede" style="margin-bottom:26px">Flip one switch and your persona gets its own page, a warm profile others can visit, read, and chat with on their own key. Meet other people's personas. Follow the ones you like. Think a profile page, for a mind.</p>
+        <p class="pk-lede" style="margin-bottom:26px">Tick one box and your persona gets its own page: a link you can send to anyone, where they can read it and talk to it. Until you tick it, nobody sees it but you. Think of it as a profile page, for a mind.</p>
         <button class="pk-btn solid lg" data-auth>Start yours free</button>
         <a class="pk-btn ghost lg" href="?explore" style="margin-left:10px">Browse personas</a>
       </div>
@@ -860,7 +860,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <div class="pk-wrap">
       <div class="pk-kicker">Ready?</div>
       <h2 class="pk-h1" style="font-size:clamp(30px,4vw,44px);text-align:center;margin:8px 0 6px">Meet your Personakind.</h2>
-      <p class="pk-lede">One email link and you're building. No card, no catch.</p>
+      <p class="pk-lede">One email link and you are building. No card, no catch, about five minutes.</p>
       <button class="pk-btn solid lg" data-auth>Build your persona free</button>
     </div>
   </section>
@@ -1120,11 +1120,11 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <h2>How do you want to start?</h2>
       <div class="nf-cards">
         <button class="nf-card" data-path="questions"><span class="nf-badge">Most people start here</span>
-          <h3>Answer a few questions</h3><p>About 14 quick questions, five minutes. Your grid fills itself in as you go. No blank page.</p></button>
+          <h3>Answer a few questions</h3><p>Fourteen plain questions, about five minutes. Your persona writes itself as you go.</p></button>
         <button class="nf-card" data-path="template">
           <h3>Start from a template</h3><p>Pick a ready-made archetype, Creator, Founder, Coach and more, then make it yours.</p></button>
         <button class="nf-card" data-path="mcp">
-          <h3>Connect your own AI</h3><p>Build and drive your persona from Claude or ChatGPT with the Personakind tool.</p></button>
+          <h3>Let your AI build it</h3><p>Copy a short interview into Claude, ChatGPT or Gemini, paste back its answers. Nothing to install.</p></button>
       </div>
       <p class="nf-mini">Rather not choose? <a id="nfBlank">Start from a blank grid</a></p>
     </div>
