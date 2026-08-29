@@ -46,7 +46,9 @@ button{font-family:inherit}
 .gatemsg{font-size:13px;color:var(--muted);margin-top:14px;min-height:18px}
 .muted{color:var(--dim);font-size:12px}
 /* ---------- app shell ---------- */
-#app{display:none;height:100vh;grid-template-rows:auto auto 1fr}
+/* four children: .top .loadout .axischips .body. The old rule declared three rows,
+   so .axischips absorbed the 1fr and .body was left on an implicit auto row. */
+#app{display:none;height:100vh;grid-template-rows:auto auto auto 1fr}
 .top{display:flex;align-items:center;gap:14px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line);flex-wrap:wrap}
 .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;letter-spacing:-.02em;margin:0}
 .brand span{color:var(--accent)}
@@ -320,13 +322,85 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #profile .fcard .fh .nm{color:var(--ink)}
 #profile .psec .psh,#profile .fcard .cell .cl{color:var(--accent-w-deep)}
 #profile .psec .psb{color:var(--ink)}
-#profile .fcard .cell .cv{color:var(--ink-soft);max-height:170px}
-#profile .fcard .cell .cv::after{content:'';position:absolute;left:0;right:0;bottom:0;height:30px;background:linear-gradient(rgba(255,255,255,0),var(--card-w))}
+#profile .fcard .cell .cv{color:var(--ink-soft);max-height:none;overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4}
 #profile .pdisc{color:var(--ink-dim)}
 #profile .btn.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
 #profile .btn.solid:hover{background:var(--accent-w-deep)}
 #profile .btn.ghost{border-color:var(--line-w);color:var(--ink);background:transparent}
 #profile .btn.ghost:hover{border-color:var(--accent-w);color:var(--accent-w-deep)}
+
+/* ============ Personakind: the editor on a phone ============
+   The editor shipped with no mobile rules of any kind. At 375px that meant a
+   header wrapped onto four rows, a fixed 230px sidebar leaving a 145px canvas,
+   and an axis-chip rail 144px tall. Measured, not guessed. */
+.drawerbtn{display:none;align-items:center;justify-content:center;width:40px;height:40px;flex:none;
+  border:1px solid var(--line);background:var(--surface2);color:var(--text);border-radius:9px;cursor:pointer}
+.drawerbtn:hover{border-color:var(--accent)}
+.sidehead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sidehead h4{margin:0}
+.drawerclose{display:none;align-items:center;justify-content:center;width:40px;height:40px;flex:none;
+  border:1px solid var(--line);background:var(--surface2);color:var(--text);border-radius:9px;cursor:pointer;margin:-4px -4px 0 0}
+.sidescrim{display:none}
+
+@media (max-width:760px){
+  /* dvh so the browser's own chrome does not crop the canvas */
+  #app{height:100dvh}
+
+  /* header: one row you can swipe, not four you have to scroll past */
+  .top{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;gap:8px;padding:8px 12px;scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);
+            mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent)}
+  .top::-webkit-scrollbar{display:none}
+  .top>*{flex:none}
+  .top .brand{font-size:17px}
+  .top .sp{display:none}
+  .who{display:none}
+  .modesw button{padding:9px 11px;font-size:12px;min-height:40px}
+  .tbtn{white-space:nowrap;min-height:40px;padding:9px 13px}
+  .drawerbtn{display:inline-flex}
+
+  /* the two rails: single row, with a right-edge fade that says there is more */
+  .loadout,.axischips{flex-wrap:nowrap;gap:8px;padding:8px 12px;scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);
+            mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent)}
+  .loadout::-webkit-scrollbar,.axischips::-webkit-scrollbar{display:none}
+  .loadout>*,.axischips>*{flex:none}
+
+  /* the canvas IS the page. the persona list slides over it. */
+  .body{grid-template-columns:1fr}
+  .side{position:fixed;top:0;bottom:0;left:0;width:min(86vw,320px);z-index:70;
+    transform:translateX(-101%);transition:transform .22s ease;
+    box-shadow:0 0 60px rgba(0,0,0,.55);
+    padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
+  .side.open{transform:none}
+  .drawerclose{display:inline-flex}
+  .sidehead{margin-bottom:12px}
+  .sidescrim{display:block;position:fixed;inset:0;z-index:65;background:rgba(0,0,0,.5);
+    opacity:0;pointer-events:none;transition:opacity .22s ease}
+  .sidescrim.open{opacity:1;pointer-events:auto}
+  .side .newbtn,.side .field,.side .clone{min-height:44px}
+}
+
+@media (max-width:760px){
+  /* one column on a phone, so 19 facet cards at five cells each ran to 13,000px.
+     A tighter clamp keeps "What's inside" a scannable summary, which is its job. */
+  #profile .fcard .cell .cv{-webkit-line-clamp:3}
+  #profile .persona,#profile .pcta,#profile .fcard{padding:18px}
+  #profile .phero{padding:18px 0 26px}
+  #profile .pavatar{width:64px;height:64px;border-radius:16px;font-size:28px}
+  #profile .pid{gap:14px}
+
+  /* zoom controls out of the drawer's way, clear of the home indicator */
+  .hud{left:auto;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));justify-content:flex-end;
+    max-width:calc(100% - 24px);background:rgba(23,18,13,.72);backdrop-filter:blur(6px);
+    border:1px solid var(--line);border-radius:12px;padding:6px}
+  .hud button{min-width:44px;min-height:44px}
+}
+@media (max-width:760px) and (prefers-reduced-motion:reduce){
+  .side,.sidescrim{transition:none}
+}
 @media(max-width:820px){ .heromock{padding:14px} .hm-arrow{display:none}
   .mnav{padding:12px 16px;gap:10px} .mnav .btn{padding:9px 13px;font-size:13.5px} .mnav .btn.ghost{display:none} }
 
@@ -670,6 +744,9 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 
 <div id="app">
   <div class="top">
+    <button class="drawerbtn" id="drawerbtn" type="button" aria-label="Show my personas" aria-expanded="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
     <h1 class="brand">Persona<span>kind</span></h1>
     <div class="modesw" id="modesw">
       <button data-m="single" aria-pressed="true">Single</button>
@@ -677,7 +754,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <button data-m="queue">Queue</button>
     </div>
     <span class="sp"></span>
-    <button class="tbtn" id="chatbtn">Chat with this clone</button>
+    <button class="tbtn" id="chatbtn">Chat with this persona</button>
     <button class="tbtn acc" id="savebtn">Save</button>
     <span class="who" id="who"></span>
     <button class="tbtn" id="signout">Sign out</button>
@@ -687,17 +764,18 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   <div class="axischips" id="axischips"></div>
 
   <div class="body">
+    <div class="sidescrim" id="sidescrim" aria-hidden="true"></div>
     <aside class="side">
-      <h4>My clones</h4>
+      <div class="sidehead"><h4>My personas</h4><button class="drawerclose" id="drawerclose" type="button" aria-label="Close the persona list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <div id="clonelist"></div>
       <button class="newbtn" id="newpersona" style="border-style:solid;border-color:var(--accent-w,#E0653C);color:var(--accent-w,#E0653C)">+ New persona</button>
       <button class="newbtn" id="newblank">+ New from blank template</button>
       <button class="newbtn" id="newshow">+ New from showcase</button>
       <h4 style="margin-top:20px">Grid</h4>
-      <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="clone name">
+      <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="persona name">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
       <div class="note" id="shareline" style="margin-top:10px;display:none"></div>
-      <button class="newbtn" id="delbtn" style="color:var(--dont-text);border-color:transparent;margin-top:14px">Delete this clone</button>
+      <button class="newbtn" id="delbtn" style="color:var(--dont-text);border-color:transparent;margin-top:14px">Delete this persona</button>
     </aside>
     <div class="stage-wrap">
       <div class="viewport" id="vp"><div class="stage" id="stage"><svg class="wires" id="wires"></svg></div></div>
@@ -830,7 +908,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 <div class="drawer" id="chat">
   <div class="dhead"><div class="t" id="chattitle">Chat</div><button class="x" id="chatx">&times;</button></div>
   <div class="dbody" id="chatbody"></div>
-  <div class="chatin"><textarea id="chatinput" placeholder="Talk to the composed clone..."></textarea><button class="savebtn" id="chatsend">Send</button></div>
+  <div class="chatin"><textarea id="chatinput" placeholder="Talk to the composed persona..."></textarea><button class="savebtn" id="chatsend">Send</button></div>
 </div>
 
 <!-- settings / how to run -->
@@ -919,6 +997,12 @@ document.getElementById('email').addEventListener('keydown',e=>{ if(e.key==='Ent
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
 document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
 SB.auth.onAuthStateChange(()=>{ if(!onProfileRoute()) refreshAuth(); });
+// Cells are stored with a leading '# facet / CELL' line because the composed prompt
+// needs it. The profile page prints that label itself, so strip it for display only.
+// Never mutates the stored cell, so Copy prompt is untouched.
+function cellBody(v){ const t=String(v==null?'':v);
+  const out=t.replace(/^\s*#[^\n]*\n+/,'').trim();
+  return out || t.trim(); }
 function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ---------- state ----------
@@ -947,13 +1031,13 @@ async function newClone(seed,label){ const uid=(await SB.auth.getUser()).data.us
   const copy=JSON.parse(JSON.stringify(seed));
   const {data,error}=await SB.from('twingrid_grids').insert({owner:uid,name:label,data:copy}).select().single();
   if(error){alert(error.message);return;} curId=data.id; selectClone(data); }
-document.getElementById('newblank').onclick=()=>newClone(BLANK,'My clone (from template)');
-document.getElementById('newshow').onclick=()=>newClone(SHOW,'My clone (from showcase)');
+document.getElementById('newblank').onclick=()=>newClone(BLANK,'My persona (from template)');
+document.getElementById('newshow').onclick=()=>newClone(SHOW,'My persona (from showcase)');
 document.getElementById('savebtn').onclick=async()=>{ if(!curId)return;
   const b=document.getElementById('savebtn'); b.textContent='Saving...';
   const {error}=await SB.from('twingrid_grids').update({name:document.getElementById('gridname').value,is_public:document.getElementById('ispublic').checked,data:GRID}).eq('id',curId);
   b.textContent=error?'Error':'Saved'; setTimeout(()=>b.textContent='Save',1400); updateShare(); loadClones(); };
-document.getElementById('delbtn').onclick=async()=>{ if(!curId)return; if(!confirm('Delete this clone permanently?'))return;
+document.getElementById('delbtn').onclick=async()=>{ if(!curId)return; if(!confirm('Delete this persona permanently?'))return;
   await SB.from('twingrid_grids').delete().eq('id',curId); curId=null; GRID={facets:[]}; reindex(); buildBoard(); render(); loadClones(); };
 
 // ---------- composition logic ----------
@@ -1047,7 +1131,45 @@ window.addEventListener('pointerup',()=>{panning=false;vp.classList.remove('drag
 vp.addEventListener('wheel',e=>{e.preventDefault();const d=e.deltaY<0?1.1:0.9;const ns=Math.min(2,Math.max(0.25,scale*d));const r=vp.getBoundingClientRect();const mx=e.clientX-r.left,my=e.clientY-r.top;tx=mx-(mx-tx)*(ns/scale);ty=my-(my-ty)*(ns/scale);scale=ns;applyT();},{passive:false});
 document.getElementById('zin').onclick=()=>{scale=Math.min(2,scale*1.15);applyT();};
 document.getElementById('zout').onclick=()=>{scale=Math.max(0.25,scale*0.87);applyT();};
-document.getElementById('zfit').onclick=()=>{scale=0.55;tx=20;ty=10;applyT();};
+// "Fit" used to be a hardcoded scale=0.55,tx=20,ty=10 tuned for a desktop viewport,
+// which is why the board hangs off the right edge of a phone. Measure and fit for real.
+function fitToView(){
+  const nodes=[...stage.querySelectorAll('.node')];
+  const r=vp.getBoundingClientRect();
+  if(!nodes.length || !r.width || !r.height){ scale=0.62; tx=20; ty=10; applyT(); return; }
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  nodes.forEach(n=>{ const x=n.offsetLeft,y=n.offsetTop,w=n.offsetWidth,h=n.offsetHeight;
+    if(!w&&!h) return;
+    if(x<minX)minX=x; if(y<minY)minY=y; if(x+w>maxX)maxX=x+w; if(y+h>maxY)maxY=y+h; });
+  const bw=maxX-minX, bh=maxY-minY;
+  if(!(bw>0&&bh>0)){ scale=0.62; tx=20; ty=10; applyT(); return; }
+  const pad=window.matchMedia('(max-width:760px)').matches?16:32;
+  scale=Math.min(1.6,Math.max(0.18,Math.min((r.width-pad*2)/bw,(r.height-pad*2)/bh)));
+  tx=(r.width-bw*scale)/2-minX*scale;
+  ty=(r.height-bh*scale)/2-minY*scale;
+  applyT();
+}
+document.getElementById('zfit').onclick=fitToView;
+// Auto-fitting the WHOLE board on a phone lands at about 0.2 scale, which is a
+// picture of a grid rather than a readable one. Open on the core node instead,
+// at a size you can actually read, and leave the overview to the Fit button.
+function frameCore(){
+  const core=stage.querySelector('.node.core')||stage.querySelector('.node');
+  const r=vp.getBoundingClientRect();
+  if(!core||!r.width||!r.height) return;
+  scale=0.8;
+  tx=Math.round(r.width/2-(core.offsetLeft+core.offsetWidth/2)*scale);
+  ty=Math.round(r.height*0.34-(core.offsetTop+core.offsetHeight/2)*scale);
+  applyT();
+}
+let __didFrame=false;
+const __framePoll=setInterval(()=>{
+  if(__didFrame){ clearInterval(__framePoll); return; }
+  if(!window.matchMedia('(max-width:760px)').matches) return;
+  if(!stage.querySelector('.node')) return;
+  __didFrame=true; clearInterval(__framePoll); requestAnimationFrame(frameCore);
+},250);
+setTimeout(()=>clearInterval(__framePoll),10000);
 function startHead(e,name,el){e.stopPropagation();const p=pos[name];const sx=e.clientX,sy=e.clientY;let moved=false;const off={x:e.clientX/scale-p.x,y:e.clientY/scale-p.y};
   const mv=ev=>{if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>4){moved=true;p.x=ev.clientX/scale-off.x;p.y=ev.clientY/scale-off.y;el.style.left=p.x+'px';el.style.top=p.y+'px';drawWires();}};
   const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);if(!moved)toggleFacet(name);};
@@ -1145,7 +1267,7 @@ async function renderProfile(id){
   pick.forEach(fn=>{ const f=bn[fn]; if(!f)return; order.filter(c=>f.cells[c]&&String(f.cells[c]).trim()).forEach(c=>{ any=true;
     const sec=document.createElement('div'); sec.className='psec';
     const h=document.createElement('div'); h.className='psh'; h.textContent=fn+' \u00b7 '+c;
-    const bd=document.createElement('div'); bd.className='psb'; bd.textContent=f.cells[c];
+    const bd=document.createElement('div'); bd.className='psb'; bd.textContent=cellBody(f.cells[c]);
     sec.append(h,bd); pe.appendChild(sec); }); });
   if(!any){ pe.textContent='This persona has not been filled in yet.'; }
   const grid=document.getElementById('pfacets'); grid.innerHTML='';
@@ -1155,7 +1277,7 @@ async function renderProfile(id){
     const kd=document.createElement('span'); kd.className='kd'; kd.textContent=f.kind; fh.append(nmS,kd); card.appendChild(fh);
     order.filter(c=>f.cells&&f.cells[c]&&String(f.cells[c]).trim()).forEach(c=>{ const cell=document.createElement('div'); cell.className='cell';
       const cl=document.createElement('span'); cl.className='cl'; cl.textContent=c;
-      const cv=document.createElement('div'); cv.className='cv'; cv.textContent=f.cells[c]; cell.append(cl,cv); card.appendChild(cell); });
+      const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g;
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds();
@@ -1272,6 +1394,22 @@ async function nfUseTemplate(k,label){
 window.__openChooser=openChooser;
 
 const __npb=document.getElementById("newpersona"); if(__npb) __npb.onclick=openChooser;
+
+// ---- persona drawer, phone only. CSS decides whether it is a drawer or a column. ----
+const __side=document.querySelector('#app .side'), __scrim=document.getElementById('sidescrim'), __db=document.getElementById('drawerbtn');
+const __isPhone=()=>window.matchMedia('(max-width:760px)').matches;
+function __drawer(open){ if(!__side) return;
+  __side.classList.toggle('open',open);
+  if(__scrim) __scrim.classList.toggle('open',open);
+  if(__db) __db.setAttribute('aria-expanded',open?'true':'false'); }
+if(__db) __db.onclick=()=>__drawer(!__side.classList.contains('open'));
+if(__scrim) __scrim.onclick=()=>__drawer(false);
+const __dc=document.getElementById('drawerclose'); if(__dc) __dc.onclick=()=>__drawer(false);
+window.addEventListener('keydown',e=>{ if(e.key==='Escape') __drawer(false); });
+// picking a persona on a phone should hand the screen back to the canvas
+if(__side) __side.addEventListener('click',e=>{ if(__isPhone() && e.target.closest('.clone')) setTimeout(()=>__drawer(false),80); });
+// never leave the drawer stuck open when the layout goes back to two columns
+window.addEventListener('resize',()=>{ if(!__isPhone()) __drawer(false); });
 
 applyT(); route();
 </script>
