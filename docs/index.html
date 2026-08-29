@@ -112,8 +112,8 @@ button{font-family:inherit}
 .pbtn{font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:999px;padding:4px 11px;white-space:nowrap}
 .pbtn.solid{background:var(--accent);color:#fff}
 /* drawers */
-.drawer{position:fixed;top:0;right:0;height:100svh;width:min(560px,94vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:-20px 0 50px rgba(0,0,0,.5);transform:translateX(102%);transition:transform .22s;display:flex;flex-direction:column;z-index:60}
-.drawer.open{transform:none}
+.drawer{position:fixed;top:0;right:0;height:100svh;width:min(560px,94vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:-20px 0 50px rgba(0,0,0,.5);transform:translateX(102%);visibility:hidden;pointer-events:none;transition:transform .22s,visibility 0s linear .22s;display:flex;flex-direction:column;z-index:60}
+.drawer.open{transform:none;visibility:visible;pointer-events:auto;transition:transform .22s}
 .dhead{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
 .dhead .t{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600}
 .x{font-size:20px;cursor:pointer;background:none;border:0;color:var(--muted)}
@@ -608,7 +608,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 
 .drawer:not(.open){box-shadow:none}
 @media(max-width:860px){
-  .pk-nav{padding:14px 16px;gap:10px} .pk-nav .pk-btn{padding:11px 16px;font-size:14px} .pk-nav .pk-btn.ghost{display:none}
+  .pk-nav{padding:14px 16px;gap:10px} .pk-nav .pk-btn{padding:11px 16px;font-size:14px} .pk-nav .pk-btn.ghost{display:inline-flex} .pk-nav .pk-btn{padding:10px 12px;font-size:13px} .pk-nav a.lk[href="#ways"],.pk-nav a.lk[href="#share"]{display:none}
   .pk-hero .pk-wrap{grid-template-columns:1fr;gap:30px}
   .pk-ways{grid-template-columns:1fr}
   .pk-explain{grid-template-columns:1fr;gap:26px}
@@ -947,16 +947,16 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       </div>
     </div>
 
-    <div class="facets">
-      <h2>What's inside</h2>
-      <div class="fgrid" id="pfacets"></div>
-    </div>
     <div class="pctrl" id="pctrl">
       <button class="pctrl-b" id="phide" type="button">Hide this from my Explore</button>
       <button class="pctrl-b" id="preport" type="button">Report</button>
       <span class="pctrl-msg" id="pctrlmsg" role="status"></span>
     </div>
-    <p class="pdisc">This is a twinograph, an AI persona built on Personakind. It is not a real person, and it only knows what its owner wrote into the cells above.</p>
+    <p class="pdisc">This is a twinograph, an AI persona built on Personakind. It is not a real person, and it only knows what its owner wrote into the cells on this page.</p>
+    <div class="facets">
+      <h2>What's inside</h2>
+      <div class="fgrid" id="pfacets"></div>
+    </div>
     <div class="rpt" id="rpt" role="dialog" aria-modal="true" aria-labelledby="rpttitle">
       <div class="rptcard">
         <button class="rptx" id="rptx" type="button" aria-label="Close">&times;</button>
@@ -1720,6 +1720,7 @@ function nfShow(id){ NF_PANELS.forEach(p=>{const e=document.getElementById(p); i
 function openChooser(){ nfShow('nfChoose'); nfEl.classList.add('open'); }
 function closeNewflow(){ nfEl.classList.remove('open'); }
 document.getElementById('nfx').onclick=closeNewflow;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && nfEl.classList.contains('open')) closeNewflow(); });
 nfEl.addEventListener('click',e=>{ if(e.target===nfEl) closeNewflow(); });
 document.querySelectorAll('#nfChoose .nf-card').forEach(b=>b.onclick=()=>nfPath(b.dataset.path));
 document.getElementById('nfBlank').onclick=async()=>{ closeNewflow(); await newClone(BLANK,'My persona (blank)'); };
