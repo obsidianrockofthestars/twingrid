@@ -332,6 +332,11 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 
 /* the board and its nodes handle their own gestures; the browser must not pan or zoom them */
 .stage,.node{touch-action:none}
+@media (max-width:760px){
+  /* stacked board: signal leaves the bottom of a node and enters the top of compose */
+  .node .port.out{right:-6px;left:auto;margin-left:0;top:auto;bottom:11px}
+  .node.compose .port.in{left:auto;right:-6px;top:11px;margin-top:0}
+}
 .node .nhead{cursor:grab}
 
 
@@ -1088,9 +1093,36 @@ function fullComposeText(){ return runs().map((r,i)=>{const h=runs().length>1?`\
 // ---------- board (nodes) ----------
 const COLX={core:40,specialist:330,mode:620,role:910,register:1200}, COMPOSE={x:1560,y:120,w:200};
 const pos={}; const stage=document.getElementById('stage'), wires=document.getElementById('wires');
+const NODE_W=230, KIND_ORDER=['core','specialist','mode','role','register'];
+const isPortrait=()=>window.matchMedia('(max-width:760px)').matches;
+// The board was five columns running to x=1760. On a 375px canvas a perfect fit is 0.21
+// scale, so no amount of zoom tuning could save it. On a phone the same five columns
+// become five stacked sections in one column, and the compose node moves to the bottom.
 function buildBoard(){ [...stage.querySelectorAll('.node')].forEach(n=>n.remove()); for(const k in pos)delete pos[k];
-  const colY={core:150,specialist:70,mode:70,role:150,register:150};
-  GRID.facets.forEach(f=>{const h=34+Object.keys(f.cells).length*22+8;const x=COLX[f.kind]||40,y=colY[f.kind]!==undefined?colY[f.kind]:70;pos[f.name]={x,y,h};if(colY[f.kind]!==undefined)colY[f.kind]=y+h+20;});
+  const H=f=>34+Object.keys(f.cells).length*22+8;
+  if(isPortrait()){
+    // GUTTER is the empty lane on the right the wires run down. Inactive nodes render at
+    // 40% opacity, so a spine routed under the cards bleeds through them and reads as if
+    // it is crossing them. Give it its own lane instead.
+    const X=16, GAP=14, SECTION=26, GUTTER=44;
+    const byKind={}; GRID.facets.forEach(f=>{ (byKind[f.kind]=byKind[f.kind]||[]).push(f); });
+    let y=20;
+    KIND_ORDER.forEach(k=>{ const list=byKind[k]; if(!list||!list.length) return;
+      list.forEach(f=>{ const h=H(f); pos[f.name]={x:X,y,h}; y+=h+GAP; });
+      y+=SECTION; });
+    GRID.facets.forEach(f=>{ if(!pos[f.name]){ const h=H(f); pos[f.name]={x:X,y,h}; y+=h+GAP; } });
+    COMPOSE.w=NODE_W; COMPOSE.x=X; COMPOSE.y=y+12;
+    stage.style.width=(X+NODE_W+GUTTER)+'px';
+    stage.style.height=(COMPOSE.y+240)+'px';
+  } else {
+    const colY={core:150,specialist:70,mode:70,role:150,register:150};
+    GRID.facets.forEach(f=>{const h=H(f);const x=COLX[f.kind]||40,y=colY[f.kind]!==undefined?colY[f.kind]:70;pos[f.name]={x,y,h};if(colY[f.kind]!==undefined)colY[f.kind]=y+h+20;});
+    COMPOSE.w=200; COMPOSE.x=1560; COMPOSE.y=120;
+    stage.style.width='2000px'; stage.style.height='1600px';
+  }
+  wires.setAttribute('width',parseInt(stage.style.width,10)||2000);
+  wires.setAttribute('height',parseInt(stage.style.height,10)||1600);
+  wires.style.width=stage.style.width; wires.style.height=stage.style.height;
   GRID.facets.forEach(makeNode); makeCompose(); }
 function makeNode(f){ const p=pos[f.name]; const el=document.createElement('div'); el.className='node '+(f.kind==='core'?'core':''); el.dataset.name=f.name; el.style.left=p.x+'px'; el.style.top=p.y+'px';
   let rows=''; CELLORDER.filter(c=>f.cells[c]!==undefined).forEach(c=>{rows+=`<button class="crow ${c.toLowerCase()}" data-cell="${c}"><span class="dot"></span>${c}</button>`;});
@@ -1099,9 +1131,18 @@ function makeNode(f){ const p=pos[f.name]; const el=document.createElement('div'
   el.querySelectorAll('.crow').forEach(r=>r.onclick=()=>openCell(f.name,r.dataset.cell)); stage.appendChild(el); }
 function makeCompose(){ const el=document.createElement('div'); el.className='node compose'; el.id='composeNode'; el.style.left=COMPOSE.x+'px'; el.style.top=COMPOSE.y+'px'; el.style.width=COMPOSE.w+'px';
   el.innerHTML=`<div class="nhead"><span>compose()</span><span class="k">receipt</span></div><div class="body2"><div class="big" id="cbig"></div><div class="il" id="cint"></div></div><div class="port in"></div>`; stage.appendChild(el); }
-function portOut(n){const p=pos[n];return{x:p.x+230,y:p.y+15+5};}
-function composeIn(){const c=document.getElementById('composeNode');return{x:COMPOSE.x-6,y:COMPOSE.y+(c?c.offsetHeight/2:60)};}
-function drawWires(){const ins=composeIn();let paths='';activeFacets().forEach(n=>{if(!pos[n])return;const o=portOut(n);const dx=Math.max(60,(ins.x-o.x)*0.5);paths+=`<path d="M${o.x},${o.y} C${o.x+dx},${o.y} ${ins.x-dx},${ins.y} ${ins.x},${ins.y}" fill="none" stroke="var(--wire)" stroke-width="2" opacity="0.85"/>`;});wires.innerHTML=paths;}
+function portOut(n){const p=pos[n];return isPortrait()?{x:p.x+NODE_W+6,y:p.y+p.h-16}:{x:p.x+230,y:p.y+15+5};}
+function composeIn(){const c=document.getElementById('composeNode');return isPortrait()?{x:COMPOSE.x+COMPOSE.w+6,y:COMPOSE.y+16}:{x:COMPOSE.x-6,y:COMPOSE.y+(c?c.offsetHeight/2:60)};}
+function drawWires(){const ins=composeIn();let paths='';
+  activeFacets().forEach(n=>{if(!pos[n])return;const o=portOut(n);
+    const ddx=ins.x-o.x, ddy=ins.y-o.y;
+    // pick the control points off the dominant axis, so a stacked board gets a vertical
+    // spine instead of a horizontal S-curve sweeping off the side of the screen
+    let c1x,c1y,c2x,c2y;
+    if(Math.abs(ddy)>Math.abs(ddx)*1.2){ const k=Math.max(40,Math.abs(ddy)*0.38); c1x=o.x;c1y=o.y+k;c2x=ins.x;c2y=ins.y-k; }
+    else { const k=Math.max(60,ddx*0.5); c1x=o.x+k;c1y=o.y;c2x=ins.x-k;c2y=ins.y; }
+    paths+=`<path d="M${o.x},${o.y} C${c1x},${c1y} ${c2x},${c2y} ${ins.x},${ins.y}" fill="none" stroke="var(--wire)" stroke-width="2" opacity="0.85"/>`;});
+  wires.innerHTML=paths;}
 
 // ---------- axis chips + loadout ----------
 function buildAxis(){ const bar=document.getElementById('axischips'); bar.innerHTML='';
@@ -1216,8 +1257,11 @@ function fitToView(){
     // Fit-to-width with a readable floor. Fitting the whole board on a phone lands near
     // 0.2 scale, which is a thumbnail of a grid, not a grid. Better to fill the width,
     // anchor the top-left, and let the thumb do the rest.
-    scale=Math.min(1.2,Math.max(0.42,(r.width-pad*2)/bw));
-    tx=pad-minX*scale;
+    // fit the STAGE width, not the node bounding box, or the wire gutter gets
+    // pushed off the right edge and the spine disappears
+    const sw=parseInt(stage.style.width,10)||(bw+44);
+    scale=Math.min(1.45,Math.max(0.42,(r.width-pad*2)/sw));
+    tx=pad;
     ty=pad-minY*scale;
   } else {
     scale=Math.min(1.6,Math.max(0.18,Math.min((r.width-pad*2)/bw,(r.height-pad*2)/bh)));
@@ -1244,7 +1288,9 @@ const __framePoll=setInterval(()=>{
   if(__didFrame){ clearInterval(__framePoll); return; }
   if(!window.matchMedia('(max-width:760px)').matches) return;
   if(!stage.querySelector('.node')) return;
-  __didFrame=true; clearInterval(__framePoll); requestAnimationFrame(frameCore);
+  __didFrame=true; clearInterval(__framePoll);
+  // the stacked board fits the width, so fit is now the right opening view
+  requestAnimationFrame(()=>{ fitToView(); });
 },250);
 setTimeout(()=>clearInterval(__framePoll),10000);
 function startHead(e,name,el){e.stopPropagation();const p=pos[name];const sx=e.clientX,sy=e.clientY;let moved=false;const off={x:e.clientX/scale-p.x,y:e.clientY/scale-p.y};
@@ -1488,6 +1534,14 @@ window.addEventListener('keydown',e=>{ if(e.key==='Escape') __drawer(false); });
 if(__side) __side.addEventListener('click',e=>{ if(__isPhone() && e.target.closest('.clone')) setTimeout(()=>__drawer(false),80); });
 // never leave the drawer stuck open when the layout goes back to two columns
 window.addEventListener('resize',()=>{ if(!__isPhone()) __drawer(false); });
+// Rotating the phone changes which layout is correct, so rebuild the board on a crossing.
+let __wasPortrait=isPortrait(); let __rzT;
+window.addEventListener('resize',()=>{ clearTimeout(__rzT); __rzT=setTimeout(()=>{
+  const now=isPortrait();
+  if(now===__wasPortrait) return;
+  __wasPortrait=now;
+  if(GRID.facets && GRID.facets.length){ buildBoard(); render(); requestAnimationFrame(fitToView); }
+},180); });
 
 applyT(); route();
 </script>
