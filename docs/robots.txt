@@ -1,0 +1,8 @@
+# personakind.com
+# Content signals. search=yes and ai-input=yes so Personakind can be found and cited,
+# ai-train=no so people's personas are not absorbed into model training sets.
+User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+
+Sitemap: https://personakind.com/sitemap.xml

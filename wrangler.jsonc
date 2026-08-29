@@ -1,11 +1,13 @@
 {
-  // TwinGrid — static site served from docs/ via Cloudflare Workers Static Assets.
+  // Personakind — static site served from docs/ via Cloudflare Workers Static Assets.
   // No Worker script (assets-only): Cloudflare serves the files in ./docs directly.
   "name": "twingrid",
   "compatibility_date": "2024-11-01",
+  // personakind.com is the only canonical host. The *.workers.dev subdomain is off
+  // so the site is not served from a second URL that splits SEO and breaks auth redirects.
+  "workers_dev": false,
   "assets": {
-    // Multi-page static site: Cloudflare serves ./docs directly, maps "/" to
-    // index.html and "/studio" to studio.html automatically.
+    // Single-page app: Cloudflare serves ./docs directly and maps "/" to index.html.
     "directory": "./docs"
   }
 }

@@ -1,6 +1,25 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Personakind</title>
+<meta name="description" content="Personakind builds your AI persona as a grid of small, readable cells. See every rule, edit any of it, and publish a page the world can meet.">
+<link rel="canonical" href="https://personakind.com/">
+<meta name="theme-color" content="#FBF7EF">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FBF7EF'/%3E%3Ctext x='32' y='46' font-family='Georgia,serif' font-size='42' font-weight='600' text-anchor='middle' fill='%23C24B2A'%3EP%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Personakind">
+<meta property="og:url" content="https://personakind.com/">
+<meta property="og:title" content="Personakind, a version of you that you can actually read">
+<meta property="og:description" content="Personakind builds your AI persona as a grid of small, readable cells. See every rule, edit any of it, and publish a page the world can meet.">
+<meta property="og:image" content="https://personakind.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Personakind">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Personakind, a version of you that you can actually read">
+<meta name="twitter:description" content="Personakind builds your AI persona as a grid of small, readable cells. See every rule, edit any of it, and publish a page the world can meet.">
+<meta name="twitter:image" content="https://personakind.com/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -116,7 +135,7 @@ button{font-family:inherit}
 .note{font-size:12px;color:var(--muted);line-height:1.6}
 .note code{font-family:"IBM Plex Mono",monospace;color:var(--text);background:var(--surface2);padding:1px 5px;border-radius:4px}
 
-/* ============ TwinGrid v2 upgrade: tokens, landing, auth, profile ============ */
+/* ============ Personakind v2: tokens, landing, auth, profile ============ */
 :root{
   /* contrast-raised text tokens (WCAG AA on dark surfaces) */
   --text:#F2F0EA; --muted:#AEB6C6; --dim:#8A93A5;
@@ -282,6 +301,32 @@ body:not(.marketing){overflow:hidden}
 .psec{margin-bottom:16px}
 .psec .psh{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:5px}
 .psec .psb{font-size:14.5px;line-height:1.6;color:var(--text);white-space:pre-wrap}
+
+/* ============ Personakind warm theme: the public twinograph ============ */
+body.route-profile{background:var(--paper);color:var(--ink)}
+#profile .phero{border-bottom:1px solid var(--line-w);padding:22px 0 34px}
+#profile .phero .band{opacity:.6}
+#profile .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
+#profile .pnav .brand span{color:var(--accent-w)}
+#profile .pavatar{border-radius:20px;color:#fff;font-family:var(--serif);font-weight:600;background:var(--pacc,var(--accent-w));box-shadow:0 14px 34px rgba(40,28,18,.20)}
+#profile .pid h1{font-family:var(--serif);font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+#profile .pid .meta{color:var(--ink-dim)}
+#profile .pid .badge{border:1px solid var(--accent-soft);background:var(--accent-soft);color:var(--accent-w-deep)}
+#profile .persona,#profile .pcta,#profile .fcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;box-shadow:0 2px 12px rgba(40,28,18,.05)}
+#profile .persona h2,#profile .fcard .fh .kd{color:var(--ink-dim)}
+#profile .persona .body{color:var(--ink);max-height:none;overflow:visible}
+#profile .pcta h3,#profile .facets h2{font-family:var(--serif);font-weight:600;color:var(--ink)}
+#profile .pcta p{color:var(--ink-soft)}
+#profile .fcard .fh .nm{color:var(--ink)}
+#profile .psec .psh,#profile .fcard .cell .cl{color:var(--accent-w-deep)}
+#profile .psec .psb{color:var(--ink)}
+#profile .fcard .cell .cv{color:var(--ink-soft);max-height:170px}
+#profile .fcard .cell .cv::after{content:'';position:absolute;left:0;right:0;bottom:0;height:30px;background:linear-gradient(rgba(255,255,255,0),var(--card-w))}
+#profile .pdisc{color:var(--ink-dim)}
+#profile .btn.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
+#profile .btn.solid:hover{background:var(--accent-w-deep)}
+#profile .btn.ghost{border-color:var(--line-w);color:var(--ink);background:transparent}
+#profile .btn.ghost:hover{border-color:var(--accent-w);color:var(--accent-w-deep)}
 @media(max-width:820px){ .heromock{padding:14px} .hm-arrow{display:none}
   .mnav{padding:12px 16px;gap:10px} .mnav .btn{padding:9px 13px;font-size:13.5px} .mnav .btn.ghost{display:none} }
 
@@ -391,6 +436,13 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 #auth .sent .em{color:var(--ink)}
 #auth .spin{border-color:rgba(255,255,255,.4);border-top-color:#fff}
 #auth .err{color:var(--accent-w-deep)}
+#auth .oauthbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 16px;border-radius:12px;border:1.5px solid var(--line-w);background:var(--paper);color:var(--ink);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s}
+#auth .oauthbtn:hover{border-color:var(--accent-w);background:#fff}
+#auth .oauthbtn svg{width:18px;height:18px;flex:none}
+#auth .orline{display:flex;align-items:center;gap:12px;margin:16px 0 14px;color:var(--ink-dim);font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+#auth .orline::before,#auth .orline::after{content:"";flex:1;height:1px;background:var(--line-w)}
+#auth .altlink{display:block;width:100%;margin-top:12px;background:none;border:0;color:var(--ink-dim);font-family:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
+#auth .altlink:hover{color:var(--accent-w-deep)}
 
 .drawer:not(.open){box-shadow:none}
 @media(max-width:860px){
@@ -589,9 +641,17 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div class="k">Passwordless sign in</div>
       <h2 id="authttl">Create your twin</h2>
       <p class="lead">Enter your email and we'll send a one-time sign-in link. No password to remember, nothing to install.</p>
+      <button class="oauthbtn" id="googlebtn" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Continue with Google</span></button>
+      <div class="orline"><span>or</span></div>
       <label for="email">Email address</label>
       <input class="field" id="email" type="email" placeholder="you@email.com" autocomplete="email" inputmode="email">
       <button class="primary" id="sendlink">Email me a sign-in link</button>
+      <div id="pwwrap" hidden>
+        <label for="password" style="margin-top:14px">Password</label>
+        <input class="field" id="password" type="password" autocomplete="current-password" placeholder="Your password">
+        <button class="primary" id="pwbtn" type="button">Sign in</button>
+      </div>
+      <button class="altlink" id="pwtoggle" type="button">I already have a password</button>
       <div class="err" id="autherr" role="alert"></div>
       <div class="trust">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
@@ -662,9 +722,9 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div class="pid">
         <div class="pavatar" id="pavatar">T</div>
         <div>
-          <h1 id="pname">Twin</h1>
+          <h1 id="pname">Persona</h1>
           <div class="meta">
-            <span class="badge" id="pkind">AI twin</span>
+            <span class="badge" id="pkind">AI persona</span>
             <span id="pcells">0 cells</span>
             <span id="pfacetcount">0 facets</span>
           </div>
@@ -681,14 +741,14 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       </div>
       <div class="pside">
         <div class="pcta">
-          <h3>Chat with this twin</h3>
+          <h3>Chat with this persona</h3>
           <p>Talk to it live on your own Anthropic key. Your key stays in your browser and goes only to Anthropic, never to us.</p>
           <button class="btn solid" id="pchat" style="width:100%;justify-content:center">Start chatting</button>
         </div>
         <div class="pcta">
           <h3>Make one like it</h3>
-          <p>Build your own readable twin in minutes and give it a page like this.</p>
-          <button class="btn ghost" data-auth style="width:100%;justify-content:center">Create your free twin</button>
+          <p>Build your own readable persona in minutes and give it a page like this.</p>
+          <button class="btn ghost" data-auth style="width:100%;justify-content:center">Create your free persona</button>
         </div>
       </div>
     </div>
@@ -697,7 +757,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <h2>What's inside</h2>
       <div class="fgrid" id="pfacets"></div>
     </div>
-    <p class="pdisc">This is an AI persona built on Personakind, not a real person. It only knows what its owner wrote into the cells above.</p>
+    <p class="pdisc">This is a twinograph, an AI persona built on Personakind. It is not a real person, and it only knows what its owner wrote into the cells above.</p>
   </div>
 </div>
 
@@ -750,7 +810,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
           <li>Add it to Claude Desktop or your MCP client of choice.</li>
           <li>Ask it to build or read your persona, and it fills your grid here.</li>
         </ol>
-        <p style="margin-top:14px"><a class="pk-btn solid" id="nfMcpDl" href="/twingrid-mcp.zip" download>Download the connector</a></p>
+        <p style="margin-top:14px"><a class="pk-btn solid" id="nfMcpDl" href="/personakind-mcp.zip" download>Download the connector</a></p>
         <p style="color:var(--ink-dim);font-size:13px">A hosted, no-download version is on the way.</p>
       </div>
       <button class="nf-back-link" data-nfback>Back</button>
@@ -789,9 +849,9 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <p class="note">For a fully local setup, like the way this was built: export your grid, then run the clone on your own machine with your own key. Nothing touches the web.</p>
       <ol class="note" style="padding-left:18px">
         <li>Click <b>Export grid</b> below to download <code>my-grid.json</code>.</li>
-        <li>Grab the runner from the repo: <code>tools/twingrid_chat.py</code>.</li>
+        <li>Grab the runner from the repo: <code>tools/personakind_chat.py</code>.</li>
         <li><code>export ANTHROPIC_API_KEY=sk-ant-...</code></li>
-        <li><code>python twingrid_chat.py my-grid.json --specialist engineer --register surgery</code></li>
+        <li><code>python personakind_chat.py my-grid.json --specialist engineer --register surgery</code></li>
       </ol>
       <button class="primary" id="exportgrid">Export grid (JSON)</button>
     </div>
@@ -835,6 +895,26 @@ async function sendMagic(){ const email=document.getElementById('email').value.t
   if(error){ err.textContent=error.message||'Could not send the link. Please try again.'; return; }
   document.getElementById('sentto').textContent=email; authCard.classList.add('done'); }
 document.getElementById('sendlink').onclick=sendMagic;
+// --- restored sign-in paths. 3 of the existing accounts are Google, 2 are email+password. ---
+const authReturn=()=>location.origin+location.pathname;
+document.getElementById('googlebtn').onclick=async()=>{ const err=document.getElementById('autherr'); err.textContent='';
+  const {error}=await SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:authReturn()}});
+  if(error) err.textContent='Could not start Google sign in. Please use the email link instead.'; };
+const pwWrap=document.getElementById('pwwrap'), pwToggle=document.getElementById('pwtoggle');
+function pwReset(){ pwWrap.hidden=true; pwToggle.textContent='I already have a password'; const p=document.getElementById('password'); if(p) p.value=''; }
+pwToggle.onclick=()=>{ if(pwWrap.hidden){ pwWrap.hidden=false; pwToggle.textContent='Use a sign-in link instead'; setTimeout(()=>document.getElementById('password').focus(),40); } else pwReset(); };
+async function signInPw(){ const email=document.getElementById('email').value.trim(), pw=document.getElementById('password').value;
+  const err=document.getElementById('autherr'), btn=document.getElementById('pwbtn');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Please enter the email address on your account.'; return; }
+  if(!pw){ err.textContent='Please enter your password.'; return; }
+  err.textContent=''; btn.disabled=true; btn.textContent='Signing in...';
+  const {error}=await SB.auth.signInWithPassword({email,password:pw});
+  btn.disabled=false; btn.textContent='Sign in';
+  if(error){ err.textContent='That email and password did not match. Try the sign-in link instead.'; return; }
+  closeAuth(); }
+document.getElementById('pwbtn').onclick=signInPw;
+document.getElementById('password').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); signInPw(); } });
+document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',pwReset));
 document.getElementById('email').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMagic(); } });
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
 document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
@@ -1023,26 +1103,41 @@ const ipEl=document.getElementById('ispublic'); if(ipEl) ipEl.addEventListener('
 
 // ---------- public twinograph profile ----------
 let PROFILE_GRID=null;
+// Keeps white text legible on a user-chosen avatar colour: darken until the contrast
+// ratio against white clears 3:1, which is the AA bar for the 38px avatar letter.
+function inkSafe(hex){ let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  const ch=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);};
+  const lum=()=>0.2126*ch(r)+0.7152*ch(g)+0.0722*ch(b);
+  let guard=0; while(lum()>0.30 && guard++<30){ r=Math.round(r*0.92); g=Math.round(g*0.92); b=Math.round(b*0.92); }
+  return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+
 function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
 async function renderProfile(id){
   const nameEl=document.getElementById('pname');
   const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public').eq('id',id).maybeSingle();
-  if(error||!data){ nameEl.textContent='Twin not found'; document.getElementById('pavatar').textContent='?';
-    document.getElementById('ppersona').textContent='This twin is private, or the link is wrong. Ask its owner to make it public.';
+  if(error||!data){ nameEl.textContent='Persona not found'; document.getElementById('pavatar').textContent='?';
+    document.getElementById('ppersona').textContent='This persona is private, or the link is wrong. Ask its owner to make it public.';
     document.getElementById('pfacets').innerHTML=''; document.getElementById('pcells').textContent='';
     document.getElementById('pfacetcount').textContent=''; document.getElementById('pkind').textContent='not found';
     document.getElementById('pchat').style.display='none'; return; }
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
-  const nm=data.name||'Untitled twin'; document.title=nm+' \u00b7 Personakind';
+  const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
   nameEl.textContent=nm; document.getElementById('pavatar').textContent=(nm.trim()[0]||'T').toUpperCase();
   const cellCount=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
   document.getElementById('pcells').textContent=cellCount+' cells';
   document.getElementById('pfacetcount').textContent=g.facets.length+' facets';
-  const THEMES={teal:'#5FB3A1',violet:'#B07AA8',blue:'#7A8CC4',gold:'#C9A227',rose:'#C4544A'};
-  const acc=THEMES[(data.data&&data.data.theme)]||THEMES.teal;
+  const THEME_KEYS=['coral','teal','violet','blue','gold','rose'];
+  const THEMES=Object.assign(Object.create(null),{coral:'#C24B2A',teal:'#2F7D6E',violet:'#7D4A78',blue:'#4A5C9E',gold:'#8A6A16',rose:'#A8392F'});
+  // A saved theme is either one of our keys or a literal 6-digit hex the editor wrote.
+  // The hex regex is the whole defence: nothing but 0-9a-f can reach a CSS value from here.
+  const rawTheme=(data.data&&typeof data.data.theme==='string')?data.data.theme.trim():'';
+  const acc=/^#[0-9a-fA-F]{6}$/.test(rawTheme) ? inkSafe(rawTheme)
+          : (THEME_KEYS.indexOf(rawTheme)>=0 ? THEMES[rawTheme] : THEMES.coral);
   document.getElementById('pavatar').style.background=acc;
-  document.getElementById('pband').style.background='radial-gradient(80% 120% at 20% -20%,'+hexA(acc,.28)+',transparent 60%)';
-  const prof=document.getElementById('profile'); prof.style.setProperty('--accent',acc); prof.style.setProperty('--grad','linear-gradient(120deg,'+acc+','+acc+')');
+  document.getElementById('pband').style.background='radial-gradient(80% 120% at 20% -20%,'+hexA(acc,.16)+',transparent 62%)';
+  const prof=document.getElementById('profile'); prof.style.setProperty('--pacc',acc);
+  // the per-persona theme tints the avatar and the hero band only. Text accents stay the fixed
+  // Personakind coral so a theme value can never drive a contrast failure on someone else's page.
   const order=["CONTEXT","DO","DONT","GATES","VOICE"];
   const bn=Object.fromEntries(g.facets.map(f=>[f.name,f]));
   const pick=["core"]; if(bn.vibe)pick.push("vibe");
@@ -1052,7 +1147,7 @@ async function renderProfile(id){
     const h=document.createElement('div'); h.className='psh'; h.textContent=fn+' \u00b7 '+c;
     const bd=document.createElement('div'); bd.className='psb'; bd.textContent=f.cells[c];
     sec.append(h,bd); pe.appendChild(sec); }); });
-  if(!any){ pe.textContent='This twin has not been filled in yet.'; }
+  if(!any){ pe.textContent='This persona has not been filled in yet.'; }
   const grid=document.getElementById('pfacets'); grid.innerHTML='';
   g.facets.forEach(f=>{ const card=document.createElement('div'); card.className='fcard';
     const fh=document.createElement('div'); fh.className='fh';
