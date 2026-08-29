@@ -481,6 +481,8 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 .pk-way .who{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-w-deep);margin-bottom:10px}
 .pk-way p{color:var(--ink-soft);font-size:14.5px;line-height:1.6;margin:0 0 16px}
 .pk-way .foot{margin-top:auto;font-size:13px;color:var(--ink-dim)}
+.pk-way .pk-btn{width:100%;justify-content:center;margin-top:16px}
+.pk-way .pk-btn.ghost:hover{border-color:#C24B2A;color:#A8431F}
 
 .pk-explain{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
 .pk-explain h2{text-align:left;margin-top:0}
@@ -643,6 +645,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
           <h3>Answer a few questions</h3>
           <p>We ask you the same questions that built the first Personakind, made friendly and general. Answer at your own pace and watch your grid fill itself in. No writing from a blank page.</p>
           <div class="foot">Best if you've never done this before.</div>
+          <button class="pk-btn solid" type="button" data-path="questions">Answer the questions</button>
         </div>
         <div class="pk-way">
           <div class="num">2</div>
@@ -650,6 +653,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
           <h3>Start from a template</h3>
           <p>Pick a ready-made archetype, Creator, Founder, Coach, Author, Analyst and more, then make it yours by editing the cells. A strong first draft you shape, instead of an empty board.</p>
           <div class="foot">Best if you know roughly who you want.</div>
+          <button class="pk-btn ghost" type="button" data-path="template">Browse the templates</button>
         </div>
         <div class="pk-way">
           <div class="num">3</div>
@@ -657,6 +661,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
           <h3>Connect your own AI</h3>
           <p>Connect the Personakind tool to Claude or ChatGPT and build, read, and drive your persona right from the AI you already use. Your key, your machine, fully in your hands.</p>
           <div class="foot">Best if you live in an AI already.</div>
+          <button class="pk-btn ghost" type="button" data-path="mcp">Get the connector</button>
         </div>
       </div>
     </div>
@@ -957,7 +962,10 @@ function route(){ const twin=onProfileRoute();
   if(twin){ document.body.className='marketing route-profile'; app.style.display='none'; renderProfile(twin); return; }
   document.body.className='marketing route-landing'; refreshAuth(); }
 async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
-  if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones(); }
+  if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones();
+    try{ const __p=sessionStorage.getItem('pk_pending_path');
+      if(__p){ sessionStorage.removeItem('pk_pending_path');
+        setTimeout(()=>window.__openChooserAt&&window.__openChooserAt(__p),140); } }catch(_){} }
   else { document.body.className='marketing route-landing'; app.style.display='none'; } }
 const authEl=document.getElementById('auth'), authCard=document.getElementById('authcard');
 function openAuth(e){ const back = e&&e.currentTarget&&/sign in/i.test(e.currentTarget.textContent||'');
@@ -966,6 +974,19 @@ function openAuth(e){ const back = e&&e.currentTarget&&/sign in/i.test(e.current
   authCard.classList.remove('done'); document.getElementById('autherr').textContent=''; authEl.classList.add('open'); setTimeout(()=>document.getElementById('email').focus(),40); }
 function closeAuth(){ authEl.classList.remove('open'); }
 document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',openAuth));
+// The three ways in were headline copy with nothing to click: the cards had no button,
+// no link and no data-auth, so the site's central promise had no handles. Wire them.
+// Signed in, open the chooser on that path. Signed out, remember the path across the
+// auth round trip (sessionStorage survives the magic-link and OAuth redirects) and
+// resume there, so choosing a door actually takes you through that door.
+const NF_PENDING='pk_pending_path';
+async function startPath(p){
+  const {data:{session}}=await SB.auth.getSession();
+  if(session){ if(window.__openChooserAt) window.__openChooserAt(p); return; }
+  try{ sessionStorage.setItem(NF_PENDING,p); }catch(_){}
+  openAuth();
+}
+document.querySelectorAll('[data-path]').forEach(b=>b.addEventListener('click',()=>startPath(b.dataset.path)));
 document.getElementById('authx').onclick=closeAuth;
 authEl.addEventListener('click',e=>{ if(e.target===authEl) closeAuth(); });
 window.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAuth(); });
@@ -1006,7 +1027,9 @@ SB.auth.onAuthStateChange(()=>{ if(!onProfileRoute()) refreshAuth(); });
 // needs it. The profile page prints that label itself, so strip it for display only.
 // Never mutates the stored cell, so Copy prompt is untouched.
 function cellBody(v){ const t=String(v==null?'':v);
-  const out=t.replace(/^\s*#[^\n]*\n+/,'').trim();
+  // Only strips the auto-generated header shape, '# facet / CELL' alone on line one.
+  // A heading someone wrote themselves ('# My rules') is left exactly as typed.
+  const out=t.replace(/^[ \t]*#[ \t]*[A-Za-z0-9 _.\-]+\/[ \t]*[A-Z]+[ \t]*(\r?\n)+/,'').trim();
   return out || t.trim(); }
 function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -1059,7 +1082,7 @@ function toggleFacet(name){ if(name==='core')return; const k=kindOf(name);
   else if(mode==='multi'){on.has(name)?on.delete(name):on.add(name);}
   else{ if(k==='specialist'){const i=queue.indexOf(name);i>=0?queue.splice(i,1):queue.push(name);} else {sel[k]=(sel[k]===name&&k!=='register')?null:name;} }
   render(); }
-function composeText(facets){ return facets.map(fn=>{const f=byName[fn];return CELLORDER.filter(c=>f.cells[c]!==undefined&&f.cells[c].trim()).map(c=>`# ${fn} / ${c}\n\n`+f.cells[c]).join("\n\n");}).filter(Boolean).join("\n\n---\n\n"); }
+function composeText(facets){ return facets.map(fn=>{const f=byName[fn];return CELLORDER.filter(c=>f.cells[c]!==undefined&&f.cells[c].trim()).map(c=>`# ${fn} / ${c}\n\n`+cellBody(f.cells[c])).join("\n\n");}).filter(Boolean).join("\n\n---\n\n"); }
 function fullComposeText(){ return runs().map((r,i)=>{const h=runs().length>1?`\n===== RUN ${i+1}: ${r.label} =====\n\n`:'';return h+composeText(r.facets);}).join("\n\n"); }
 
 // ---------- board (nodes) ----------
@@ -1187,10 +1210,20 @@ function fitToView(){
     if(x<minX)minX=x; if(y<minY)minY=y; if(x+w>maxX)maxX=x+w; if(y+h>maxY)maxY=y+h; });
   const bw=maxX-minX, bh=maxY-minY;
   if(!(bw>0&&bh>0)){ scale=0.62; tx=20; ty=10; applyT(); return; }
-  const pad=window.matchMedia('(max-width:760px)').matches?16:32;
-  scale=Math.min(1.6,Math.max(0.18,Math.min((r.width-pad*2)/bw,(r.height-pad*2)/bh)));
-  tx=(r.width-bw*scale)/2-minX*scale;
-  ty=(r.height-bh*scale)/2-minY*scale;
+  const phone=window.matchMedia('(max-width:760px)').matches;
+  const pad=phone?14:32;
+  if(phone){
+    // Fit-to-width with a readable floor. Fitting the whole board on a phone lands near
+    // 0.2 scale, which is a thumbnail of a grid, not a grid. Better to fill the width,
+    // anchor the top-left, and let the thumb do the rest.
+    scale=Math.min(1.2,Math.max(0.42,(r.width-pad*2)/bw));
+    tx=pad-minX*scale;
+    ty=pad-minY*scale;
+  } else {
+    scale=Math.min(1.6,Math.max(0.18,Math.min((r.width-pad*2)/bw,(r.height-pad*2)/bh)));
+    tx=(r.width-bw*scale)/2-minX*scale;
+    ty=(r.height-bh*scale)/2-minY*scale;
+  }
   applyT();
 }
 document.getElementById('zfit').onclick=fitToView;
@@ -1436,6 +1469,7 @@ async function nfUseTemplate(k,label){
 
 // expose the opener for the side panel button + first run
 window.__openChooser=openChooser;
+window.__openChooserAt=(p)=>{ openChooser(); if(p) nfPath(p); };
 
 const __npb=document.getElementById("newpersona"); if(__npb) __npb.onclick=openChooser;
 
