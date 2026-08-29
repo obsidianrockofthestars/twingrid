@@ -77,7 +77,7 @@ button{font-family:inherit}
 .clone .pub{margin-left:auto;font-size:9px;color:var(--accent)}
 .newbtn{width:100%;font-size:12.5px;font-weight:600;cursor:pointer;border:1px dashed var(--line);background:none;color:var(--accent);border-radius:8px;padding:9px;margin-top:8px}
 .stage-wrap{position:relative;overflow:hidden}
-.viewport{position:absolute;inset:0;overflow:hidden;cursor:grab;background-image:radial-gradient(var(--grid) 1px,transparent 1px);background-size:22px 22px}
+.viewport{position:absolute;inset:0;overflow:hidden;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;background-image:radial-gradient(var(--grid) 1px,transparent 1px);background-size:22px 22px}
 .viewport.drag{cursor:grabbing}
 .stage{position:absolute;top:0;left:0;transform-origin:0 0;width:2000px;height:1600px}
 .wires{position:absolute;top:0;left:0;width:2000px;height:1600px;pointer-events:none;overflow:visible}
@@ -329,6 +329,11 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #profile .btn.solid:hover{background:var(--accent-w-deep)}
 #profile .btn.ghost{border-color:var(--line-w);color:var(--ink);background:transparent}
 #profile .btn.ghost:hover{border-color:var(--accent-w);color:var(--accent-w-deep)}
+
+/* the board and its nodes handle their own gestures; the browser must not pan or zoom them */
+.stage,.node{touch-action:none}
+.node .nhead{cursor:grab}
+
 
 /* ============ Personakind: the editor on a phone ============
    The editor shipped with no mobile rules of any kind. At 375px that meant a
@@ -1125,12 +1130,51 @@ document.querySelectorAll('#modesw button').forEach(b=>b.onclick=()=>{mode=b.dat
 // pan/zoom/drag
 let scale=0.62,tx=20,ty=10; function applyT(){stage.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;}
 const vp=document.getElementById('vp');let panning=false,psx,psy;
-vp.addEventListener('pointerdown',e=>{if(e.target.closest('.node'))return;panning=true;vp.classList.add('drag');psx=e.clientX-tx;psy=e.clientY-ty;});
-window.addEventListener('pointermove',e=>{if(panning){tx=e.clientX-psx;ty=e.clientY-psy;applyT();}});
-window.addEventListener('pointerup',()=>{panning=false;vp.classList.remove('drag');});
-vp.addEventListener('wheel',e=>{e.preventDefault();const d=e.deltaY<0?1.1:0.9;const ns=Math.min(2,Math.max(0.25,scale*d));const r=vp.getBoundingClientRect();const mx=e.clientX-r.left,my=e.clientY-r.top;tx=mx-(mx-tx)*(ns/scale);ty=my-(my-ty)*(ns/scale);scale=ns;applyT();},{passive:false});
-document.getElementById('zin').onclick=()=>{scale=Math.min(2,scale*1.15);applyT();};
-document.getElementById('zout').onclick=()=>{scale=Math.max(0.25,scale*0.87);applyT();};
+// ---- pointer input. This was mouse-only: no touch-action, no pinch, no pointercancel,
+// so on a phone the browser stole the gesture, pan could stick, and zoom did not exist. ----
+const PTR=new Map(); let pinch=null;
+const ptrDist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const ptrMid=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+const ZMIN=0.2, ZMAX=2;
+// zoom about a screen point, so the thing under your fingers stays under your fingers
+function zoomAt(ns,cx,cy){
+  ns=Math.min(ZMAX,Math.max(ZMIN,ns));
+  const r=vp.getBoundingClientRect(), mx=cx-r.left, my=cy-r.top;
+  tx=mx-(mx-tx)*(ns/scale); ty=my-(my-ty)*(ns/scale); scale=ns; applyT();
+}
+function zoomCenter(f){ const r=vp.getBoundingClientRect(); zoomAt(scale*f, r.left+r.width/2, r.top+r.height/2); }
+vp.addEventListener('pointerdown',e=>{
+  PTR.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(PTR.size===2){ const v=[...PTR.values()];
+    panning=false; vp.classList.remove('drag');
+    pinch={d:ptrDist(v[0],v[1])||1, s:scale}; return; }
+  if(PTR.size>2) return;
+  if(e.target.closest('.node')) return;
+  panning=true; vp.classList.add('drag');
+  try{ vp.setPointerCapture(e.pointerId); }catch(_){}
+  psx=e.clientX-tx; psy=e.clientY-ty;
+});
+vp.addEventListener('pointermove',e=>{
+  if(!PTR.has(e.pointerId)) return;
+  PTR.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch && PTR.size>=2){ const v=[...PTR.values()];
+    const d=ptrDist(v[0],v[1]); if(!d) return;
+    const m=ptrMid(v[0],v[1]);
+    zoomAt(pinch.s*(d/pinch.d), m.x, m.y); }
+});
+window.addEventListener('pointermove',e=>{ if(panning && !pinch){ tx=e.clientX-psx; ty=e.clientY-psy; applyT(); } });
+// pointercancel is the one the browser fires when it decides your drag was a scroll.
+// Without it panning stayed true forever and the canvas stuck to your finger.
+function endPointer(e){
+  PTR.delete(e.pointerId);
+  if(PTR.size<2) pinch=null;
+  if(PTR.size===0){ panning=false; vp.classList.remove('drag'); }
+}
+window.addEventListener('pointerup',endPointer);
+window.addEventListener('pointercancel',endPointer);
+vp.addEventListener('wheel',e=>{e.preventDefault();zoomAt(scale*(e.deltaY<0?1.1:0.9),e.clientX,e.clientY);},{passive:false});
+document.getElementById('zin').onclick=()=>zoomCenter(1.2);
+document.getElementById('zout').onclick=()=>zoomCenter(1/1.2);
 // "Fit" used to be a hardcoded scale=0.55,tx=20,ty=10 tuned for a desktop viewport,
 // which is why the board hangs off the right edge of a phone. Measure and fit for real.
 function fitToView(){
@@ -1171,7 +1215,7 @@ const __framePoll=setInterval(()=>{
 },250);
 setTimeout(()=>clearInterval(__framePoll),10000);
 function startHead(e,name,el){e.stopPropagation();const p=pos[name];const sx=e.clientX,sy=e.clientY;let moved=false;const off={x:e.clientX/scale-p.x,y:e.clientY/scale-p.y};
-  const mv=ev=>{if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>4){moved=true;p.x=ev.clientX/scale-off.x;p.y=ev.clientY/scale-off.y;el.style.left=p.x+'px';el.style.top=p.y+'px';drawWires();}};
+  const mv=ev=>{if(Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>12){moved=true;p.x=ev.clientX/scale-off.x;p.y=ev.clientY/scale-off.y;el.style.left=p.x+'px';el.style.top=p.y+'px';drawWires();}};
   const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);if(!moved)toggleFacet(name);};
   window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);}
 
