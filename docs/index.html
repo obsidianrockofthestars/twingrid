@@ -3,7 +3,7 @@
 <title>Personakind</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 :root{
   --ground:#0B0E12; --grid:#141a22; --surface:#161C24; --surface2:#1C232D; --line:#2A323E;
@@ -23,7 +23,7 @@ button{font-family:inherit}
 .gatecard h1 span{color:var(--accent)}
 .gatecard p{color:var(--muted);font-size:14.5px;margin:10px 0 22px}
 .field{width:100%;font:inherit;font-size:15px;color:var(--text);background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
-.primary{width:100%;font-weight:600;font-size:15px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#0b0e12;border-radius:10px;padding:12px}
+.primary{width:100%;font-weight:600;font-size:15px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:10px;padding:12px}
 .gatemsg{font-size:13px;color:var(--muted);margin-top:14px;min-height:18px}
 .muted{color:var(--dim);font-size:12px}
 /* ---------- app shell ---------- */
@@ -34,17 +34,17 @@ button{font-family:inherit}
 .modesw{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .modesw button{font-size:12px;font-weight:600;cursor:pointer;border:0;background:var(--surface2);color:var(--muted);padding:6px 12px;border-right:1px solid var(--line)}
 .modesw button:last-child{border-right:0}
-.modesw button[aria-pressed="true"]{background:var(--accent);color:#0b0e12}
+.modesw button[aria-pressed="true"]{background:var(--accent);color:#fff}
 .sp{flex:1}
 .tbtn{font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--text);border-radius:8px;padding:7px 12px}
-.tbtn.acc{border-color:var(--accent);background:var(--accent);color:#0b0e12}
+.tbtn.acc{border-color:var(--accent);background:var(--accent);color:#fff}
 .who{font-size:12px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
 /* loadout strip */
 .loadout{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--surface2);border-bottom:1px solid var(--line);overflow-x:auto}
 .loadout .lab{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
 .pill{font-family:"IBM Plex Mono",monospace;font-size:11.5px;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:3px 10px;white-space:nowrap}
 .pill.core{border-color:var(--text);color:var(--text)}
-.pill.num{background:var(--accent);color:#0b0e12;font-weight:700}
+.pill.num{background:var(--accent);color:#fff;font-weight:700}
 .loadout .rt{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent);white-space:nowrap}
 /* body split */
 .body{display:grid;grid-template-columns:230px 1fr;min-height:0}
@@ -68,7 +68,7 @@ button{font-family:inherit}
 .nhead .k{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-left:auto}
 .nhead .pw{width:9px;height:9px;border-radius:50%;background:var(--ghost);flex:none}
 .node.on .nhead .pw{background:var(--accent)}
-.qbadge{font-size:9px;font-weight:700;background:var(--accent);color:#0b0e12;border-radius:999px;padding:1px 6px;display:none}
+.qbadge{font-size:9px;font-weight:700;background:var(--accent);color:#fff;border-radius:999px;padding:1px 6px;display:none}
 .node.queued .qbadge{display:inline-block}
 .crow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font:inherit;font-size:11px;cursor:pointer;background:none;border:0;color:var(--muted);padding:4px 11px}
 .crow:hover{background:var(--surface2);color:var(--text)}
@@ -87,9 +87,9 @@ button{font-family:inherit}
 .grp .lbl{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .chip{font-size:11.5px;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:999px;padding:3px 9px;white-space:nowrap}
 .chip:hover{color:var(--text)}
-.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#0b0e12;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 .pbtn{font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:999px;padding:4px 11px;white-space:nowrap}
-.pbtn.solid{background:var(--accent);color:#0b0e12}
+.pbtn.solid{background:var(--accent);color:#fff}
 /* drawers */
 .drawer{position:fixed;top:0;right:0;height:100vh;width:min(560px,94vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:-20px 0 50px rgba(0,0,0,.5);transform:translateX(102%);transition:transform .22s;display:flex;flex-direction:column;z-index:60}
 .drawer.open{transform:none}
@@ -99,11 +99,11 @@ button{font-family:inherit}
 .dbody{flex:1;padding:14px 18px;overflow:auto}
 .dbody textarea{width:100%;min-height:54vh;resize:none;font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.6;color:var(--text);background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:14px}
 .dfoot{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;font-size:12px;color:var(--dim)}
-.savebtn{margin-left:auto;font-weight:600;font-size:12.5px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#0b0e12;border-radius:7px;padding:7px 14px}
+.savebtn{margin-left:auto;font-weight:600;font-size:12.5px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;padding:7px 14px}
 /* chat */
 #chat .dbody{display:flex;flex-direction:column;gap:10px}
 .msg{max-width:88%;padding:10px 13px;border-radius:12px;font-size:14px;line-height:1.55;white-space:pre-wrap}
-.msg.u{align-self:flex-end;background:var(--accent);color:#0b0e12}
+.msg.u{align-self:flex-end;background:var(--accent);color:#fff}
 .msg.a{align-self:flex-start;background:var(--surface2);border:1px solid var(--line)}
 .msg.sys{align-self:center;color:var(--dim);font-size:12px;font-family:"IBM Plex Mono",monospace;background:none}
 .chatin{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line)}
@@ -112,7 +112,7 @@ button{font-family:inherit}
 .setrow label{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .tabs{display:flex;gap:6px;margin-bottom:14px}
 .tabs button{font-size:12px;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:8px;padding:6px 12px}
-.tabs button[aria-pressed="true"]{background:var(--accent);color:#0b0e12;border-color:var(--accent)}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
 .note{font-size:12px;color:var(--muted);line-height:1.6}
 .note code{font-family:"IBM Plex Mono",monospace;color:var(--text);background:var(--surface2);padding:1px 5px;border-radius:4px}
 
@@ -285,106 +285,303 @@ body:not(.marketing){overflow:hidden}
 @media(max-width:820px){ .heromock{padding:14px} .hm-arrow{display:none}
   .mnav{padding:12px 16px;gap:10px} .mnav .btn{padding:9px 13px;font-size:13.5px} .mnav .btn.ghost{display:none} }
 
+
+/* ============ Personakind — warm & human redesign (landing + auth) ============ */
+:root{
+  --paper:#FBF7EF; --paper-2:#F4ECDE; --ink:#211C17; --ink-soft:#5C5347; --ink-dim:#726858;
+  --line-w:#E7DCC9; --card-w:#FFFFFF;
+  --accent-w:#E0653C; --accent-w-deep:#BE4E2B; --accent-soft:#F7DDCF; --gold-w:#CE9A45;
+  --do-w:#3F9E8B; --dont-w:#C4544A; --gates-w:#C79A2E; --context-w:#6E86D6; --voice-w:#A96FA6;
+  --serif:"Fraunces",Georgia,serif;
+}
+/* the warm surfaces override the dark landing/auth only */
+body.marketing{background:var(--paper);color:var(--ink)}
+#landing{font-family:Archivo,system-ui,sans-serif;color:var(--ink);background:var(--paper)}
+#landing ::selection{background:var(--accent-soft)}
+
+.pk-nav{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:18px;padding:18px 26px;
+  background:rgba(251,247,239,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line-w)}
+.pk-brand{font-family:var(--serif);font-weight:600;font-size:23px;letter-spacing:-.01em;color:var(--ink)}
+.pk-brand b{color:var(--accent-w);font-weight:600}
+.pk-nav .sp{flex:1}
+.pk-nav a.lk{color:var(--ink-soft);font-size:15px;font-weight:500;text-decoration:none}
+.pk-nav a.lk:hover{color:var(--ink)}
+.pk-btn{display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-weight:600;font-size:15px;cursor:pointer;
+  border-radius:999px;padding:11px 20px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:transform .12s,background .12s,color .12s,box-shadow .12s;text-decoration:none}
+.pk-btn:hover{transform:translateY(-1px)}
+.pk-btn.solid{background:#C24B2A;border-color:#C24B2A;color:#fff;box-shadow:0 8px 22px rgba(194,75,42,.26)}
+.pk-btn.solid:hover{background:var(--accent-w-deep);border-color:var(--accent-w-deep)}
+.pk-btn.ghost{border-color:var(--line-w);color:var(--ink-soft)}
+.pk-btn.ghost:hover{border-color:var(--ink);color:var(--ink)}
+.pk-btn.lg{font-size:16.5px;padding:14px 26px}
+.pk-wrap{max-width:1120px;margin:0 auto;padding:0 26px}
+
+.pk-hero{position:relative;overflow:hidden;padding:74px 0 40px}
+.pk-hero .pk-wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+.pk-eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;color:#A8431F;background:var(--accent-soft);border-radius:999px;padding:6px 14px;margin-bottom:22px}
+.pk-eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-w)}
+h1.pk-h1{font-family:var(--serif);font-weight:600;font-optical-sizing:auto;letter-spacing:-.02em;line-height:1.03;
+  font-size:clamp(40px,5.6vw,64px);margin:0;color:var(--ink)}
+h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
+.pk-sub{color:var(--ink-soft);font-size:clamp(16.5px,2vw,19px);line-height:1.55;max-width:40ch;margin:22px 0 0}
+.pk-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.pk-note{margin-top:16px;font-size:13.5px;color:var(--ink-dim)}
+.pk-trustrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
+.pk-tag{font-size:12.5px;color:var(--ink-soft);background:var(--card-w);border:1px solid var(--line-w);border-radius:999px;padding:6px 12px}
+
+/* grid preview card (warm) */
+.pk-grid-card{background:var(--card-w);border:1px solid var(--line-w);border-radius:18px;padding:20px;box-shadow:0 30px 70px rgba(60,45,30,.12)}
+.pk-gc-head{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.pk-gc-dot{width:9px;height:9px;border-radius:50%;background:var(--accent-w)}
+.pk-gc-title{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-dim)}
+.pk-cells{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.pk-cell{border:1px solid var(--line-w);border-radius:11px;padding:11px 12px;background:var(--paper)}
+.pk-cell .lb{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:6px;color:var(--ink-dim)}
+.pk-cell .lb i{width:7px;height:7px;border-radius:2px;display:inline-block}
+.pk-cell p{margin:6px 0 0;font-size:12px;line-height:1.45;color:var(--ink-soft)}
+.i-do{background:var(--do-w)}.i-dont{background:var(--dont-w)}.i-voice{background:var(--voice-w)}.i-context{background:var(--context-w)}
+
+/* sections */
+.pk-sec{padding:66px 0;border-top:1px solid var(--line-w)}
+.pk-kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-w-deep);text-align:center}
+.pk-sec h2{font-family:var(--serif);font-weight:600;letter-spacing:-.02em;font-size:clamp(28px,4vw,40px);margin:10px 0 12px;text-align:center;color:var(--ink)}
+.pk-lede{color:var(--ink-soft);text-align:center;max-width:58ch;margin:0 auto 42px;font-size:17px;line-height:1.55}
+.pk-ways{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.pk-way{position:relative;background:var(--card-w);border:1px solid var(--line-w);border-radius:18px;padding:28px;display:flex;flex-direction:column;box-shadow:0 8px 20px rgba(60,45,30,.05);transition:transform .14s,box-shadow .14s,border-color .14s}
+.pk-way.feat{border-color:var(--accent-soft);background:linear-gradient(180deg,#FFF6F0,var(--card-w));box-shadow:0 16px 38px rgba(194,75,42,.13)}
+.pk-way .badge{position:absolute;top:-11px;left:24px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;background:#C24B2A;color:#fff;padding:4px 11px;border-radius:999px}
+.pk-way:hover{transform:translateY(-3px);box-shadow:0 20px 44px rgba(60,45,30,.1);border-color:var(--accent-soft)}
+.pk-way .num{font-family:var(--serif);font-size:15px;font-weight:600;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-w-deep);margin-bottom:16px}
+.pk-way h3{font-family:var(--serif);font-weight:600;font-size:22px;margin:0 0 8px;color:var(--ink);letter-spacing:-.01em}
+.pk-way .who{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-w-deep);margin-bottom:10px}
+.pk-way p{color:var(--ink-soft);font-size:14.5px;line-height:1.6;margin:0 0 16px}
+.pk-way .foot{margin-top:auto;font-size:13px;color:var(--ink-dim)}
+
+.pk-explain{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+.pk-explain h2{text-align:left;margin-top:0}
+.pk-explain p{color:var(--ink-soft);font-size:16.5px;line-height:1.62}
+.pk-explain .pk-grid-card{margin:0}
+
+.pk-social{background:linear-gradient(180deg,var(--paper-2),var(--paper));border:1px solid var(--line-w);border-radius:24px;padding:52px 40px;text-align:center}
+.pk-social h2{margin-bottom:10px}
+.pk-ctaband{text-align:center;padding:76px 0}
+.pk-foot{border-top:1px solid var(--line-w);padding:36px 0;color:var(--ink-dim);font-size:13px}
+.pk-foot .pk-wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.pk-foot .discl{max-width:62ch;line-height:1.6}
+.pk-foot .pk-brand{font-size:18px}
+
+/* ---- warm auth modal (keeps the working JS ids/classes) ---- */
+#auth{background:rgba(33,28,23,.5)}
+#auth .authcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:22px;box-shadow:0 40px 100px rgba(40,28,18,.35);color:var(--ink)}
+#auth .authcard h2{font-family:var(--serif);font-weight:600;color:var(--ink)}
+#auth .authcard .k{color:var(--accent-w-deep)}
+#auth .authcard p.lead{color:var(--ink-soft)}
+#auth .authcard label{color:var(--ink-dim)}
+#auth .authcard .field{background:var(--paper);border:1px solid var(--line-w);color:var(--ink)}
+#auth .authcard .field::placeholder{color:var(--ink-dim)}
+#auth .authcard .primary{background:var(--accent-w);border:1.5px solid var(--accent-w);color:#fff;border-radius:12px;font-weight:600}
+#auth .authcard .primary:hover{background:var(--accent-w-deep)}
+#auth .authcard .x{color:var(--ink-dim)}
+#auth .trust{color:var(--ink-dim)}
+#auth .trust svg{color:var(--accent-w)}
+#auth .sent .env{background:var(--paper);border:1px solid var(--line-w);color:var(--accent-w)}
+#auth .sent h3{font-family:var(--serif);color:var(--ink)}
+#auth .sent p{color:var(--ink-soft)}
+#auth .sent .em{color:var(--ink)}
+#auth .spin{border-color:rgba(255,255,255,.4);border-top-color:#fff}
+#auth .err{color:var(--accent-w-deep)}
+
+.drawer:not(.open){box-shadow:none}
+@media(max-width:860px){
+  .pk-nav{padding:14px 16px;gap:10px} .pk-nav .pk-btn{padding:11px 16px;font-size:14px} .pk-nav .pk-btn.ghost{display:none}
+  .pk-hero .pk-wrap{grid-template-columns:1fr;gap:30px}
+  .pk-ways{grid-template-columns:1fr}
+  .pk-explain{grid-template-columns:1fr;gap:26px}
+  .pk-nav a.lk{display:none}
+}
+
+
+/* ============ New-persona flow: chooser + questionnaire (warm) ============ */
+#newflow{position:fixed;inset:0;z-index:130;display:none;align-items:center;justify-content:center;padding:20px;
+  background:rgba(33,28,23,.55);backdrop-filter:blur(6px);font-family:Archivo,system-ui,sans-serif}
+#newflow.open{display:flex}
+.nf-shell{width:100%;max-width:720px;max-height:92vh;overflow:auto;background:var(--card-w);border:1px solid var(--line-w);
+  border-radius:22px;box-shadow:0 40px 100px rgba(40,28,18,.4);padding:34px;position:relative;color:var(--ink)}
+.nf-x{position:absolute;top:16px;right:18px;font-size:22px;line-height:1;background:none;border:0;color:var(--ink-dim);cursor:pointer}
+.nf-kick{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#A8431F}
+.nf-shell h2{font-family:var(--serif);font-weight:600;font-size:28px;letter-spacing:-.02em;margin:8px 0 22px;color:var(--ink)}
+.nf-cards{display:grid;gap:14px}
+.nf-card{position:relative;text-align:left;background:var(--paper);border:1px solid var(--line-w);border-radius:16px;padding:20px 22px;cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s;font:inherit;color:var(--ink)}
+.nf-card:hover{transform:translateY(-2px);border-color:var(--accent-soft);box-shadow:0 12px 28px rgba(60,45,30,.08)}
+.nf-card h3{font-family:var(--serif);font-weight:600;font-size:20px;margin:0 0 5px}
+.nf-card p{margin:0;color:var(--ink-soft);font-size:14px;line-height:1.5}
+.nf-card .nf-badge{position:absolute;top:-10px;left:20px;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.07em;
+  text-transform:uppercase;background:#C24B2A;color:#fff;padding:3px 10px;border-radius:999px}
+.nf-mini{margin-top:16px;font-size:13px;color:var(--ink-dim);text-align:center}
+.nf-mini a{color:var(--accent-w-deep);cursor:pointer;text-decoration:underline}
+
+.nf-progress{height:7px;background:var(--paper-2);border-radius:999px;overflow:hidden;margin-bottom:6px}
+.nf-bar{height:100%;width:20%;background:var(--accent-w);border-radius:999px;transition:width .3s}
+.nf-steptitle{font-family:var(--serif);font-weight:600;font-size:24px;margin:18px 0 4px;color:var(--ink)}
+.nf-stepkick{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
+.nf-q{margin-top:20px}
+.nf-q label{display:block;font-size:15.5px;font-weight:600;color:var(--ink);margin-bottom:8px}
+.nf-q textarea,.nf-q input{width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--paper);
+  border:1px solid var(--line-w);border-radius:12px;padding:12px 14px;resize:vertical}
+.nf-q textarea{min-height:70px}
+.nf-q textarea:focus,.nf-q input:focus{outline:2px solid var(--accent-w);outline-offset:1px}
+.nf-choices{display:flex;gap:8px;flex-wrap:wrap}
+.nf-choice{font:inherit;font-size:14px;cursor:pointer;border:1.5px solid var(--line-w);background:var(--paper);color:var(--ink-soft);border-radius:999px;padding:8px 16px}
+.nf-choice[aria-pressed="true"]{border-color:var(--accent-w);background:var(--accent-soft);color:#A8431F;font-weight:600}
+.nf-nav{display:flex;align-items:center;gap:14px;margin-top:26px}
+.nf-nav .nf-count{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-dim)}
+.nf-nav #nfBack[disabled]{opacity:.4;pointer-events:none}
+
+.nf-tpl{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:6px}
+.nf-tpl button{text-align:left;background:var(--paper);border:1px solid var(--line-w);border-radius:14px;padding:16px 18px;cursor:pointer;font:inherit;color:var(--ink)}
+.nf-tpl button:hover{border-color:var(--accent-soft)}
+.nf-tpl button b{font-family:var(--serif);font-weight:600;font-size:16px;display:block;margin-bottom:3px}
+.nf-tpl button span{color:var(--ink-soft);font-size:13px}
+.nf-mcp p{color:var(--ink-soft);font-size:14.5px;line-height:1.6}
+.nf-mcp code{font-family:"IBM Plex Mono",monospace;font-size:12.5px;background:var(--paper);border:1px solid var(--line-w);border-radius:6px;padding:2px 6px;color:var(--ink)}
+.nf-mcp ol{padding-left:18px;color:var(--ink-soft);font-size:14.5px;line-height:1.8}
+.nf-back-link{background:none;border:0;color:var(--accent-w-deep);cursor:pointer;font:inherit;font-size:13.5px;margin-top:16px;text-decoration:underline}
+@media(max-width:560px){.nf-shell{padding:24px 20px}.nf-tpl{grid-template-columns:1fr}}
+
+
+/* editor warm-dark retheme (coral + warm charcoal) */
+:root{
+  --ground:#17120D; --grid:#241C14; --surface:#211A13; --surface2:#2C231A; --line:#3B3025;
+  --text:#F3ECE1; --muted:#C4B7A4; --dim:#9C8E7B;
+  --accent:#D2542E; --wire:#E0653C; --ghost:#4A3D30; --dont-text:#EC8A80;
+}
 </style>
 </head><body>
 
 <!-- ============ LANDING (signed-out marketing) ============ -->
 <div id="landing">
-  <nav class="mnav">
-    <h1 class="brand">Persona<span>kind</span></h1>
+  <nav class="pk-nav">
+    <span class="pk-brand">Persona<b>kind</b></span>
     <span class="sp"></span>
-    <a class="navlink hideMobile" href="#how">How it works</a>
-    <a class="navlink hideMobile" href="#share">Share</a>
-    <button class="btn ghost" data-auth>Sign in</button>
-    <button class="btn solid" data-auth>Create your twin</button>
+    <a class="lk" href="#ways">How it works</a>
+    <a class="lk" href="#share">Share</a>
+    <button class="pk-btn ghost" data-auth>Sign in</button>
+    <button class="pk-btn solid" data-auth>Start free</button>
   </nav>
 
-  <header class="hero">
-    <div class="hero-grid"></div><div class="hero-glow"></div>
-    <div class="wrap">
-      <span class="eyebrow"><span class="dot"></span>An AI twin you can actually read</span>
-      <h1 class="big">Build a twin that's <span class="g">yours to read, own, and share</span></h1>
-      <p class="sub">Most AI twins are a black box you rent. Personakind builds yours as a grid of plain, readable cells, so you can see exactly what it knows, correct it in a click, and put it online as a page people can visit.</p>
-      <div class="cta-row">
-        <button class="btn solid lg" data-auth>Create your free twin</button>
-        <a class="btn ghost lg" href="#how">See how it works</a>
+  <header class="pk-hero">
+    <div class="pk-wrap">
+      <div>
+        <span class="pk-eyebrow"><span class="dot"></span>Build a shareable AI persona</span>
+        <h1 class="pk-h1">A version of you,<br>that you can <span class="u">actually read</span>.</h1>
+        <p class="pk-sub">Most AI personas are a black box you pour yourself into and never see again. Personakind builds yours as a grid of small, readable cells, so you can see every rule, fix any of it in a click, and give it a page the world can meet.</p>
+        <div class="pk-cta">
+          <button class="pk-btn solid lg" data-auth>Build your persona free</button>
+          <a class="pk-btn ghost lg" href="#ways">See the three ways in</a>
+        </div>
+        <p class="pk-note">No password needed to start. Your persona stays private until you choose to share it.</p>
+        <div class="pk-trustrow">
+          <span class="pk-tag">Readable, cell by cell</span>
+          <span class="pk-tag">Yours to export</span>
+          <span class="pk-tag">Open-source engine</span>
+        </div>
       </div>
-      <p class="reassure">No password. One email link to start. Your grid is private until you choose to share it.</p>
-      <div class="heromock" aria-hidden="true">
-        <div class="hm-node core"><div class="hm-h"><span class="pw"></span>core<span class="k">core</span></div>
-          <div class="hm-c"><i class="d context"></i>CONTEXT</div><div class="hm-c"><i class="d do"></i>DO</div><div class="hm-c"><i class="d dont"></i>DONT</div><div class="hm-c"><i class="d voice"></i>VOICE</div></div>
-        <div class="hm-node"><div class="hm-h"><span class="pw"></span>engineer<span class="k">specialist</span></div>
-          <div class="hm-c"><i class="d do"></i>DO</div><div class="hm-c"><i class="d gates"></i>GATES</div></div>
-        <span class="hm-arrow">&rarr;</span>
-        <div class="hm-compose"><div class="hm-h">compose()</div><div class="hm-big">14</div><div class="hm-int">integrity: complete</div></div>
+      <div class="pk-grid-card" aria-hidden="true">
+        <div class="pk-gc-head"><span class="pk-gc-dot"></span><span class="pk-gc-title">core / your identity</span></div>
+        <div class="pk-cells">
+          <div class="pk-cell"><span class="lb"><i class="i-context"></i>Context</span><p>Who you are, in plain words.</p></div>
+          <div class="pk-cell"><span class="lb"><i class="i-do"></i>Do</span><p>How you want it to behave.</p></div>
+          <div class="pk-cell"><span class="lb"><i class="i-dont"></i>Don't</span><p>The lines it never crosses.</p></div>
+          <div class="pk-cell"><span class="lb"><i class="i-voice"></i>Voice</span><p>Exactly how you sound.</p></div>
+        </div>
       </div>
     </div>
   </header>
 
-  <section class="section">
-    <div class="wrap">
-      <h2>A twin, not a black box</h2>
-      <p class="lede">Three things every closed twin gets wrong, and how a grid fixes them.</p>
-      <div class="pillars">
-        <div class="card">
-          <div class="ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
-          <h3>Read it</h3>
-          <p>Every trait, rule, and voice note lives in a labeled cell you can open and read. No hidden prompt, no guessing what your twin will say.</p>
+  <section class="pk-sec" id="ways">
+    <div class="pk-wrap">
+      <div class="pk-kicker">Three ways in</div>
+      <h2>Build it the way that fits you</h2>
+      <p class="pk-lede">However you start, you end up with the same thing: a readable grid that's yours to keep, edit, and publish.</p>
+      <div class="pk-ways">
+        <div class="pk-way feat">
+          <div class="badge">Most people start here</div>
+          <div class="num">1</div>
+          <div class="who">Easiest &middot; for anyone</div>
+          <h3>Answer a few questions</h3>
+          <p>We ask you the same questions that built the first Personakind, made friendly and general. Answer at your own pace and watch your grid fill itself in. No writing from a blank page.</p>
+          <div class="foot">Best if you've never done this before.</div>
         </div>
-        <div class="card">
-          <div class="ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
-          <h3>Own it</h3>
-          <p>It's your data in plain text, exportable any time. Run the twin here with your own key, or download the grid and run it entirely on your own machine.</p>
+        <div class="pk-way">
+          <div class="num">2</div>
+          <div class="who">A head start &middot; for makers</div>
+          <h3>Start from a template</h3>
+          <p>Pick a ready-made archetype, Creator, Founder, Coach, Author, Analyst and more, then make it yours by editing the cells. A strong first draft you shape, instead of an empty board.</p>
+          <div class="foot">Best if you know roughly who you want.</div>
         </div>
-        <div class="card">
-          <div class="ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></div>
-          <h3>Share it</h3>
-          <p>Flip one switch and your twin gets its own public page, a twinograph others can visit, read, and even chat with. Private by default, yours to publish.</p>
+        <div class="pk-way">
+          <div class="num">3</div>
+          <div class="who">Power move &middot; for builders</div>
+          <h3>Connect your own AI</h3>
+          <p>Connect the Personakind tool to Claude or ChatGPT and build, read, and drive your persona right from the AI you already use. Your key, your machine, fully in your hands.</p>
+          <div class="foot">Best if you live in an AI already.</div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="section" id="how">
-    <div class="wrap">
-      <h2>How it works</h2>
-      <p class="lede">You compose a personality the way you'd wire a board, then talk to exactly what you built.</p>
-      <div class="steps">
-        <div class="step"><h3>Fill the cells</h3><p>Start from a template and write who your twin is: context, the do's, the don'ts, the guardrails, the voice. Plain language, one cell at a time.</p></div>
-        <div class="step"><h3>Compose the mind</h3><p>Pick a specialist, a mode, a register. Personakind wires the active cells into one prompt and checks the identity is complete before it runs.</p></div>
-        <div class="step"><h3>Talk to it</h3><p>Chat with the composed twin on your own key, or publish it as a page and let other people meet it. What you read is what it is.</p></div>
+  <section class="pk-sec">
+    <div class="pk-wrap">
+      <div class="pk-explain">
+        <div>
+          <div class="pk-kicker" style="text-align:left">What's a grid</div>
+          <h2>Not a black box. A page you can read.</h2>
+          <p>Every trait, rule, and turn of phrase lives in a small labeled cell you can open and read. Compose a specialist, a mood, a voice, and Personakind wires the active cells into one clear identity, and tells you honestly whether it's complete before it runs. What you read is exactly what it is.</p>
+          <p style="color:var(--ink-dim);font-size:15px">Then, if you want to get fancy, layer on your own extra grids to add more rules on top.</p>
+        </div>
+        <div class="pk-grid-card">
+          <div class="pk-gc-head"><span class="pk-gc-dot"></span><span class="pk-gc-title">compose() &middot; integrity: complete</span></div>
+          <div class="pk-cells">
+            <div class="pk-cell"><span class="lb"><i class="i-context"></i>core</span><p>always on</p></div>
+            <div class="pk-cell"><span class="lb"><i class="i-do"></i>coach</span><p>specialist</p></div>
+            <div class="pk-cell"><span class="lb"><i class="i-voice"></i>warm</span><p>register</p></div>
+            <div class="pk-cell"><span class="lb"><i class="i-dont"></i>guardrails</span><p>your don'ts</p></div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="section" id="share">
-    <div class="wrap">
-      <div class="social">
-        <span class="tag">New</span>
-        <h2>Give your twin a home online</h2>
-        <p class="lede" style="margin-bottom:26px">Publish any twin to its own twinograph: a shareable page with its identity, its voice, and a "chat with this twin" button. Think a profile page, for a mind you built. Pick a theme, share the link, done.</p>
-        <button class="btn solid lg" data-auth>Start building yours</button>
+  <section class="pk-sec" id="share">
+    <div class="pk-wrap">
+      <div class="pk-social">
+        <div class="pk-kicker">New</div>
+        <h2>Give your persona a home</h2>
+        <p class="pk-lede" style="margin-bottom:26px">Flip one switch and your persona gets its own page, a warm profile others can visit, read, and chat with on their own key. Meet other people's personas. Follow the ones you like. Think a profile page, for a mind.</p>
+        <button class="pk-btn solid lg" data-auth>Start yours free</button>
       </div>
     </div>
   </section>
 
-  <section class="ctaband">
-    <div class="wrap">
-      <h2 style="text-align:center">Ready to meet your twin?</h2>
-      <p class="lede">One email link and you're building. No card, no catch.</p>
-      <button class="btn solid lg" data-auth>Create your free twin</button>
+  <section class="pk-ctaband">
+    <div class="pk-wrap">
+      <div class="pk-kicker">Ready?</div>
+      <h2 class="pk-h1" style="font-size:clamp(30px,4vw,44px);text-align:center;margin:8px 0 6px">Meet your Personakind.</h2>
+      <p class="pk-lede">One email link and you're building. No card, no catch.</p>
+      <button class="pk-btn solid lg" data-auth>Build your persona free</button>
     </div>
   </section>
 
-  <footer class="mfoot">
-    <div class="wrap">
-      <span class="brand" style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;color:var(--text)">Twino<span style="color:var(--accent)">graph</span></span>
-      <span class="discl">Twins are AI, not real people, and every published page says so. Chat runs on your own API key, human in the loop. Built in the open.</span>
+  <footer class="pk-foot">
+    <div class="pk-wrap">
+      <span class="pk-brand">Persona<b>kind</b></span>
+      <span class="discl">Personas are AI, not real people, and every published page says so. Chat runs on your own API key, with you in the loop. Built in the open.</span>
     </div>
   </footer>
 </div>
 
-<!-- ============ AUTH overlay ============ -->
+
 <div id="auth" role="dialog" aria-modal="true" aria-labelledby="authttl">
   <div class="authcard" id="authcard">
     <button class="x" id="authx" aria-label="Close sign in">&times;</button>
@@ -433,6 +630,7 @@ body:not(.marketing){overflow:hidden}
     <aside class="side">
       <h4>My clones</h4>
       <div id="clonelist"></div>
+      <button class="newbtn" id="newpersona" style="border-style:solid;border-color:var(--accent-w,#E0653C);color:var(--accent-w,#E0653C)">+ New persona</button>
       <button class="newbtn" id="newblank">+ New from blank template</button>
       <button class="newbtn" id="newshow">+ New from showcase</button>
       <h4 style="margin-top:20px">Grid</h4>
@@ -500,6 +698,63 @@ body:not(.marketing){overflow:hidden}
       <div class="fgrid" id="pfacets"></div>
     </div>
     <p class="pdisc">This is an AI persona built on Personakind, not a real person. It only knows what its owner wrote into the cells above.</p>
+  </div>
+</div>
+
+
+<!-- ============ New-persona flow ============ -->
+<div id="newflow" role="dialog" aria-modal="true">
+  <div class="nf-shell">
+    <button class="nf-x" id="nfx" aria-label="Close">&times;</button>
+
+    <div id="nfChoose">
+      <div class="nf-kick">New persona</div>
+      <h2>How do you want to start?</h2>
+      <div class="nf-cards">
+        <button class="nf-card" data-path="questions"><span class="nf-badge">Most people start here</span>
+          <h3>Answer a few questions</h3><p>About 14 quick questions, five minutes. Your grid fills itself in as you go. No blank page.</p></button>
+        <button class="nf-card" data-path="template">
+          <h3>Start from a template</h3><p>Pick a ready-made archetype, Creator, Founder, Coach and more, then make it yours.</p></button>
+        <button class="nf-card" data-path="mcp">
+          <h3>Connect your own AI</h3><p>Build and drive your persona from Claude or ChatGPT with the Personakind tool.</p></button>
+      </div>
+      <p class="nf-mini">Rather not choose? <a id="nfBlank">Start from a blank grid</a></p>
+    </div>
+
+    <div id="nfQuiz" hidden>
+      <div class="nf-progress"><div class="nf-bar" id="nfBar"></div></div>
+      <div class="nf-stepkick" id="nfKick"></div>
+      <div class="nf-steptitle" id="nfTitle"></div>
+      <div id="nfStep"></div>
+      <div class="nf-nav">
+        <button class="pk-btn ghost" id="nfBack">Back</button>
+        <span class="nf-count" id="nfCount"></span>
+        <button class="pk-btn solid" id="nfNext">Next</button>
+      </div>
+    </div>
+
+    <div id="nfTemplates" hidden>
+      <div class="nf-kick">Templates</div>
+      <h2>Pick a starting point</h2>
+      <div class="nf-tpl" id="nfTplGrid"></div>
+      <button class="nf-back-link" data-nfback>Back</button>
+    </div>
+
+    <div id="nfMcp" hidden>
+      <div class="nf-kick">Connect your own AI</div>
+      <h2>Build it from your AI</h2>
+      <div class="nf-mcp">
+        <p>Drive Personakind from Claude or ChatGPT with the connector. Your key, your machine, fully in your hands.</p>
+        <ol>
+          <li>Download the connector below.</li>
+          <li>Add it to Claude Desktop or your MCP client of choice.</li>
+          <li>Ask it to build or read your persona, and it fills your grid here.</li>
+        </ol>
+        <p style="margin-top:14px"><a class="pk-btn solid" id="nfMcpDl" href="/twingrid-mcp.zip" download>Download the connector</a></p>
+        <p style="color:var(--ink-dim);font-size:13px">A hosted, no-download version is on the way.</p>
+      </div>
+      <button class="nf-back-link" data-nfback>Back</button>
+    </div>
   </div>
 </div>
 
@@ -599,7 +854,7 @@ async function loadClones(){
   const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data').eq('owner',(await SB.auth.getUser()).data.user.id).order('updated_at',{ascending:false});
   const list=document.getElementById('clonelist'); list.innerHTML='';
   if(error){ list.innerHTML=''; const ep=document.createElement('p'); ep.className='note'; ep.textContent=error.message; list.appendChild(ep); return; }
-  if(!data.length){ list.innerHTML='<p class="note">No clones yet. Create one below.</p>'; }
+  if(!data.length){ list.innerHTML=''; const np=document.createElement('p'); np.className='note'; np.textContent='No personas yet.'; const nb=document.createElement('button'); nb.className='newbtn'; nb.style.marginTop='6px'; nb.textContent='+ Create your first persona'; nb.onclick=()=>window.__openChooser&&window.__openChooser(); list.append(np,nb); }
   data.forEach(r=>{ const b=document.createElement('button'); b.className='clone'; b.setAttribute('aria-current', r.id===curId);
     const nm=document.createElement('span'); nm.textContent=r.name||'Untitled'; b.appendChild(nm); if(r.is_public){ const pb=document.createElement('span'); pb.className='pub'; pb.textContent='public'; b.appendChild(pb); } b.onclick=()=>selectClone(r); list.appendChild(b); });
   if(!curId && data.length){ selectClone(data[0]); }
@@ -811,6 +1066,117 @@ async function renderProfile(id){
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds();
     if(!localStorage.getItem('tg_key')){ settings.classList.add('open'); } else { chat.classList.add('open'); renderChat(); } };
 }
+
+
+// ---------- new-persona flow (chooser + questionnaire) ----------
+const nfEl=document.getElementById('newflow');
+const NF_PANELS=['nfChoose','nfQuiz','nfTemplates','nfMcp'];
+function nfShow(id){ NF_PANELS.forEach(p=>{const e=document.getElementById(p); if(e) e.hidden=(p!==id);}); }
+function openChooser(){ nfShow('nfChoose'); nfEl.classList.add('open'); }
+function closeNewflow(){ nfEl.classList.remove('open'); }
+document.getElementById('nfx').onclick=closeNewflow;
+nfEl.addEventListener('click',e=>{ if(e.target===nfEl) closeNewflow(); });
+document.querySelectorAll('#nfChoose .nf-card').forEach(b=>b.onclick=()=>nfPath(b.dataset.path));
+document.getElementById('nfBlank').onclick=async()=>{ closeNewflow(); await newClone(BLANK,'My persona (blank)'); };
+document.querySelectorAll('[data-nfback]').forEach(b=>b.onclick=()=>nfShow('nfChoose'));
+
+function nfPath(p){ if(p==='questions'){ nfStart(); } else if(p==='template'){ nfTemplates(); } else if(p==='mcp'){ nfShow('nfMcp'); } }
+
+// --- questionnaire ---
+const QSTEPS=[
+  {title:"Who you are",qs:[
+    {id:"name",q:"What should we call this persona?",ph:"My Clone, Aria, Coach-Me"},
+    {id:"who",cell:"CONTEXT",q:"In one sentence, who is this a version of?",ph:"A calm, practical designer who ships fast."},
+    {id:"days",cell:"CONTEXT",q:"What do you spend most of your days doing?",ph:"Work, projects, the things that fill your time."},
+    {id:"values",cell:"CONTEXT",q:"What matters most to you? A value or two.",ph:"Honesty, craft, family, doing right by people."}]},
+  {title:"How it helps you",qs:[
+    {id:"help",cell:"DO",q:"What does great help from it look like?",ph:"Bottom line first, then the details."},
+    {id:"decide",cell:"DO",q:"How do you make decisions?",ph:"Research first, then trust my gut."},
+    {id:"direct",cell:"DO",type:"choice",q:"How direct should it be?",opts:["Gentle","Balanced","Blunt"]}]},
+  {title:"What it avoids",qs:[
+    {id:"never",cell:"DONT",q:"What should it never do?",ph:"Never flatter me, never bury the risk."},
+    {id:"peeves",cell:"DONT",q:"Any pet peeves or hard nos?",ph:"No corporate jargon, no fake enthusiasm."}]},
+  {title:"Your voice",qs:[
+    {id:"formality",cell:"VOICE",type:"choice",q:"How do you talk?",opts:["Casual","Conversational","Professional","Formal"]},
+    {id:"phrases",cell:"VOICE",q:"A phrase or two you actually say a lot.",ph:"Your real words."},
+    {id:"humor",cell:"VOICE",q:"What's your humor like, if any?",ph:"Dry and a little sarcastic. Or none, keep it straight."}]},
+  {title:"Your rules",qs:[
+    {id:"rule",cell:"GATES",q:"One rule it must never break?",ph:"Always tell me the truth, even when it stings."},
+    {id:"line",cell:"GATES",q:"A line it should hold no matter what?",ph:"Never do anything that could hurt the people I love."}]}
+];
+let nfQi=0; const nfAns={};
+function nfStart(){ nfQi=0; nfShow('nfQuiz'); nfRender(); }
+function nfRender(){
+  const st=QSTEPS[nfQi];
+  document.getElementById('nfBar').style.width=Math.round((nfQi+1)/QSTEPS.length*100)+'%';
+  document.getElementById('nfKick').textContent='Step '+(nfQi+1)+' of '+QSTEPS.length;
+  document.getElementById('nfTitle').textContent=st.title;
+  document.getElementById('nfCount').textContent=(nfQi+1)+' / '+QSTEPS.length;
+  document.getElementById('nfBack').disabled=(nfQi===0);
+  document.getElementById('nfNext').textContent=(nfQi===QSTEPS.length-1)?'Build my persona':'Next';
+  const wrap=document.getElementById('nfStep'); wrap.innerHTML='';
+  st.qs.forEach(q=>{
+    const d=document.createElement('div'); d.className='nf-q';
+    const lab=document.createElement('label'); lab.textContent=q.q; d.appendChild(lab);
+    if(q.type==='choice'){
+      const row=document.createElement('div'); row.className='nf-choices';
+      q.opts.forEach(o=>{ const b=document.createElement('button'); b.className='nf-choice'; b.type='button'; b.textContent=o;
+        b.setAttribute('aria-pressed', nfAns[q.id]===o);
+        b.onclick=()=>{ nfAns[q.id]=o; row.querySelectorAll('.nf-choice').forEach(x=>x.setAttribute('aria-pressed', x.textContent===o)); };
+        row.appendChild(b); });
+      d.appendChild(row);
+    } else {
+      const ta=document.createElement('textarea'); ta.placeholder=q.ph||''; ta.value=nfAns[q.id]||'';
+      if(q.id==='name'){ ta.rows=1; ta.style.minHeight='auto'; }
+      ta.oninput=()=>{ nfAns[q.id]=ta.value; };
+      d.appendChild(ta);
+    }
+    wrap.appendChild(d);
+  });
+}
+document.getElementById('nfBack').onclick=()=>{ if(nfQi>0){ nfQi--; nfRender(); } };
+document.getElementById('nfNext').onclick=()=>{ if(nfQi<QSTEPS.length-1){ nfQi++; nfRender(); } else { nfFinish(); } };
+
+function nfCell(name,parts){ const body=parts.filter(Boolean).join("\n\n"); return "# core / "+name+"\n\n"+(body||"(add your own here)"); }
+function nfA(id){ return (nfAns[id]||'').trim(); }
+async function nfFinish(){
+  const grid=JSON.parse(JSON.stringify(BLANK));
+  const core=grid.facets.find(f=>f.name==='core'); if(!core){ closeNewflow(); return; }
+  core.cells.CONTEXT=nfCell('CONTEXT',[nfA('who'), nfA('days')&&('I spend my days: '+nfA('days')), nfA('values')&&('What matters most to me: '+nfA('values'))]);
+  const dir=nfA('direct');
+  core.cells.DO=nfCell('DO',[nfA('help'), nfA('decide')&&('How I decide: '+nfA('decide')), dir&&('Be '+dir.toLowerCase()+' with me.')]);
+  core.cells.DONT=nfCell('DONT',[nfA('never'), nfA('peeves')]);
+  const f=nfA('formality');
+  core.cells.VOICE=nfCell('VOICE',[f&&('Speak in a '+f.toLowerCase()+' tone.'), nfA('phrases')&&('Phrases I use: '+nfA('phrases')), nfA('humor')&&('Humor: '+nfA('humor'))]);
+  core.cells.GATES=nfCell('GATES',[nfA('rule'), nfA('line')]);
+  const nm=nfA('name')||'My persona';
+  closeNewflow();
+  await newClone(grid, nm);
+}
+
+// --- templates ---
+const NF_TPL=[
+  ['creator','Creator','Social-first content maker'],['founder','Founder','Builder running a company'],
+  ['coach','Coach','A guide who helps you grow'],['author','Author','A writer with a distinct voice'],
+  ['analyst','Analyst','Data-minded problem solver'],['operator','Operator','Gets things done, calmly'],
+  ['support','Support','Patient, helpful, warm'],['character','Character','A fictional persona']
+];
+function nfTemplates(){ const g=document.getElementById('nfTplGrid'); g.innerHTML='';
+  NF_TPL.forEach(([k,t,d])=>{ const b=document.createElement('button');
+    const bt=document.createElement('b'); bt.textContent=t; const sp=document.createElement('span'); sp.textContent=d;
+    b.append(bt,sp); b.onclick=()=>nfUseTemplate(k,t); g.appendChild(b); });
+  nfShow('nfTemplates');
+}
+async function nfUseTemplate(k,label){
+  try{ const res=await fetch('templates/'+k+'.json'); const data=await res.json();
+    closeNewflow(); await newClone(data, label+' persona');
+  }catch(e){ alert('Could not load that template. Try another.'); }
+}
+
+// expose the opener for the side panel button + first run
+window.__openChooser=openChooser;
+
+const __npb=document.getElementById("newpersona"); if(__npb) __npb.onclick=openChooser;
 
 applyT(); route();
 </script>
