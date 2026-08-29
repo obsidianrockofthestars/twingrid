@@ -367,6 +367,32 @@ body.route-explore{overflow:auto;background:var(--paper)}
 #explore .exclear{background:none;border:0;font:inherit;font-size:13.5px;color:var(--accent-w-deep);text-decoration:underline;
   text-underline-offset:3px;cursor:pointer;padding:6px 2px;min-height:44px}
 
+/* moderation (operators only) */
+#mod{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
+body.route-mod #mod{display:block}
+body.route-mod{overflow:auto;background:var(--paper)}
+#mod .pnav{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+#mod .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
+#mod .pnav .brand span{color:var(--accent-w)}
+#mod .mhead{padding:26px 0 22px;border-bottom:1px solid var(--line-w);margin-bottom:22px}
+#mod .mhead h1{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,40px);letter-spacing:-.02em;margin:6px 0 10px;color:var(--ink)}
+#mod .mtabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 0}
+#mod .mtab{font:inherit;font-size:13px;background:none;border:1px solid var(--line-w);color:var(--ink-dim);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:44px}
+#mod .mtab[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-w-deep);border-color:var(--accent-w)}
+#mod .mlist{display:grid;gap:14px;padding-bottom:60px}
+#mod .mcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(40,28,18,.05)}
+#mod .mrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-dim)}
+#mod .mreason{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;background:var(--accent-soft);color:var(--accent-w-deep);border-radius:999px;padding:3px 9px}
+#mod .mtarget{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:8px 0 4px}
+#mod .mnote{color:var(--ink-soft);font-size:14px;line-height:1.55;margin:6px 0 12px;white-space:pre-wrap;word-break:break-word}
+#mod .mact{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line-w);padding-top:12px}
+#mod .mbtn{font:inherit;font-size:13px;background:none;border:1px solid var(--line-w);color:var(--ink);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:44px}
+#mod .mbtn.warn{border-color:#b3421f;color:#b3421f}
+#mod .mbtn:disabled{opacity:.5;cursor:default}
+#mod .mempty{background:var(--paper-2);border:1px dashed var(--line-w);border-radius:16px;padding:44px 28px;text-align:center;color:var(--ink-soft)}
+#mod .msus{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#b3421f}
+#actas{max-width:220px}
+
 /* twinograph: hide and report */
 .pctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0 18px}
 .pctrl-b{font:inherit;font-size:13px;background:none;border:1px solid var(--line-w);color:var(--ink-dim);
@@ -849,6 +875,8 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <span class="sp"></span>
     <button class="tbtn" id="chatbtn">Chat with this persona</button>
     <button class="tbtn acc" id="savebtn">Save</button>
+    <select class="tbtn" id="actas" hidden aria-label="Work as"></select>
+    <a class="tbtn" id="modlink" href="?mod" hidden>Moderation</a>
     <span class="who" id="who"></span>
     <button class="tbtn" id="signout">Sign out</button>
   </div>
@@ -899,6 +927,24 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     </div>
     <div class="exgrid" id="exgrid"></div>
     <p class="exfoot" id="exfoot"></p>
+  </div>
+</div>
+
+<!-- ============ MODERATION (operators only) ============ -->
+<div id="mod">
+  <div class="wrap">
+    <nav class="pnav">
+      <a class="brand" href="?">Persona<span>kind</span></a>
+      <span class="sp" style="flex:1"></span>
+      <a class="btn" href="?">Back to the editor</a>
+    </nav>
+    <div class="mhead">
+      <div class="pk-kicker">Moderation</div>
+      <h1>Reports</h1>
+      <p class="exlede" id="mlede">Reports people have filed. Every string here was typed by a user; it is shown as text, never as markup.</p>
+      <div class="mtabs" id="mtabs" role="tablist"></div>
+    </div>
+    <div class="mlist" id="mlist"></div>
   </div>
 </div>
 
@@ -1087,6 +1133,62 @@ const SB = createClient("https://jpepcqazscmhakxvutpg.supabase.co","sb_publishab
 const SHOW = JSON.parse(document.getElementById('showdata').textContent);
 const BLANK = JSON.parse(document.getElementById('blankdata').textContent);
 const CELLORDER=["CONTEXT","DO","DONT","GATES","VOICE"];
+// Operator delegation (2026-08-29). ACT_AS is the account id whose grids the editor is working on:
+// the signed-in user by default, or an official account this user operates (server-checked by
+// twingrid_operates() inside RLS, so a forged value here changes nothing).
+let ACT_AS=null;
+async function ownerId(){ if(ACT_AS) return ACT_AS; const u=(await SB.auth.getUser()).data.user; return u?u.id:null; }
+async function initOperator(session){
+  const sel=document.getElementById('actas'), ml=document.getElementById('modlink');
+  try{
+    const {data:ops}=await SB.rpc('twingrid_my_operated_accounts');
+    sel.innerHTML='';
+    if(ops&&ops.length){
+      const me=document.createElement('option'); me.value=''; me.textContent='Working as: me'; sel.appendChild(me);
+      ops.forEach(a=>{ const o=document.createElement('option'); o.value=a.id; o.textContent='Working as: @'+(a.handle||'official'); sel.appendChild(o); });
+      sel.hidden=false; sel.value=ACT_AS||'';
+      sel.onchange=async()=>{ ACT_AS=sel.value||null; curId=null; GRID={facets:[]}; reindex(); buildBoard(); render(); await loadClones(); };
+    } else { sel.hidden=true; ACT_AS=null; }
+  }catch(_){ sel.hidden=true; }
+  try{ const {data:isMod}=await SB.rpc('twingrid_is_moderator'); ml.hidden=!isMod; }catch(_){ ml.hidden=true; }
+}
+function onModRoute(){ return new URLSearchParams(location.search).has('mod'); }
+async function renderMod(){
+  const list=document.getElementById('mlist'), tabs=document.getElementById('mtabs'), lede=document.getElementById('mlede');
+  document.title='Moderation \u00b7 Personakind';
+  list.innerHTML=''; tabs.innerHTML='';
+  const empty=(t)=>{ const d=document.createElement('div'); d.className='mempty'; d.textContent=t; list.appendChild(d); };
+  const {data:{session}}=await SB.auth.getSession();
+  if(!session){ empty('Sign in first.'); const b=document.createElement('button'); b.className='btn solid'; b.textContent='Sign in'; b.style.marginTop='12px'; b.onclick=openAuth; list.appendChild(b); return; }
+  const {data:isMod,error:merr}=await SB.rpc('twingrid_is_moderator');
+  if(merr||!isMod){ empty('This account is not a moderator.'); return; }
+  let status=new URLSearchParams(location.search).get('status')||'open';
+  ['open','reviewing','actioned','dismissed'].forEach(st=>{ const b=document.createElement('button'); b.className='mtab'; b.setAttribute('role','tab'); b.setAttribute('aria-pressed', st===status); b.textContent=st; b.onclick=()=>{ const u=new URL(location.href); u.searchParams.set('status',st); history.replaceState(null,'',u); renderMod(); }; tabs.appendChild(b); });
+  const {data:rows,error}=await SB.rpc('twingrid_mod_reports',{p_status:status});
+  if(error){ empty(error.message); return; }
+  if(!rows||!rows.length){ empty('No '+status+' reports.'); return; }
+  lede.textContent=rows.length+' '+status+' report'+(rows.length===1?'':'s')+'. Every string here was typed by a user; it is shown as text, never as markup.';
+  const act=async(btn,fn)=>{ btn.disabled=true; const t=btn.textContent; btn.textContent='...'; const {error}=await fn(); if(error){ btn.textContent=error.message; btn.disabled=false; setTimeout(()=>btn.textContent=t,2200); return; } renderMod(); };
+  rows.forEach(r=>{
+    const c=document.createElement('div'); c.className='mcard';
+    const top=document.createElement('div'); top.className='mrow';
+    const rs=document.createElement('span'); rs.className='mreason'; rs.textContent=r.reason||'other'; top.appendChild(rs);
+    const when=document.createElement('span'); when.textContent=new Date(r.created_at).toLocaleString(); top.appendChild(when);
+    const kind=document.createElement('span'); kind.textContent=(r.target_kind||'target')+(r.persona_id||r.grid_id?'':' (deleted by owner, evidence kept)'); top.appendChild(kind);
+    if(r.target_suspended){ const su=document.createElement('span'); su.className='msus'; su.textContent='suspended'; top.appendChild(su); }
+    c.appendChild(top);
+    const tg=document.createElement('div'); tg.className='mtarget'; tg.textContent=(r.target_label||'(no label)')+(r.target_handle?'  by @'+r.target_handle:''); c.appendChild(tg);
+    const note=document.createElement('p'); note.className='mnote'; note.textContent=r.note||'(no note)'; c.appendChild(note);
+    const actions=document.createElement('div'); actions.className='mact';
+    const mk=(label,cls,fn)=>{ const b=document.createElement('button'); b.className='mbtn'+(cls?' '+cls:''); b.textContent=label; b.onclick=()=>act(b,fn); actions.appendChild(b); };
+    if(r.persona_id){ mk(r.target_suspended?'Unsuspend persona':'Suspend persona', r.target_suspended?'':'warn', ()=>SB.rpc('twingrid_mod_suspend',{p_kind:'persona',p_id:r.persona_id,p_suspended:!r.target_suspended})); }
+    if(r.target_owner){ mk('Suspend account','warn', ()=>SB.rpc('twingrid_mod_suspend',{p_kind:'account',p_id:r.target_owner,p_suspended:true}));
+                        mk('Unsuspend account','', ()=>SB.rpc('twingrid_mod_suspend',{p_kind:'account',p_id:r.target_owner,p_suspended:false})); }
+    ['open','reviewing','actioned','dismissed'].filter(st=>st!==status).forEach(st=>mk('Mark '+st,'',()=>SB.rpc('twingrid_mod_set_report',{p_id:r.id,p_status:st})));
+    if(r.grid_id){ const a=document.createElement('a'); a.className='mbtn'; a.href='?t='+encodeURIComponent(r.grid_id); a.target='_blank'; a.rel='noopener'; a.textContent='Open grid'; actions.appendChild(a); }
+    c.appendChild(actions); list.appendChild(c);
+  });
+}
 
 // ---------- auth ----------
 const app=document.getElementById('app');
@@ -1095,9 +1197,10 @@ function onExploreRoute(){ return new URLSearchParams(location.search).has('expl
 function route(){ const twin=onProfileRoute();
   if(twin){ document.body.className='marketing route-profile'; app.style.display='none'; renderProfile(twin); return; }
   if(onExploreRoute()){ document.body.className='marketing route-explore'; app.style.display='none'; renderExplore(); return; }
+  if(onModRoute()){ document.body.className='marketing route-mod'; app.style.display='none'; renderMod(); return; }
   document.body.className='marketing route-landing'; refreshAuth(); }
 async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
-  if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones();
+  if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones(); initOperator(session);
     try{ const __p=sessionStorage.getItem('pk_pending_path');
       if(__p){ sessionStorage.removeItem('pk_pending_path');
         setTimeout(()=>window.__openChooserAt&&window.__openChooserAt(__p),140); } }catch(_){} }
@@ -1178,7 +1281,7 @@ let mode='single'; const sel={specialist:null,mode:null,role:null,register:"vibe
 
 // ---------- clones (db) ----------
 async function loadClones(){
-  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data').eq('owner',(await SB.auth.getUser()).data.user.id).order('updated_at',{ascending:false});
+  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data').eq('owner',await ownerId()).order('updated_at',{ascending:false});
   const list=document.getElementById('clonelist'); list.innerHTML='';
   if(error){ list.innerHTML=''; const ep=document.createElement('p'); ep.className='note'; ep.textContent=error.message; list.appendChild(ep); return; }
   if(!data.length){ list.innerHTML=''; const np=document.createElement('p'); np.className='note'; np.textContent='No personas yet.'; const nb=document.createElement('button'); nb.className='newbtn'; nb.style.marginTop='6px'; nb.textContent='+ Create your first persona'; nb.onclick=()=>window.__openChooser&&window.__openChooser(); list.append(np,nb); }
@@ -1193,7 +1296,7 @@ function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facet
   if(__isPhone()) requestAnimationFrame(autoView);
   document.querySelectorAll('.clone').forEach(c=>c.removeAttribute('aria-current'));
   updateShare(); loadClones(); }
-async function newClone(seed,label){ const uid=(await SB.auth.getUser()).data.user.id;
+async function newClone(seed,label){ const uid=await ownerId();
   const copy=JSON.parse(JSON.stringify(seed));
   const {data,error}=await SB.from('twingrid_grids').insert({owner:uid,name:label,data:copy}).select().single();
   if(error){alert(error.message);return;} curId=data.id; selectClone(data); }
