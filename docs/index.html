@@ -367,6 +367,19 @@ body.route-explore{overflow:auto;background:var(--paper)}
 #explore .exclear{background:none;border:0;font:inherit;font-size:13.5px;color:var(--accent-w-deep);text-decoration:underline;
   text-underline-offset:3px;cursor:pointer;padding:6px 2px;min-height:44px}
 
+/* first-run tour: one spotlight, one card, no library */
+#tour{position:fixed;inset:0;z-index:140;display:none}
+#tour.open{display:block}
+#tourspot{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,14,10,.62);pointer-events:none;transition:all .25s ease;border:2px solid var(--accent-w)}
+#tourcard{position:absolute;max-width:340px;width:calc(100vw - 32px);background:var(--card-w,#fff);color:var(--ink,#211C17);border-radius:16px;padding:18px 18px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font-size:15px;line-height:1.5}
+#tourcard h3{font-family:var(--serif,Georgia,serif);font-weight:600;font-size:19px;margin:0 0 6px}
+#tourcard p{margin:0 0 12px;color:var(--ink-soft,#5C5347)}
+#tourcard .trow{display:flex;align-items:center;gap:8px}
+#tourcard .tstep{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim,#726858);flex:1}
+#tourcard button{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:9px 14px;cursor:pointer;min-height:44px;border:1px solid var(--line-w,#E7DCC9);background:none;color:var(--ink,#211C17)}
+#tourcard button.solid{background:var(--accent-w,#E0653C);border-color:var(--accent-w,#E0653C);color:#fff}
+#home .htour{font:inherit;font-size:13.5px;background:none;border:1px solid var(--line-w);color:var(--ink-soft);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:44px}
+
 /* home (signed in): plain cards, no engine room */
 #home{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
 body.route-home #home{display:block}
@@ -965,6 +978,8 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   </div>
 </div>
 
+<div id="tour" aria-live="polite"><div id="tourspot"></div><div id="tourcard" role="dialog" aria-modal="true"><h3 id="tourttl"></h3><p id="tourtxt"></p><div class="trow"><span class="tstep" id="tourstep"></span><button type="button" id="tourskip">Skip</button><button type="button" class="solid" id="tournext">Next</button></div></div></div>
+
 <!-- ============ HOME (signed in) ============ -->
 <div id="home">
   <div class="wrap">
@@ -979,7 +994,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div class="pk-kicker">Home</div>
       <h1>Your personas</h1>
       <p class="exlede">A persona is a version of you, or a character, written as plain cells anyone can read. Make one, read it, talk to it, and share it when it feels right.</p>
-      <div class="hctl"><select id="hactas" hidden aria-label="Work as"></select><span class="hmsg" id="hmsg"></span></div>
+      <div class="hctl"><select id="hactas" hidden aria-label="Work as"></select><button class="htour" type="button" id="htourbtn">Show me around</button><span class="hmsg" id="hmsg"></span></div>
     </div>
     <div class="hgrid" id="hgrid"></div>
     <div class="hnew">
@@ -1222,6 +1237,49 @@ async function initOperator(session){
 }
 function onModRoute(){ return new URLSearchParams(location.search).has('mod'); }
 function onEditorRoute(){ return new URLSearchParams(location.search).has('editor'); }
+// ---------- first-run tour ----------
+// Dylan, 2026-08-29: "a play by play on how to use it, with pop ups". One spotlight and one card per step,
+// positioned from the real element, remembered per browser so it runs once. Replay from "Show me around".
+const TOUR_HOME=[
+  {sel:'#home .hhead h1', t:'Your personas live here', x:'A persona is a version of you, or a character, written as short plain-language cells. Nothing hidden: what it says is exactly what it is.'},
+  {sel:'#home .hgrid', t:'Each card is one persona', x:'Edit opens it. Talk to it lets you chat with it on your own AI key. Copy share link hands it to someone once it is public.'},
+  {sel:'#home .hnew', t:'Three ways to make a new one', x:'Answer a few questions and it writes itself, start from a template and swap in your words, or let your own AI interview you.'},
+  {sel:'#home .hfoot a', t:'The advanced editor is optional', x:'It shows every cell and every connection on a board. Same persona, more knobs. You never have to open it.'}
+];
+const TOUR_EDITOR=[
+  {sel:'#clonelist', t:'Your personas', x:'Pick one here. The board on the right is that persona, spread out so you can see all of it.'},
+  {sel:'#stage .node', t:'This is a cell group', x:'Each box holds a few cells: CONTEXT (what it knows), DO, DONT, GATES (its limits), VOICE (how it sounds). Click a cell to edit the words.'},
+  {sel:'#gridname', t:'Name it, then decide who sees it', x:'Give it a name. Tick "make public" when you are ready for other people to read it. Private until then.'},
+  {sel:'#savebtn', t:'Save', x:'Nothing is kept until you press this. It lights up when there is something to save.'},
+  {sel:'#copy', t:'Take it anywhere', x:'Copy prompt gives you the whole persona as text you can paste into Claude, ChatGPT, or anything else.'}
+];
+let __tour=null, __tourI=0;
+const tourEl=document.getElementById('tour'), tourSpot=document.getElementById('tourspot'), tourCard=document.getElementById('tourcard');
+function tourKey(name){ return 'pk_tour_'+name; }
+function tourSeen(name){ try{ return !!localStorage.getItem(tourKey(name)); }catch(_){ return true; } }
+function tourMark(name){ try{ localStorage.setItem(tourKey(name),'1'); }catch(_){} }
+function tourPlace(){
+  const st=__tour.steps[__tourI]; let el=document.querySelector(st.sel);
+  if(el && !el.offsetParent && getComputedStyle(el).position!=='fixed') el=null;
+  if(el){ el.scrollIntoView({block:'center',behavior:'instant'}); }
+  const r=el?el.getBoundingClientRect():{left:innerWidth/2-1,top:innerHeight/2-1,width:2,height:2};
+  const pad=8; tourSpot.style.left=(r.left-pad)+'px'; tourSpot.style.top=(r.top-pad)+'px'; tourSpot.style.width=(r.width+pad*2)+'px'; tourSpot.style.height=(r.height+pad*2)+'px';
+  document.getElementById('tourttl').textContent=st.t; document.getElementById('tourtxt').textContent=st.x;
+  document.getElementById('tourstep').textContent=(__tourI+1)+' of '+__tour.steps.length;
+  document.getElementById('tournext').textContent=(__tourI===__tour.steps.length-1)?'Done':'Next';
+  tourCard.style.visibility='hidden'; tourCard.style.left='16px'; tourCard.style.top='16px';
+  requestAnimationFrame(()=>{ const c=tourCard.getBoundingClientRect(); let top=r.bottom+14, left=Math.min(Math.max(16,r.left), innerWidth-c.width-16);
+    if(top+c.height>innerHeight-12){ top=r.top-c.height-14; } if(top<12){ top=Math.max(12, innerHeight-c.height-16); }
+    tourCard.style.top=top+'px'; tourCard.style.left=left+'px'; tourCard.style.visibility='visible'; document.getElementById('tournext').focus(); });
+}
+function tourStart(name, steps){ if(!steps.length) return; __tour={name,steps}; __tourI=0; tourEl.classList.add('open'); tourPlace(); }
+function tourEnd(){ if(__tour) tourMark(__tour.name); __tour=null; tourEl.classList.remove('open'); }
+document.getElementById('tournext').onclick=()=>{ if(!__tour) return; if(__tourI>=__tour.steps.length-1){ tourEnd(); return; } __tourI++; tourPlace(); };
+document.getElementById('tourskip').onclick=tourEnd;
+window.addEventListener('keydown',e=>{ if(e.key==='Escape'&&__tour) tourEnd(); });
+window.addEventListener('resize',()=>{ if(__tour) tourPlace(); });
+document.getElementById('htourbtn').onclick=()=>tourStart('home',TOUR_HOME);
+function tourMaybe(name, steps, delay){ if(tourSeen(name)) return; setTimeout(()=>{ if(!__tour) tourStart(name,steps); }, delay||600); }
 // The board is the engine room. Signed-in users land here instead: plain cards, three doors, one link to the board.
 async function renderHome(){
   document.body.className='marketing route-home'; app.style.display='none'; closeAuth();
@@ -1295,10 +1353,10 @@ function route(){ const twin=onProfileRoute();
   if(onModRoute()){ document.body.className='marketing route-mod'; app.style.display='none'; renderMod(); return; }
   document.body.className='marketing route-landing'; refreshAuth(); }
 async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
-  if(session && !onEditorRoute()){ await renderHome(); initOperator(session); return; }
+  if(session && !onEditorRoute()){ await renderHome(); initOperator(session); tourMaybe('home',TOUR_HOME,700); return; }
   if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones(); initOperator(session);
     try{ const g=sessionStorage.getItem('pk_open_grid'); if(g){ sessionStorage.removeItem('pk_open_grid'); const b=[...document.querySelectorAll('#clonelist .clone')].find(x=>x.dataset.gid===g); if(b) b.click(); }
-      if(sessionStorage.getItem('pk_open_chat')){ sessionStorage.removeItem('pk_open_chat'); setTimeout(()=>document.getElementById('chatbtn').click(),200); } }catch(_){}
+      if(sessionStorage.getItem('pk_open_chat')){ sessionStorage.removeItem('pk_open_chat'); setTimeout(()=>document.getElementById('chatbtn').click(),200); } else { tourMaybe('editor',TOUR_EDITOR,900); } }catch(_){}
     try{ const __p=sessionStorage.getItem('pk_pending_path');
       if(__p){ sessionStorage.removeItem('pk_pending_path');
         setTimeout(()=>window.__openChooserAt&&window.__openChooserAt(__p),140); } }catch(_){} }
