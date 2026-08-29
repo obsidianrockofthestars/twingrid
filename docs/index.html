@@ -330,6 +330,72 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #profile .btn.ghost{border-color:var(--line-w);color:var(--ink);background:transparent}
 #profile .btn.ghost:hover{border-color:var(--accent-w);color:var(--accent-w-deep)}
 
+/* ============ Explore ============ */
+#explore{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
+body.route-explore #explore{display:block}
+body.route-explore{overflow:auto;background:var(--paper)}
+#explore .pnav{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+#explore .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
+#explore .pnav .brand span{color:var(--accent-w)}
+#explore .btn.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
+#explore .btn.solid:hover{background:var(--accent-w-deep)}
+#explore .exhead{padding:26px 0 30px;border-bottom:1px solid var(--line-w);margin-bottom:30px}
+#explore .exhead h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;margin:6px 0 10px;color:var(--ink)}
+#explore .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
+#explore .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
+#explore .excard{display:block;text-align:left;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:22px;
+  box-shadow:0 2px 12px rgba(40,28,18,.05);cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s,transform .15s}
+#explore .excard:hover{border-color:var(--accent-w);box-shadow:0 10px 26px rgba(40,28,18,.10);transform:translateY(-2px)}
+#explore .excard .extop{display:flex;align-items:center;gap:13px;margin-bottom:13px}
+#explore .exav{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;color:#fff;
+  font-family:var(--serif);font-weight:600;font-size:21px}
+#explore .exname{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--ink);line-height:1.2}
+#explore .exmeta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);margin-top:3px}
+#explore .exsnip{color:var(--ink-soft);font-size:14px;line-height:1.55;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin:0 0 12px}
+#explore .exby{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-dim);
+  border-top:1px solid var(--line-w);padding-top:11px}
+#explore .exbadge{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  background:var(--accent-soft);color:var(--accent-w-deep);border-radius:999px;padding:3px 9px}
+#explore .exfoot{color:var(--ink-dim);font-size:13px;line-height:1.6;padding:16px 0 60px;max-width:70ch}
+#explore .exempty{grid-column:1/-1;background:var(--paper-2);border:1px dashed var(--line-w);border-radius:16px;
+  padding:44px 28px;text-align:center;color:var(--ink-soft)}
+#explore .exempty h3{font-family:var(--serif);font-weight:600;color:var(--ink);margin:0 0 8px;font-size:21px}
+#explore .exfilters{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
+#explore .exchk{display:inline-flex;align-items:center;gap:9px;font-size:14px;color:var(--ink-soft);cursor:pointer;min-height:44px}
+#explore .exchk input{width:17px;height:17px;accent-color:var(--accent-w);cursor:pointer}
+#explore .exclear{background:none;border:0;font:inherit;font-size:13.5px;color:var(--accent-w-deep);text-decoration:underline;
+  text-underline-offset:3px;cursor:pointer;padding:6px 2px;min-height:44px}
+
+/* twinograph: hide and report */
+.pctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0 18px}
+.pctrl-b{font:inherit;font-size:13px;background:none;border:1px solid var(--line-w);color:var(--ink-dim);
+  border-radius:999px;padding:9px 16px;min-height:40px;cursor:pointer;transition:border-color .15s,color .15s}
+.pctrl-b:hover{border-color:var(--accent-w);color:var(--accent-w-deep)}
+.pctrl-msg{font-size:13px;color:var(--ink-dim)}
+.rpt{position:fixed;inset:0;z-index:90;background:rgba(33,28,23,.55);display:none;align-items:center;justify-content:center;padding:20px}
+.rpt.open{display:flex}
+.rptcard{width:100%;max-width:440px;background:var(--card-w);border:1px solid var(--line-w);border-radius:20px;
+  padding:28px;position:relative;color:var(--ink);max-height:90svh;overflow:auto}
+.rptcard h3{font-family:var(--serif);font-weight:600;font-size:23px;margin:0 0 8px;color:var(--ink)}
+.rptlede{color:var(--ink-soft);font-size:14.5px;line-height:1.55;margin:0 0 18px}
+.rptcard label{display:block;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-dim);margin:0 0 7px}
+.rptcard .field{background:var(--paper);border:1px solid var(--line-w);color:var(--ink);margin-bottom:16px}
+.rptcard textarea.field{resize:vertical;min-height:74px;font-family:inherit}
+.rptcard .primary{width:100%;background:var(--accent-w);border:1.5px solid var(--accent-w);color:#fff;
+  border-radius:12px;font-weight:600;font-size:15px;padding:13px;min-height:48px;cursor:pointer}
+.rptcard .primary:hover{background:var(--accent-w-deep)}
+.rptcard .primary[disabled]{opacity:.7;cursor:default}
+.rptx{position:absolute;top:14px;right:16px;background:none;border:0;font-size:24px;line-height:1;
+  color:var(--ink-dim);cursor:pointer;width:40px;height:40px}
+.rptcard .err{color:var(--accent-w-deep);font-size:13.5px;margin-top:10px}
+@media (max-width:760px){
+  #explore .exgrid{grid-template-columns:1fr}
+  #explore .exhead{padding:18px 0 22px;margin-bottom:22px}
+  #explore .excard{padding:18px}
+}
+
 /* the board and its nodes handle their own gestures; the browser must not pan or zoom them */
 .stage,.node{touch-action:none}
 @media (max-width:760px){
@@ -614,6 +680,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <span class="sp"></span>
     <a class="lk" href="#ways">How it works</a>
     <a class="lk" href="#share">Share</a>
+    <a class="lk" href="?explore">Explore</a>
     <button class="pk-btn ghost" data-auth>Sign in</button>
     <button class="pk-btn solid" data-auth>Start free</button>
   </nav>
@@ -711,6 +778,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
         <h2>Give your persona a home</h2>
         <p class="pk-lede" style="margin-bottom:26px">Flip one switch and your persona gets its own page, a warm profile others can visit, read, and chat with on their own key. Meet other people's personas. Follow the ones you like. Think a profile page, for a mind.</p>
         <button class="pk-btn solid lg" data-auth>Start yours free</button>
+        <a class="pk-btn ghost lg" href="?explore" style="margin-left:10px">Browse personas</a>
       </div>
     </div>
   </section>
@@ -812,6 +880,28 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   </div>
 </div>
 
+<!-- ============ EXPLORE, the public directory ============ -->
+<div id="explore">
+  <div class="wrap">
+    <nav class="pnav">
+      <a class="brand" href="?">Persona<span>kind</span></a>
+      <span class="sp" style="flex:1"></span>
+      <button class="btn solid" data-auth>Build your own</button>
+    </nav>
+    <div class="exhead">
+      <div class="pk-kicker">Explore</div>
+      <h1>Personas you can read</h1>
+      <p class="exlede">Every one of these is a grid of plain cells somebody chose to publish. Open one to read how it thinks, or talk to it on your own key.</p>
+      <div class="exfilters">
+        <label class="exchk"><input type="checkbox" id="exhideofficial"> Hide starter personas</label>
+        <button class="exclear" id="exclearhidden" type="button" hidden></button>
+      </div>
+    </div>
+    <div class="exgrid" id="exgrid"></div>
+    <p class="exfoot" id="exfoot"></p>
+  </div>
+</div>
+
 <!-- ============ PUBLIC TWINOGRAPH PROFILE ============ -->
 <div id="profile">
   <div class="phero">
@@ -820,6 +910,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <nav class="pnav">
         <a class="brand" href="?" id="phome">Persona<span>kind</span></a>
         <span class="sp" style="flex:1"></span>
+        <a class="btn ghost" href="?explore" style="margin-right:10px">Explore</a>
         <button class="btn solid" data-auth id="pmake">Build your own</button>
       </nav>
       <div class="pid">
@@ -860,7 +951,34 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <h2>What's inside</h2>
       <div class="fgrid" id="pfacets"></div>
     </div>
+    <div class="pctrl" id="pctrl">
+      <button class="pctrl-b" id="phide" type="button">Hide this from my Explore</button>
+      <button class="pctrl-b" id="preport" type="button">Report</button>
+      <span class="pctrl-msg" id="pctrlmsg" role="status"></span>
+    </div>
     <p class="pdisc">This is a twinograph, an AI persona built on Personakind. It is not a real person, and it only knows what its owner wrote into the cells above.</p>
+    <div class="rpt" id="rpt" role="dialog" aria-modal="true" aria-labelledby="rpttitle">
+      <div class="rptcard">
+        <button class="rptx" id="rptx" type="button" aria-label="Close">&times;</button>
+        <h3 id="rpttitle">Report this persona</h3>
+        <p class="rptlede">Tell us what is wrong with it. Reports go to a person, not a bot, and we read every one.</p>
+        <label for="rptreason">What is the problem</label>
+        <select class="field" id="rptreason">
+          <option value="impersonation">It is pretending to be a real person</option>
+          <option value="sexual">Sexual content</option>
+          <option value="hate">Hate speech</option>
+          <option value="harassment">Harassment or bullying</option>
+          <option value="minor">It involves a minor</option>
+          <option value="spam">Spam or a scam</option>
+          <option value="illegal">Something illegal</option>
+          <option value="other">Something else</option>
+        </select>
+        <label for="rptnote">Anything else (optional)</label>
+        <textarea class="field" id="rptnote" rows="3" maxlength="600" placeholder="Up to 600 characters."></textarea>
+        <button class="primary" id="rptsend" type="button">Send report</button>
+        <div class="err" id="rpterr" role="alert"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -973,8 +1091,10 @@ const CELLORDER=["CONTEXT","DO","DONT","GATES","VOICE"];
 // ---------- auth ----------
 const app=document.getElementById('app');
 function onProfileRoute(){ return new URLSearchParams(location.search).get('t'); }
+function onExploreRoute(){ return new URLSearchParams(location.search).has('explore'); }
 function route(){ const twin=onProfileRoute();
   if(twin){ document.body.className='marketing route-profile'; app.style.display='none'; renderProfile(twin); return; }
+  if(onExploreRoute()){ document.body.className='marketing route-explore'; app.style.display='none'; renderExplore(); return; }
   document.body.className='marketing route-landing'; refreshAuth(); }
 async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
   if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones();
@@ -1037,7 +1157,7 @@ document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',p
 document.getElementById('email').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMagic(); } });
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
 document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
-SB.auth.onAuthStateChange(()=>{ if(!onProfileRoute()) refreshAuth(); });
+SB.auth.onAuthStateChange(()=>{ if(!onProfileRoute() && !onExploreRoute()) refreshAuth(); });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
 // needs it. The profile page prints that label itself, so strip it for display only.
 // Never mutates the stored cell, so Copy prompt is untouched.
@@ -1388,6 +1508,159 @@ function inkSafe(hex){ let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,
   return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
 
 function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
+// ---------- viewer-side hiding and reporting ----------
+// A label is necessary and not sufficient. Meta shipped "AI managed by Meta" on their
+// seeded profiles and still deleted them in Jan 2025, because people could not get them
+// off their own screen. Hiding is per-viewer, per-browser, and never leaves the device.
+const PK_HIDDEN='pk_hidden_v1', PK_HIDEOFF='pk_hide_official_v1';
+function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(_){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(_){} }
+function hiddenIds(){ const a=lsGet(PK_HIDDEN,[]); return Array.isArray(a)?a:[]; }
+function isHidden(id){ return hiddenIds().indexOf(id)>=0; }
+function setHidden(id,on){ const a=hiddenIds().filter(x=>x!==id); if(on) a.push(id); lsSet(PK_HIDDEN,a); }
+let PK_CUR_ID=null;
+
+function syncHideBtn(){
+  const b=document.getElementById('phide'); if(!b||!PK_CUR_ID) return;
+  b.textContent = isHidden(PK_CUR_ID) ? 'Unhide this' : 'Hide this from my Explore';
+}
+(function wireProfileControls(){
+  const hide=document.getElementById('phide'), rep=document.getElementById('preport'),
+        msg=document.getElementById('pctrlmsg'), dlg=document.getElementById('rpt'),
+        x=document.getElementById('rptx'), send=document.getElementById('rptsend'),
+        err=document.getElementById('rpterr');
+  if(!hide||!rep||!dlg) return;
+  hide.onclick=()=>{ if(!PK_CUR_ID) return;
+    const now=!isHidden(PK_CUR_ID); setHidden(PK_CUR_ID,now); syncHideBtn();
+    msg.textContent = now ? 'Hidden. It will not show in your Explore on this device.' : 'Unhidden.'; };
+  const close=()=>{ dlg.classList.remove('open'); err.textContent=''; };
+  rep.onclick=async()=>{
+    const {data:{session}}=await SB.auth.getSession();
+    if(!session){ msg.textContent='Sign in first so we know the report is from a person.'; openAuth(); return; }
+    msg.textContent=''; err.textContent=''; dlg.classList.add('open'); };
+  x.onclick=close;
+  dlg.addEventListener('click',e=>{ if(e.target===dlg) close(); });
+  window.addEventListener('keydown',e=>{ if(e.key==='Escape' && dlg.classList.contains('open')) close(); });
+  send.onclick=async()=>{
+    if(!PK_CUR_ID) return;
+    const {data:{session}}=await SB.auth.getSession();
+    if(!session){ err.textContent='Your session expired. Sign in again.'; return; }
+    send.disabled=true; send.textContent='Sending...'; err.textContent='';
+    const {error}=await SB.from('twingrid_reports').insert({
+      reporter: session.user.id, grid_id: PK_CUR_ID,
+      reason: document.getElementById('rptreason').value,
+      note: document.getElementById('rptnote').value.trim() || null });
+    send.disabled=false; send.textContent='Send report';
+    if(error){
+      err.textContent = (error.code==='23505')
+        ? 'You have already reported this one. We have it.'
+        : 'Could not send that. Try again in a moment.';
+      return; }
+    close(); msg.textContent='Report received. Thank you.';
+    document.getElementById('rptnote').value='';
+  };
+})();
+
+// ---------- explore: the public directory ----------
+// Everything here is built with createElement + textContent. A directory is the one page
+// where one person's words are rendered to a stranger, so nothing takes an innerHTML path.
+(function wireExploreFilters(){
+  const t=document.getElementById('exhideofficial'); if(!t) return;
+  t.checked=!!lsGet(PK_HIDEOFF,false);
+  t.onchange=()=>{ lsSet(PK_HIDEOFF,t.checked); renderExplore(); };
+})();
+async function renderExplore(){
+  const grid=document.getElementById('exgrid'), foot=document.getElementById('exfoot');
+  document.title='Explore \u00b7 Personakind';
+  grid.innerHTML=''; foot.textContent='';
+  const empty=(title,msg)=>{ const d=document.createElement('div'); d.className='exempty';
+    const h=document.createElement('h3'); h.textContent=title;
+    const p=document.createElement('p'); p.textContent=msg; p.style.margin='0';
+    d.append(h,p); grid.appendChild(d); };
+
+  const {data,error}=await SB.from('twingrid_grids')
+    .select('id,name,data,owner,updated_at').eq('is_public',true).order('updated_at',{ascending:false});
+  if(error){ empty('Could not load the directory','Try again in a moment.'); return; }
+  const all=data||[];
+  if(!all.length){ empty('Nothing published yet','Be the first. Build a persona, flip the public switch, and it lands here.'); return; }
+
+  let byOwner={};
+  try{
+    const owners=[...new Set(all.map(r=>r.owner))];
+    const {data:accs}=await SB.from('twingrid_accounts').select('id,handle,is_official').in('id',owners);
+    byOwner=Object.fromEntries((accs||[]).map(a=>[a.id,a]));
+  }catch(_){}
+
+  // the viewer's own filters, applied client side. Nothing here is sent anywhere.
+  const hideOff=!!lsGet(PK_HIDEOFF,false);
+  const hid=hiddenIds();
+  const rows=all.filter(r=>{
+    if(hid.indexOf(r.id)>=0) return false;
+    const a=byOwner[r.owner];
+    if(hideOff && a && a.is_official) return false;
+    return true; });
+  const nHidden=all.length-rows.length;
+  const clr=document.getElementById('exclearhidden');
+  if(clr){
+    const own=hid.length;
+    clr.hidden = own===0;
+    clr.textContent = own ? ('Unhide '+own+(own===1?' persona':' personas')+' you hid') : '';
+    clr.onclick=()=>{ lsSet(PK_HIDDEN,[]); renderExplore(); };
+  }
+  if(!rows.length){ empty('Everything is filtered out','You have hidden all of them, or the starter filter is on. Clear a filter to see the directory again.'); return; }
+
+  let officials=0;
+  rows.forEach(r=>{
+    const g=(r.data&&r.data.facets)?r.data:{facets:[]};
+    const nm=String(r.name||'Untitled persona');
+    const rawTheme=(g.theme&&typeof g.theme==='string')?g.theme.trim():'';
+    const acc=/^#[0-9a-fA-F]{6}$/.test(rawTheme)?inkSafe(rawTheme):'#C24B2A';
+
+    const card=document.createElement('a');
+    card.className='excard';
+    card.setAttribute('href','?t='+encodeURIComponent(r.id));
+
+    const top=document.createElement('div'); top.className='extop';
+    const av=document.createElement('div'); av.className='exav';
+    // 'The Coach' and 'The Creator' both start with T, so skip a leading article
+    const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'') || nm.trim();
+    av.style.background=acc; av.textContent=(initSrc[0]||'P').toUpperCase();
+    const idb=document.createElement('div');
+    const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
+    const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
+    const meta=document.createElement('div'); meta.className='exmeta';
+    meta.textContent=g.facets.length+' facets \u00b7 '+cells+' cells';
+    idb.append(n,meta); top.append(av,idb); card.appendChild(top);
+
+    const core=g.facets.find(f=>f.name==='core')||g.facets[0];
+    const snipText=(core&&core.cells)?cellBody(core.cells.CONTEXT||core.cells.DO||''):'';
+    const snip=document.createElement('p'); snip.className='exsnip';
+    snip.textContent=snipText||'This persona has not been filled in yet.';
+    card.appendChild(snip);
+
+    const by=document.createElement('div'); by.className='exby';
+    const a=byOwner[r.owner];
+    if(a && a.is_official){
+      officials++;
+      const b=document.createElement('span'); b.className='exbadge'; b.textContent='Starter persona';
+      const t=document.createElement('span'); t.textContent='Published by @'+a.handle;
+      by.append(b,t);
+    } else if(a){
+      const t=document.createElement('span'); t.textContent='@'+a.handle; by.appendChild(t);
+    } else {
+      const t=document.createElement('span'); t.textContent='A Personakind member'; by.appendChild(t);
+    }
+    card.appendChild(by);
+    grid.appendChild(card);
+  });
+
+  const n=rows.length;
+  foot.textContent = n+' public '+(n===1?'persona':'personas')+' shown'
+    + (nHidden? ', '+nHidden+' filtered out by you':'') + '. '
+    + (officials ? officials+' of these are starter personas published by Personakind itself and marked as such. They are examples, not members, and a real person is accountable for them. ' : '')
+    + 'Everything here is public because its owner chose to publish it.';
+}
+
 async function renderProfile(id){
   const nameEl=document.getElementById('pname');
   const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public').eq('id',id).maybeSingle();
@@ -1433,7 +1706,8 @@ async function renderProfile(id){
       const cl=document.createElement('span'); cl.className='cl'; cl.textContent=c;
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
-  PROFILE_GRID=g;
+  PROFILE_GRID=g; PK_CUR_ID=id; syncHideBtn();
+  const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds();
     if(!localStorage.getItem('tg_key')){ settings.classList.add('open'); } else { chat.classList.add('open'); renderChat(); } };
 }
