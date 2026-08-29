@@ -1149,17 +1149,20 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     </div>
 
     <div id="nfMcp" hidden>
-      <div class="nf-kick">Connect your own AI</div>
-      <h2>Build it from your AI</h2>
+      <div class="nf-kick">Let your AI build it</div>
+      <h2>Your AI already knows you</h2>
       <div class="nf-mcp">
-        <p>Drive Personakind from Claude or ChatGPT with the connector. Your key, your machine, fully in your hands.</p>
+        <p>Claude, ChatGPT, Gemini, whatever you use every day, has been paying attention. Let it answer the questions for you. Nothing to install.</p>
         <ol>
-          <li>Download the connector below and double-click it. Claude Desktop opens and offers to install it.</li>
-          <li>Restart Claude Desktop.</li>
-          <li>Say "interview me and build my Personakind persona", or "load @someone's persona and talk to me as them".</li>
+          <li>Copy the interview.</li>
+          <li>Paste it into your AI and send it. It answers from what it remembers about you, and hands back a short block of text.</li>
+          <li>Paste that block below. Your persona is built, and you can change any word of it afterwards.</li>
         </ol>
-        <p style="margin-top:14px"><a class="pk-btn solid" id="nfMcpDl" href="/personakind-mcp.mcpb" download>Download for Claude Desktop</a></p>
-        <p style="color:var(--ink-dim);font-size:13px">Using something else? <a href="/personakind-mcp.zip" download style="color:inherit">Get the plain zip</a> and follow its README. Needs Python 3.10 or newer on your computer. It only reads personas their authors made public, and it never writes anything.</p>
+        <p style="margin-top:14px"><button class="pk-btn solid" type="button" id="nfCopyInterview">Copy the interview</button> <span id="nfCopyMsg" style="font-size:13px;color:var(--ink-dim)"></span></p>
+        <label for="nfPaste" style="display:block;margin-top:14px;font-size:13.5px;color:var(--ink-soft)">Paste what your AI gave you</label>
+        <textarea class="field" id="nfPaste" rows="5" style="min-height:120px;resize:vertical;font-family:'IBM Plex Mono',monospace;font-size:12.5px" placeholder='{ "name": "...", "who": "...", ... }'></textarea>
+        <p style="margin-top:6px"><button class="pk-btn solid" type="button" id="nfPasteGo">Build my persona from this</button> <span id="nfPasteMsg" style="font-size:13px;color:var(--ink-dim)"></span></p>
+        <p style="color:var(--ink-dim);font-size:13px;margin-top:18px;border-top:1px solid var(--line-w);padding-top:12px">Developer? There is also a connector for Claude Desktop and other MCP clients: <a href="/personakind-mcp.mcpb" download style="color:inherit">bundle</a> or <a href="/personakind-mcp.zip" download style="color:inherit">zip</a>. Needs Python 3.10 or newer and a one-time config edit; the README inside walks through it. It only reads personas their authors made public, and it never writes anything.</p>
       </div>
       <button class="nf-back-link" data-nfback>Back</button>
     </div>
@@ -2014,6 +2017,32 @@ const QSTEPS=[
     {id:"line",cell:"GATES",q:"A line it should hold no matter what?",ph:"Never do anything that could hurt the people I love."}]}
 ];
 let nfQi=0; const nfAns={};
+// "Let your AI build it" without installing anything: the same 14 questions, answered by the user's own AI
+// from what it already remembers about them, returned as JSON keyed by question id, pasted back here.
+function nfInterviewText(){
+  const lines=[];
+  lines.push("I want you to write a short profile of me for a tool called Personakind, using what you already know about me from our past conversations and your memory of me. Answer the questions below in MY voice, as me, first person, plain language, one to three sentences each. Where you truly do not know, make your best honest guess from what you do know and keep it short; do not invent specifics like names, places or dates.");
+  lines.push("");
+  lines.push("Reply with ONLY a JSON object, no commentary, using exactly these keys:");
+  QSTEPS.forEach(st=>{ st.qs.forEach(q=>{ const hint=q.type==='choice'?(' Choose exactly one of: '+q.opts.join(', ')+'.'):''; lines.push('- "'+q.id+'": '+q.q+hint); }); });
+  lines.push("");
+  lines.push('Example shape: {"name":"...", "who":"...", "days":"...", "values":"...", "help":"...", "decide":"...", "direct":"Balanced", "never":"...", "peeves":"...", "formality":"Conversational", "phrases":"...", "humor":"...", "rule":"...", "line":"..."}');
+  return lines.join("\n");
+}
+function nfImportAnswers(raw){
+  let txt=String(raw||'').trim(); const a=txt.indexOf('{'), b=txt.lastIndexOf('}'); if(a<0||b<0||b<=a) throw new Error('I could not find a { ... } block in that. Paste the whole reply from your AI.');
+  let obj; try{ obj=JSON.parse(txt.slice(a,b+1)); }catch(e){ throw new Error('That block is not valid JSON. Ask your AI to "reply with only the JSON object" and paste again.'); }
+  if(!obj||typeof obj!=='object'||Array.isArray(obj)) throw new Error('Expected a JSON object with the question keys.');
+  const known=new Set(); QSTEPS.forEach(st=>st.qs.forEach(q=>known.add(q.id)));
+  let n=0; Object.keys(obj).forEach(k=>{ if(!known.has(k)) return; let v=obj[k]; if(v==null) return; v=String(v).trim(); if(!v) return; if(v.length>600) v=v.slice(0,600); nfAns[k]=v; n++; });
+  if(n<3) throw new Error('Only '+n+' of the 14 answers were recognised. Check the keys match the interview.');
+  return n;
+}
+(function(){
+  const cb=document.getElementById('nfCopyInterview'), cm=document.getElementById('nfCopyMsg'), pg=document.getElementById('nfPasteGo'), pm=document.getElementById('nfPasteMsg'), ta=document.getElementById('nfPaste');
+  if(cb) cb.onclick=()=>{ navigator.clipboard.writeText(nfInterviewText()).then(()=>{ cm.textContent='Copied. Paste it into your AI.'; setTimeout(()=>cm.textContent='',2500); }).catch(()=>{ cm.textContent='Copy failed; select the text in the box below instead.'; ta.value=nfInterviewText(); }); };
+  if(pg) pg.onclick=async()=>{ pm.textContent=''; try{ const n=nfImportAnswers(ta.value); pm.textContent='Got '+n+' answers. Building...'; await nfFinish(); ta.value=''; pm.textContent=''; }catch(e){ pm.textContent=e.message; } };
+})();
 function nfStart(){ nfQi=0; nfShow('nfQuiz'); nfRender(); }
 function nfRender(){
   const st=QSTEPS[nfQi];
