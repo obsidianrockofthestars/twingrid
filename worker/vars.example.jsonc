@@ -1,0 +1,37 @@
+// Personakind Worker: the "vars" block to merge into wrangler.jsonc, plus the
+// secret commands. Vars are public-safe values. Secrets never go in this file.
+//
+// -------- wrangler.jsonc, inside the top level object --------
+{
+  "vars": {
+    // Supabase project (shared with the print app; only twingrid_ tables are ours)
+    "SUPABASE_URL": "https://jpepcqazscmhakxvutpg.supabase.co",
+    // Publishable (anon) key. Safe in the browser, safe here.
+    "SUPABASE_ANON_KEY": "sb_publishable_OJGmKJoI67e4I5Z_cib8yA_n7y5kjz2",
+    // Current Haiku as of 2026-09-01 (https://platform.claude.com/docs/en/models/overview).
+    // Alias "claude-haiku-4-5" also works. Retirement not before 2026-10-15, so
+    // expect to bump this when Anthropic ships the next Haiku.
+    "HOSTED_MODEL": "claude-haiku-4-5-20251001",
+    // RevenueCat product id -> credits granted per purchase or renewal.
+    // The key MUST equal the Web Billing product identifier in the RC dashboard.
+    "CREDIT_PACKS": "{\"pk_hosted_500_month\":500}"
+  }
+  // Optional KV rate limiter. Leave this out until the namespace exists; api.js
+  // skips rate limiting when RATE_KV is not bound.
+  // "kv_namespaces": [{ "binding": "RATE_KV", "id": "<namespace id from wrangler kv namespace create RATE_KV>" }]
+}
+
+// -------- Secrets: run from the worker folder in PowerShell, one at a time --------
+// Each command prompts for the value; paste it and press Enter. Nothing is echoed.
+//
+// & "npx.cmd" wrangler secret put ANTHROPIC_API_KEY
+// & "npx.cmd" wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+// & "npx.cmd" wrangler secret put RC_WEBHOOK_AUTH
+//
+// ANTHROPIC_API_KEY          from console.anthropic.com, a NEW key made just for Personakind with a monthly spend limit.
+// SUPABASE_SERVICE_ROLE_KEY  Supabase dashboard > Project Settings > API Keys > service_role (secret). Bypasses RLS. Never in the browser.
+// RC_WEBHOOK_AUTH            a long random string YOU invent (32+ chars). Paste the same value into the RevenueCat
+//                            webhook "Authorization header" field. api.js compares the whole header to it.
+//
+// Then deploy:
+// & "npx.cmd" wrangler deploy

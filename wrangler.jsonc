@@ -1,13 +1,31 @@
 {
-  // Personakind — static site served from docs/ via Cloudflare Workers Static Assets.
-  // No Worker script (assets-only): Cloudflare serves the files in ./docs directly.
+  // Personakind: static site served from docs/ via Cloudflare Workers Static Assets,
+  // plus a small Worker script (worker/index.js) that adds the hosted MCP server at
+  // /mcp and the hosted chat API at /api/* (credits, chat, RevenueCat webhook). Every other path is still
+  // served straight from ./docs through the ASSETS binding, exactly as before.
   "name": "twingrid",
   "compatibility_date": "2024-11-01",
+  "main": "worker/index.js",
   // personakind.com is the only canonical host. The *.workers.dev subdomain is off
   // so the site is not served from a second URL that splits SEO and breaks auth redirects.
   "workers_dev": false,
+  "vars": {
+    // Supabase project (shared with the print app; only twingrid_ tables are ours). Publishable key is public by design.
+    "SUPABASE_URL": "https://jpepcqazscmhakxvutpg.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_OJGmKJoI67e4I5Z_cib8yA_n7y5kjz2",
+    // Current Haiku as of 2026-09-01 (https://platform.claude.com/docs/en/models/overview). Bump here, no code change.
+    "HOSTED_MODEL": "claude-haiku-4-5-20251001",
+    // RevenueCat Web Billing product id -> credits granted per purchase or renewal. Must match the RC dashboard.
+    "CREDIT_PACKS": "{\"pk_hosted_500_month\":500}"
+  },
+  // Secrets, set once with `wrangler secret put`: ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH.
   "assets": {
     // Single-page app: Cloudflare serves ./docs directly and maps "/" to index.html.
-    "directory": "./docs"
+    "directory": "./docs",
+    // Exposes the static files to the Worker as env.ASSETS so unmatched routes fall through to them.
+    "binding": "ASSETS",
+    // Only these routes reach the Worker script first; everything else is asset-first, no Worker
+    // invocation, same cost profile as the assets-only setup. Requires Wrangler 4.20 or newer.
+    "run_worker_first": ["/mcp", "/api/*"]
   }
 }
