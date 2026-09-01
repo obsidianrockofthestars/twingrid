@@ -743,6 +743,36 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   --text:#F3ECE1; --muted:#C4B7A4; --dim:#9C8E7B;
   --accent:#D2542E; --wire:#E0653C; --ghost:#4A3D30; --dont-text:#EC8A80;
 }
+
+/* profile: plain-language summary + demoted BYOK link (2026-08-29 sweep) */
+.psum{margin:8px 0 0;font-size:15.5px;line-height:1.55;color:var(--ink,#1a1a1a);opacity:.8;max-width:52ch}
+.pcopytext{display:block;width:100%;margin:10px 0 0;min-height:120px;padding:8px;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;
+  border:1px solid var(--line,#d9d4cc);border-radius:10px;background:#fff;color:var(--ink,#1a1a1a);resize:vertical}
+.linkbtn{display:block;width:100%;margin:10px 0 0;min-height:44px;background:none;border:0;padding:0;text-align:left;
+  font:400 13.5px/1.4 inherit;color:var(--ink,#1a1a1a);opacity:.8;text-decoration:underline;cursor:pointer}
+
+/* always-on help (2026-08-29). Layer 1 is scripted: no network, no key, works for anyone. */
+#helpbtn{position:fixed;right:16px;bottom:16px;z-index:55;min-height:48px;min-width:48px;padding:0 20px;border-radius:999px;
+  border:1px solid var(--line,#d9d4cc);background:var(--paper,#fff);color:var(--ink,#1a1a1a);font:600 15px/1 Archivo,system-ui,sans-serif;
+  box-shadow:0 6px 20px rgba(0,0,0,.16);cursor:pointer}
+#helpbtn:hover{background:var(--accent-soft,#f4efe8)}
+#helppanel{position:fixed;right:12px;left:12px;bottom:76px;z-index:56;max-width:380px;margin-left:auto;
+  max-height:min(70vh,70svh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  background:var(--paper,#fff);color:var(--ink,#1a1a1a);border:1px solid var(--line,#d9d4cc);border-radius:16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.24);padding:16px;font-family:Archivo,system-ui,sans-serif}
+#helppanel .hph{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+#helppanel .hph h3{margin:0;font-size:17px;flex:1}
+#helppanel .hpx{background:none;border:0;font-size:26px;line-height:1;min-height:44px;min-width:44px;cursor:pointer;color:inherit}
+#helppanel .hpshow{display:block;width:100%;min-height:46px;margin:0 0 12px;border-radius:12px;cursor:pointer;
+  border:1px solid var(--line,#d9d4cc);background:var(--accent-soft,#f4efe8);color:inherit;font:600 15px/1.3 inherit}
+#helppanel .hpq button.q{display:block;width:100%;text-align:left;min-height:46px;padding:11px 12px;margin:0 0 6px;cursor:pointer;
+  border:1px solid var(--line,#d9d4cc);border-radius:12px;background:transparent;color:inherit;font:500 15px/1.35 inherit}
+#helppanel .hpq button.q[aria-expanded="true"]{background:var(--accent-soft,#f4efe8)}
+#helppanel .hpa{padding:2px 12px 12px;font-size:14px;line-height:1.6;color:var(--ink,#1a1a1a);opacity:.86}
+#helppanel .hpa button.go{margin-top:8px;min-height:44px;padding:0 14px;border-radius:10px;cursor:pointer;
+  border:1px solid currentColor;background:transparent;color:var(--ink,#1a1a1a);opacity:1;font:600 14px/1 inherit}
+#helppanel .hpfoot{margin:12px 0 0;font-size:12.5px;color:var(--ink,#1a1a1a);opacity:.65}
+@media (max-width:420px){ #helppanel{max-height:min(62vh,62svh)} }
 </style>
 </head><body>
 
@@ -978,6 +1008,13 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   </div>
 </div>
 
+<button id="helpbtn" type="button" aria-haspopup="dialog" aria-expanded="false" hidden>Help</button>
+<div id="helppanel" role="dialog" aria-labelledby="helptitle" hidden>
+  <div class="hph"><h3 id="helptitle">How can we help?</h3><button class="hpx" id="helpx" type="button" aria-label="Close">&times;</button></div>
+  <button class="hpshow" id="helptour" type="button" hidden>Show me around this page</button>
+  <div class="hpq" id="helpqs"></div>
+  <p class="hpfoot">Nothing in here breaks anything. Close it and try again any time.</p>
+</div>
 <div id="tour" aria-live="polite"><div id="tourspot"></div><div id="tourcard" role="dialog" aria-modal="true"><h3 id="tourttl"></h3><p id="tourtxt"></p><div class="trow"><span class="tstep" id="tourstep"></span><button type="button" id="tourskip">Skip</button><button type="button" class="solid" id="tournext">Next</button></div></div></div>
 
 <!-- ============ HOME (signed in) ============ -->
@@ -1045,9 +1082,10 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
           <h1 id="pname">Persona</h1>
           <div class="meta">
             <span class="badge" id="pkind">AI persona</span>
-            <span id="pcells">0 cells</span>
-            <span id="pfacetcount">0 facets</span>
+            <span id="pcells"></span>
+            <span id="pfacetcount"></span>
           </div>
+          <p class="psum" id="psummary"></p>
         </div>
       </div>
     </div>
@@ -1056,14 +1094,16 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   <div class="wrap">
     <div class="pmain">
       <div class="persona">
-        <h2>Composed identity</h2>
+        <h2>What it&rsquo;s like</h2>
         <div class="body" id="ppersona"></div>
       </div>
       <div class="pside">
-        <div class="pcta">
-          <h3>Chat with this persona</h3>
-          <p>Talk to it live on your own Anthropic key. Your key stays in your browser and goes only to Anthropic, never to us.</p>
-          <button class="btn solid" id="pchat" style="width:100%;justify-content:center">Start chatting</button>
+        <div class="pcta" id="pctatalk">
+          <h3>Talk to it</h3>
+          <p>Copy this persona, then open Claude or ChatGPT, tap the message box and paste it in. It is free and it works on the AI account you already have.</p>
+          <button class="btn solid" id="pcopy" style="width:100%;justify-content:center">Copy it into your AI</button>
+          <textarea id="pcopytext" class="pcopytext" readonly hidden aria-label="The persona text, ready to select and copy"></textarea>
+          <button class="linkbtn" id="pchat" type="button">Rather chat right here? Use your own Anthropic key</button>
         </div>
         <div class="pcta">
           <h3>Make one like it</h3>
@@ -1074,13 +1114,13 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     </div>
 
     <div class="pctrl" id="pctrl">
-      <button class="pctrl-b" id="phide" type="button">Hide this from my Explore</button>
+      <button class="pctrl-b" id="phide" type="button">Hide from my list</button>
       <button class="pctrl-b" id="preport" type="button">Report</button>
       <span class="pctrl-msg" id="pctrlmsg" role="status"></span>
     </div>
-    <p class="pdisc">This is a twinograph, an AI persona built on Personakind. It is not a real person, and it only knows what its owner wrote into the cells on this page.</p>
+    <p class="pdisc">This is an AI persona built on Personakind, not a real person. It only knows what its owner wrote on this page.</p>
     <div class="facets">
-      <h2>What's inside</h2>
+      <h2>Everything its owner wrote</h2>
       <div class="fgrid" id="pfacets"></div>
     </div>
     <div class="rpt" id="rpt" role="dialog" aria-modal="true" aria-labelledby="rpttitle">
@@ -1433,7 +1473,7 @@ function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;'
 // ---------- state ----------
 let GRID={facets:[]}, byName={}, curId=null;
 function reindex(){ byName=Object.fromEntries(GRID.facets.map(f=>[f.name,f])); }
-const KINDS={specialist:[],mode:[],role:[],register:[]};
+const KINDS=Object.assign(Object.create(null),{specialist:[],mode:[],role:[],register:[]});
 function rebuildKinds(){ for(const k in KINDS)KINDS[k]=[]; GRID.facets.forEach(f=>{if(KINDS[f.kind])KINDS[f.kind].push(f.name);}); }
 const kindOf=n=>byName[n].kind, ncells=n=>Object.keys(byName[n].cells).length;
 let mode='single'; const sel={specialist:null,mode:null,role:null,register:"vibe"}; const on=new Set(); const queue=[];
@@ -1583,7 +1623,7 @@ function render(){ if(!GRID.facets.length){document.getElementById('loadout').in
   const act=activeFacets();
   document.querySelectorAll('.node[data-name]').forEach(el=>{const n=el.dataset.name;el.classList.toggle('on',act.includes(n));const q=queue.indexOf(n);el.classList.toggle('queued',mode==='queue'&&q>=0);if(mode==='queue'&&q>=0)el.querySelector('.qbadge').textContent='#'+(q+1);});
   const cb=document.getElementById('cbig'),ci=document.getElementById('cint');
-  if(cb){ if(mode==='queue'){cb.textContent=runs().length;ci.innerHTML='run(s)<br>'+runs().map((r,i)=>`${i+1}. ${r.label}`).join('<br>');}
+  if(cb){ if(mode==='queue'){cb.textContent=runs().length;ci.innerHTML='run(s)<br>'+runs().map((r,i)=>`${i+1}. ${esc(r.label)}`).join('<br>');}
     else{const facs=activeFacets();cb.textContent=facs.reduce((a,n)=>a+ncells(n),0);const ig=integrityOf(facs);
       ci.innerHTML= ig.complete ? 'cells<br><span style="color:var(--accent)">integrity: complete</span>'
         : 'cells<br><span style="color:var(--dont-text)">integrity: '+esc(ig.msg)+'</span>';} }
@@ -1788,7 +1828,7 @@ let PK_CUR_ID=null;
 
 function syncHideBtn(){
   const b=document.getElementById('phide'); if(!b||!PK_CUR_ID) return;
-  b.textContent = isHidden(PK_CUR_ID) ? 'Unhide this' : 'Hide this from my Explore';
+  b.textContent = isHidden(PK_CUR_ID) ? 'Show it again' : 'Hide from my list';
 }
 (function wireProfileControls(){
   const hide=document.getElementById('phide'), rep=document.getElementById('preport'),
@@ -1927,6 +1967,21 @@ async function renderExplore(){
     + 'Everything here is public because its owner chose to publish it.';
 }
 
+const CELL_LABEL={CONTEXT:'Who it is',DO:'What it helps with',DONT:'What it will not do',GATES:'Its hard rules',VOICE:'How it sounds'};
+function cellLabel(c){ return CELL_LABEL[c]||c; }
+// A stranger arriving from a shared link needs a sentence about the persona, not a count of internal objects.
+function profileSummary(g){
+  const fs=(g&&g.facets)||[]; const core=fs.find(f=>f.name==='core')||fs[0];
+  let t=(core&&core.cells)?cellBody(core.cells.CONTEXT||''):'';
+  t=String(t||'').replace(/\s+/g,' ').trim();
+  if(!t) return 'Its owner has not written the description yet. What they did write is below.';
+  t=t.replace(/^you(?:'re| are)\s+/i,'').replace(/^your job is to\s+/i,'Here to ');
+  t=t.charAt(0).toUpperCase()+t.slice(1);
+  const m=t.match(/^.{20,180}?[.!?](\s|$)/);
+  if(m) return m[0].trim();
+  if(t.length<=180) return t;
+  return t.slice(0,180).replace(/\s+\S*$/,'')+'\u2026';
+}
 async function renderProfile(id){
   const nameEl=document.getElementById('pname');
   const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public').eq('id',id).maybeSingle();
@@ -1934,13 +1989,14 @@ async function renderProfile(id){
     document.getElementById('ppersona').textContent='This persona is private, or the link is wrong. Ask its owner to make it public.';
     document.getElementById('pfacets').innerHTML=''; document.getElementById('pcells').textContent='';
     document.getElementById('pfacetcount').textContent=''; document.getElementById('pkind').textContent='not found';
-    document.getElementById('pchat').style.display='none'; return; }
+    const __ct=document.getElementById('pctatalk'); if(__ct)__ct.style.display='none';
+    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; return; }
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
   nameEl.textContent=nm; document.getElementById('pavatar').textContent=(nm.trim()[0]||'T').toUpperCase();
-  const cellCount=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
-  document.getElementById('pcells').textContent=cellCount+' cells';
-  document.getElementById('pfacetcount').textContent=g.facets.length+' facets';
+  document.getElementById('pcells').textContent='';
+  document.getElementById('pfacetcount').textContent='';
+  document.getElementById('psummary').textContent=profileSummary(g);
   const THEME_KEYS=['coral','teal','violet','blue','gold','rose'];
   const THEMES=Object.assign(Object.create(null),{coral:'#C24B2A',teal:'#2F7D6E',violet:'#7D4A78',blue:'#4A5C9E',gold:'#8A6A16',rose:'#A8392F'});
   // A saved theme is either one of our keys or a literal 6-digit hex the editor wrote.
@@ -1959,23 +2015,33 @@ async function renderProfile(id){
   const pe=document.getElementById('ppersona'); pe.innerHTML=''; let any=false;
   pick.forEach(fn=>{ const f=bn[fn]; if(!f)return; order.filter(c=>f.cells[c]&&String(f.cells[c]).trim()).forEach(c=>{ any=true;
     const sec=document.createElement('div'); sec.className='psec';
-    const h=document.createElement('div'); h.className='psh'; h.textContent=fn+' \u00b7 '+c;
+    const h=document.createElement('div'); h.className='psh'; h.textContent=(fn==='core'?'':fn.charAt(0).toUpperCase()+fn.slice(1)+' \u00b7 ')+cellLabel(c);
     const bd=document.createElement('div'); bd.className='psb'; bd.textContent=cellBody(f.cells[c]);
     sec.append(h,bd); pe.appendChild(sec); }); });
   if(!any){ pe.textContent='This persona has not been filled in yet.'; }
   const grid=document.getElementById('pfacets'); grid.innerHTML='';
   g.facets.forEach(f=>{ const card=document.createElement('div'); card.className='fcard';
     const fh=document.createElement('div'); fh.className='fh';
-    const nmS=document.createElement('span'); nmS.className='nm'; nmS.textContent=f.name;
-    const kd=document.createElement('span'); kd.className='kd'; kd.textContent=f.kind; fh.append(nmS,kd); card.appendChild(fh);
+    const nmS=document.createElement('span'); nmS.className='nm'; nmS.textContent=(f.name==='core'?'The basics':f.name);
+    const kd=document.createElement('span'); kd.className='kd'; kd.textContent=(f.kind==='core'?'':f.kind); fh.append(nmS,kd); card.appendChild(fh);
     order.filter(c=>f.cells&&f.cells[c]&&String(f.cells[c]).trim()).forEach(c=>{ const cell=document.createElement('div'); cell.className='cell';
-      const cl=document.createElement('span'); cl.className='cl'; cl.textContent=c;
+      const cl=document.createElement('span'); cl.className='cl'; cl.textContent=cellLabel(c);
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; syncHideBtn();
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds();
     if(!localStorage.getItem('tg_key')){ settings.classList.add('open'); } else { chat.classList.add('open'); renderChat(); } };
+  // Same guarded text the editor's Copy prompt hands out. No key, no account, no money: this is the door most readers take.
+  document.getElementById('pcopy').onclick=()=>{
+    const b=document.getElementById('pcopy'), ta=document.getElementById('pcopytext');
+    const reset=()=>setTimeout(()=>{b.textContent='Copy it into your AI';},3200);
+    let txt='';
+    try{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); if(fullComposeText().trim()) txt=guardedPrompt(); }catch(_){ txt=''; }
+    // A success message over an empty clipboard is worse than an honest failure.
+    if(!txt){ b.textContent='Nothing to copy: this persona is empty.'; reset(); return; }
+    navigator.clipboard.writeText(txt).then(()=>{ b.textContent='Copied. Now open Claude or ChatGPT and paste it.'; reset(); })
+      .catch(()=>{ b.textContent='Could not copy. Select the text in the box below.'; ta.value=txt; ta.hidden=false; ta.focus(); ta.select(); reset(); }); };
 }
 
 
@@ -2142,6 +2208,62 @@ window.addEventListener('resize',()=>{ clearTimeout(__rzT); __rzT=setTimeout(()=
   if(GRID.facets && GRID.facets.length){ buildBoard(); render(); requestAnimationFrame(autoView); }
 },180); });
 
-applyT(); route();
+// ---------- help, always one tap away (Dylan 2026-08-29). Layer 1 only: scripted, offline, no key. ----------
+const TOUR_PROFILE=[
+  {sel:'#pname', t:'This is someone\u2019s AI persona', x:'A person wrote a short handbook about themselves or a character, and published it. Everything on this page is what they typed.'},
+  {sel:'#ppersona', t:'You can read the whole thing', x:'No hidden instructions. What it says here is exactly what the AI is told to be.'},
+  {sel:'.pcta', t:'Talk to it for free', x:'Copy it into your AI puts the whole persona on your clipboard. Paste it into Claude or ChatGPT and start talking. No key, no account here, no cost.'},
+  {sel:'.pdisc', t:'It is not a real person', x:'It is text being read back by an AI. It can be wrong, and it only knows what its owner wrote.'}
+];
+const HELP_FAQ=[
+  {q:'What is a persona?', a:'A short handbook about a person or a character: who they are, what they want help with, what it should never do, and how they talk. It is all plain language and anyone can read the whole thing.'},
+  {q:'How do I make one?', a:'You need a free account first, which is one email link and no card. After that your home page has three doors, and the quickest is Answer a few questions: we ask, you answer, and the persona writes itself.', go:'Start a free account', href:'?'},
+  {q:'How do I make mine public?', a:'Open the persona in the advanced editor, tick "make public", then press Save. Nothing is public until you press Save. Tick the box and forget to save and the link will not work for anyone.', go:'Sign in and open the editor', href:'?editor'},
+  {q:'How do I share it?', a:'Once it is public and saved, the card on your home page shows Copy share link. Paste that link into a text or a post. Anyone with the link can read it. Nobody but you can change it.', go:'Sign in to my personas', href:'?'},
+  {q:'How do I talk to it?', a:'On a persona page press Copy it into your AI, then paste it into Claude, ChatGPT, or whatever AI you already use. That is free. If you have your own Anthropic key you can chat right here instead.'},
+  {q:'How do I delete one?', a:'Open it in the advanced editor and press Delete. It goes away from the site, and any share link for it stops working.', go:'Sign in and open the editor', href:'?editor'},
+  {q:'I copied it. Now what?', a:'Open the Claude or ChatGPT app, or their website. Tap the message box at the bottom, hold your finger down until Paste appears, tap Paste, then send it. Both are free to sign up for if you do not have one.'},
+  {q:'Is this a real person?', a:'No. Every persona here is written text being read back to you by an AI. It only knows what its owner typed, it can be wrong, and it is not the person it describes.'},
+  {q:'Do I have to pay, or give a card?', a:'No. Making personas and sharing them is free, and there is no card field anywhere on this site. If you choose to chat here with your own AI key, that cost is between you and whoever issued the key.'}
+];
+(function initHelp(){
+  const btn=document.getElementById('helpbtn'), panel=document.getElementById('helppanel'),
+        qs=document.getElementById('helpqs'), tbtn=document.getElementById('helptour');
+  if(!btn||!panel) return;
+  function tourForView(){ const c=document.body.className||'';
+    if(c==='') return {name:'editor',steps:TOUR_EDITOR};
+    if(/route-home/.test(c)) return {name:'home',steps:TOUR_HOME};
+    if(/route-profile/.test(c)) return {name:'profile',steps:TOUR_PROFILE};
+    return null; }
+  function allowed(){ const c=document.body.className||'';
+    return c==='' || /route-home|route-profile|route-explore/.test(c); }
+  function close(){ panel.hidden=true; btn.setAttribute('aria-expanded','false'); }
+  function open(){ const t=tourForView(); tbtn.hidden=!t; panel.hidden=false; btn.setAttribute('aria-expanded','true'); }
+  HELP_FAQ.forEach((f,i)=>{
+    const b=document.createElement('button'); b.type='button'; b.className='q'; b.textContent=f.q;
+    b.setAttribute('aria-expanded','false'); b.id='hq'+i;
+    const a=document.createElement('div'); a.className='hpa'; a.hidden=true;
+    const p=document.createElement('p'); p.style.margin='0'; p.textContent=f.a; a.appendChild(p);
+    if(f.go&&f.href){ const g=document.createElement('button'); g.type='button'; g.className='go'; g.textContent=f.go;
+      g.onclick=()=>{ location.href=f.href; }; a.appendChild(g); }
+    b.onclick=()=>{ const now=a.hidden; qs.querySelectorAll('.hpa').forEach(x=>x.hidden=true);
+      qs.querySelectorAll('button.q').forEach(x=>x.setAttribute('aria-expanded','false'));
+      a.hidden=!now; b.setAttribute('aria-expanded', now?'true':'false'); };
+    qs.append(b,a);
+  });
+  tbtn.onclick=()=>{ const t=tourForView(); if(!t) return; close(); tourStart(t.name,t.steps); };
+  btn.onclick=()=>{ panel.hidden ? open() : close(); };
+  document.getElementById('helpx').onclick=close;
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!panel.hidden) close(); });
+  document.addEventListener('click',e=>{ if(panel.hidden) return;
+    if(!panel.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)) close(); });
+  // The tour paints its own overlay, so the help button steps out of the way while it runs.
+  function sync(){ const touring=document.getElementById('tour').classList.contains('open');
+    const show=allowed()&&!touring; btn.hidden=!show; if(!show) close(); }
+  window.__helpSync=sync;
+  new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});
+  new MutationObserver(sync).observe(document.getElementById('tour'),{attributes:true,attributeFilter:['class']});
+})();
+applyT(); route(); if(window.__helpSync) window.__helpSync();
 </script>
 </body></html>
