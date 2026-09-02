@@ -14,7 +14,7 @@
     "HOSTED_MODEL": "claude-haiku-4-5-20251001",
     // RevenueCat product id -> credits granted per purchase or renewal.
     // The key MUST equal the Web Billing product identifier in the RC dashboard.
-    "CREDIT_PACKS": "{\"pk_hosted_500_month\":500}"
+    "CREDIT_PACKS": "{\"pk_hosted_500_month\":500,\"pk_hosted_6000_year\":6000}"
   }
   // Optional KV rate limiter. Leave this out until the namespace exists; api.js
   // skips rate limiting when RATE_KV is not bound.
