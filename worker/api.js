@@ -394,6 +394,8 @@ async function handleChat(request, env) {
   const model = (typeof env.HOSTED_MODEL === "string" && env.HOSTED_MODEL.trim()) || DEFAULT_MODEL;
   let text = null;
   let upstreamStatus = 0;
+  let upstreamType = "";
+  let upstreamMsg = "";
   try {
     const res = await fetch(ANTHROPIC_URL, {
       method: "POST",
@@ -414,6 +416,13 @@ async function handleChat(request, env) {
       const j = await res.json();
       const first = j && Array.isArray(j.content) ? j.content.find((c) => c && c.type === "text") : null;
       text = first && typeof first.text === "string" ? first.text : "";
+    } else {
+      // Anthropic's own error envelope: type and the head of its message. Vendor text, never user content.
+      try {
+        const e = await res.json();
+        upstreamType = e && e.error && typeof e.error.type === "string" ? e.error.type : "";
+        upstreamMsg = e && e.error && typeof e.error.message === "string" ? e.error.message.slice(0, 200) : "";
+      } catch (_) { /* non-JSON error body */ }
     }
   } catch (_) {
     text = null;
@@ -427,9 +436,9 @@ async function handleChat(request, env) {
     });
     if (!r.ok) console.log("refund_failed"); // no user data, no content
     // Upstream HTTP status only (0 = fetch threw). A number, never a body, never a key.
-    console.log("upstream_failed", upstreamStatus);
+    console.log("upstream_failed", upstreamStatus, upstreamType, upstreamMsg);
     const status = upstreamStatus === 429 ? 429 : 502;
-    return json(request, status, { error: "upstream_failed", upstream: upstreamStatus, remaining: r.ok ? Number(r.value) : remaining + 1 });
+    return json(request, status, { error: "upstream_failed", upstream: upstreamStatus, upstream_type: upstreamType, upstream_msg: upstreamMsg, remaining: r.ok ? Number(r.value) : remaining + 1 });
   }
 
   return json(request, 200, { text, remaining, model });
