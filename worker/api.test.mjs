@@ -2,7 +2,7 @@
 // with a fake that answers the Supabase and Anthropic shapes the handler uses.
 // Run: node worker/api.test.mjs
 
-import { handleApi, guardedPrompt, chatCost } from "./api.js";
+import { handleApi, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES } from "./api.js";
 
 const ENV = {
   SUPABASE_URL: "https://example.supabase.co",
@@ -400,6 +400,34 @@ await check("capacity gate: the reserve carries the persona, the messages and 70
   eq(capacityCalls[0].p_provider, "anthropic", "provider");
   // system for the test grid is guard + two cells, well under 24k chars; 350 chars of messages = 100 tokens.
   if (!(capacityCalls[0].p_micro > 3500 && capacityCalls[0].p_micro < 6000)) throw new Error("estimate out of the expected band: " + capacityCalls[0].p_micro);
+});
+
+
+await check("voiceCost: 1 credit per 150 chars, floor 2, ceiling 6", async () => {
+  eq(voiceCost(1), 2, "1"); eq(voiceCost(300), 2, "300"); eq(voiceCost(301), 3, "301"); eq(voiceCost(900), 6, "900"); eq(voiceCost(5000), 6, "5000");
+});
+
+await check("pcmToWav: 44-byte RIFF header, mono 16-bit at the given rate, data appended", async () => {
+  const pcm = new Uint8Array([1, 2, 3, 4]);
+  const w = pcmToWav(pcm, 24000);
+  eq(w.length, 48, "length");
+  eq(String.fromCharCode(w[0], w[1], w[2], w[3]), "RIFF", "riff");
+  eq(String.fromCharCode(w[8], w[9], w[10], w[11]), "WAVE", "wave");
+  const dv = new DataView(w.buffer);
+  eq(dv.getUint16(22, true), 1, "channels"); eq(dv.getUint32(24, true), 24000, "rate"); eq(dv.getUint16(34, true), 16, "bits"); eq(dv.getUint32(40, true), 4, "data size");
+  eq(w[47], 4, "last byte");
+});
+
+await check("voice: no token -> 401, GET -> 405, persona without a voice -> 409 and nothing spent", async () => {
+  eq(GOOGLE_VOICES.size, 30, "thirty voices");
+  const r1 = await handleApi(req("/api/media/voice", { method: "POST", headers: H({}), body: JSON.stringify({ grid_id: GRID_ID, text: "hi" }) }), Object.assign({ GOOGLE_API_KEY: "g" }, ENV));
+  eq(r1.status, 401, "no token");
+  const r2 = await handleApi(req("/api/media/voice", { method: "GET", headers: H({}) }), ENV);
+  eq(r2.status, 405, "get");
+  balance = 5; calls.length = 0;
+  const r3 = await handleApi(req("/api/media/voice", { method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }), body: JSON.stringify({ grid_id: GRID_ID, text: "hi" }) }), Object.assign({ GOOGLE_API_KEY: "g" }, ENV));
+  eq(r3.status, 409, "no voice");
+  eq(balance, 5, "nothing spent");
 });
 
 console.log("\n" + pass + " passed, " + fail + " failed");

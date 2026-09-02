@@ -1093,6 +1093,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
       <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
       <div id="facemsg" aria-live="polite"></div>
+      <div id="voicebox" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="facevoice" class="note" style="margin:0">Voice</label><select id="facevoice" class="tbtn" aria-label="Persona voice" style="font-size:12px;padding:6px 8px"><option value="">No voice</option><option value="browser">Browser voice (free)</option></select><span class="note" id="voicenote" style="margin:0">Gemini voices cost 2 to 6 messages a reply to hear; the browser voice is free.</span></div>
       <div class="note" id="shareline" style="margin-top:10px;display:none"></div>
       <button class="newbtn" id="delbtn" style="color:var(--dont-text);border-color:transparent;margin-top:14px">Delete this persona</button>
     </aside>
@@ -1141,6 +1142,10 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 </div>
 
 <button id="tutbtn" type="button" aria-haspopup="dialog" hidden>Tutorial</button>
+<div id="termsbar" hidden role="region" aria-label="Terms update" style="position:fixed;left:12px;right:12px;bottom:76px;z-index:57;max-width:560px;margin:0 auto;background:var(--surface,#161C24);color:var(--text,#E7E4DC);border:1px solid var(--line,#2A323E);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;font-size:14px;line-height:1.5;box-shadow:0 12px 40px rgba(0,0,0,.35)">
+  <span style="flex:1">We added a <a href="terms.html" target="_blank" rel="noopener" style="color:inherit">Terms of Service and Privacy Notice</a>. To keep using your account you need to be 18 or older and agree to it.</span>
+  <button type="button" id="termsagree" class="pk-btn solid" style="flex:none">I agree</button>
+</div>
 <div id="tut" role="dialog" aria-modal="true" aria-labelledby="tuttitle">
   <div id="tutbox">
     <div id="tuthead"><h2 id="tuttitle">How to make your persona</h2><button class="tx" id="tutx" type="button" aria-label="Close">&times;</button></div>
@@ -1431,7 +1436,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 </style>
 
 <div class="drawer" id="chat">
-  <div class="dhead"><div class="t" id="chattitle">Chat</div><button class="x" id="chatx">&times;</button></div>
+  <div class="dhead"><div class="t" id="chattitle">Chat</div><button class="x" id="chatspk" type="button" title="Hear replies" aria-pressed="false" style="margin-right:6px;font-size:16px">&#128264;</button><button class="x" id="chatx">&times;</button></div>
   <div class="msg sys" id="creditsline" hidden style="margin:8px 12px 0"></div>
   <div class="dbody" id="chatbody"></div>
   <div class="chatin"><textarea id="chatinput" placeholder="Talk to the composed persona..."></textarea><button class="savebtn" id="chatsend">Send</button></div>
@@ -1850,7 +1855,12 @@ document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',p
 document.getElementById('email').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMagic(); } });
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
 document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
-SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
+function termsBar(session){ const bar=document.getElementById('termsbar'); if(!bar) return; const u=session&&session.user; const md=(u&&u.user_metadata)||{};
+  bar.hidden = !(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')!==TERMS_VERSION); }
+document.getElementById('termsagree').onclick=async()=>{ try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} document.getElementById('termsbar').hidden=true;
+  try{ await SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}); }catch(_){} };
+SB.auth.getSession().then(({data})=>termsBar(data&&data.session)).catch(()=>{});
+SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
   // Terms acceptance record (2026-09-02): the box was ticked in this browser before sign-in, so stamp the version on the user once.
   try{ const u=session&&session.user; const md=(u&&u.user_metadata)||{}; if(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')===TERMS_VERSION){ SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}).catch(()=>{}); } }catch(_){} });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
@@ -1874,7 +1884,7 @@ let mode='single'; const sel={specialist:null,mode:null,role:null,register:"vibe
 // ---------- clones (db) ----------
 let __clonesGen=0;
 async function loadClones(){ const gen=++__clonesGen;
-  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data,image_url').eq('owner',await ownerId()).order('updated_at',{ascending:false});
+  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data,image_url,voice_id').eq('owner',await ownerId()).order('updated_at',{ascending:false});
   if(gen!==__clonesGen) return;
   const list=document.getElementById('clonelist'); list.innerHTML='';
   if(error){ list.innerHTML=''; const ep=document.createElement('p'); ep.className='note'; ep.textContent=error.message; list.appendChild(ep); return; }
@@ -1884,7 +1894,7 @@ async function loadClones(){ const gen=++__clonesGen;
   if(!curId && data.length){ selectClone(data[0]); }
 }
 function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facets:[]}; reindex(); rebuildKinds();
-  document.getElementById('gridname').value=r.name||''; document.getElementById('ispublic').checked=!!r.is_public; faceShow(r.image_url||null);
+  document.getElementById('gridname').value=r.name||''; document.getElementById('ispublic').checked=!!r.is_public; faceShow(r.image_url||null); chatVoice=r.voice_id||''; const __fv=document.getElementById('facevoice'); if(__fv) __fv.value=chatVoice;
   buildBoard(); render();
   // refit whenever a different persona is loaded, not just once per page load
   if(__isPhone()) requestAnimationFrame(autoView);
@@ -1900,6 +1910,29 @@ document.getElementById('savebtn').onclick=async()=>{ if(!curId)return;
   const b=document.getElementById('savebtn'); b.textContent='Saving...';
   const {error}=await SB.from('twingrid_grids').update({name:document.getElementById('gridname').value,is_public:document.getElementById('ispublic').checked,data:GRID}).eq('id',curId);
   b.textContent=error?'Error':'Saved'; setTimeout(()=>b.textContent='Save',1400); updateShare(); loadClones(); };
+// ---------- persona voice (2026-09-02): pick a Google voice or the free browser voice; hear replies in the drawer ----------
+const GOOGLE_VOICES=('Zephyr Puck Charon Kore Fenrir Leda Orus Aoede Callirrhoe Autonoe Enceladus Iapetus Umbriel Algieba Despina Erinome Algenib Rasalgethi Laomedeia Achernar Alnilam Schedar Gacrux Pulcherrima Achird Zubenelgenubi Vindemiatrix Sadachbia Sadaltager Sulafat').split(' ');
+let chatVoice='';   // voice_id of the persona in the drawer: '', 'browser', or a Google voice name
+let speakOn=false;
+(function(){ const sel=document.getElementById('facevoice'); if(!sel) return; GOOGLE_VOICES.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v+' (Gemini)'; sel.appendChild(o); });
+  sel.onchange=async()=>{ if(!curId){ faceMsg('Save the persona first, then pick a voice.'); sel.value=chatVoice; return; }
+    const v=sel.value; const {error}=await SB.from('twingrid_grids').update({voice_id:v||null}).eq('id',curId);
+    if(error){ faceMsg('Could not save the voice: '+String(error.message||'').slice(0,100)); sel.value=chatVoice; return; }
+    chatVoice=v; faceMsg(v? (v==='browser'?'Browser voice set. Free to hear.':'Voice set: '+v+'. Hearing a reply costs 2 to 6 messages.') : 'Voice removed.'); }; })();
+function voiceCostFor(text){ return Math.max(2, Math.min(6, Math.ceil(text.length/150))); }
+async function speakReply(text){ if(!speakOn||!chatVoice||!text) return;
+  if(chatVoice==='browser'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text.slice(0,900)); window.speechSynthesis.speak(u); }catch(_){} return; }
+  const token=await hostedToken(); const gridId=currentGridId(); if(!token||!gridId) return;
+  const cost=voiceCostFor(text.slice(0,900));
+  try{ const res=await fetch(HOSTED_API+'/media/voice',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({grid_id:gridId,text:text.slice(0,900)})});
+    if(res.status===402){ hostedRemaining=0; setCreditsLine('Hosted chat: hearing this reply costs '+cost+' messages and you have fewer left. Renew, or turn the speaker off.'); showProCard(); return; }
+    if(res.status===429){ let j=null; try{ j=await res.json(); }catch(_){} setCreditsLine(j&&j.error==='daily_cap'?'That is 200 spoken replies today, the daily cap. Nothing was charged.':'Slow down a little; try the speaker again in a minute.'); return; }
+    if(res.status===503){ let j=null; try{ j=await res.json(); }catch(_){} setCreditsLine(j&&j.error==='capacity'?'Voices are paused: the site has reached its capacity for now. Nothing was charged.':'Voices are not switched on yet.'); return; }
+    if(res.status===409){ setCreditsLine('This persona has no voice yet. Its owner can pick one in the editor.'); return; }
+    if(!res.ok){ setCreditsLine('The voice did not answer. Your messages were returned.'); return; }
+    const rem=Number(res.headers.get('X-Remaining')); if(Number.isFinite(rem)){ hostedRemaining=rem; setCreditsLine('Hosted chat: '+rem+' message'+(rem===1?'':'s')+' left (that reply cost '+(res.headers.get('X-Cost')||cost)+' to hear)'); }
+    const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=new Audio(url); a.onended=()=>URL.revokeObjectURL(url); window.__pkLastAudio=a; await a.play().catch(()=>{});
+  }catch(_){ setCreditsLine('The voice did not answer. Your messages were returned.'); } }
 // ---------- persona image, upload half (2026-09-02) ----------
 // Everything happens in the browser: crop to a square, shrink to 512, encode as webp, put it in the uploader's own
 // folder of the twingrid-media bucket (storage RLS), then point the grid's image_url at it (a trigger refuses any
@@ -2214,6 +2247,11 @@ const chat=document.getElementById('chat'), settings=document.getElementById('se
 let history=[];
 document.getElementById('chatbtn').onclick=()=>{ openChat(); };
 document.getElementById('chatx').onclick=()=>chat.classList.remove('open');
+document.getElementById('chatspk').onclick=()=>{ const b=document.getElementById('chatspk');
+  if(!chatVoice){ setCreditsLine('This persona has no voice yet. Its owner can pick one in the editor: a free browser voice, or a Gemini voice.'); return; }
+  speakOn=!speakOn; b.setAttribute('aria-pressed',String(speakOn)); b.textContent=speakOn?'\u{1F50A}':'\u{1F508}';
+  if(!speakOn){ try{ window.speechSynthesis.cancel(); if(window.__pkLastAudio) window.__pkLastAudio.pause(); }catch(_){} setCreditsLine(''); return; }
+  setCreditsLine(chatVoice==='browser'?'Speaker on: replies are read by your browser, free.':'Speaker on: hearing a reply costs 2 to 6 messages, up to 200 a day.'); };
 document.getElementById('setx').onclick=()=>settings.classList.remove('open');
 document.querySelectorAll('#settings .tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#settings .tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));document.getElementById('tab-api').style.display=b.dataset.t==='api'?'block':'none';document.getElementById('tab-local').style.display=b.dataset.t==='local'?'block':'none';});
 document.getElementById('apikey').value=localStorage.getItem('tg_key')||''; document.getElementById('model').value=localStorage.getItem('tg_model')||'claude-sonnet-4-5';
@@ -2262,7 +2300,7 @@ async function sendChat(){const inp=document.getElementById('chatinput');const t
       if(res.status===429){ pushAssistant('[hosted] Slow down a little. Try again in a minute.'); return; }
       if(res.status===503&&j&&j.error==='capacity'){ history.pop(); inp.value=text; renderChat(); pushAssistant('[hosted] Hosted chat is paused: the site has reached its capacity for now. Nothing was charged; your messages stay yours. Try later, or add your own key.'); return; }
       if(!res.ok||!j||typeof j.text!=='string'){ pushAssistant('[hosted] The model did not answer. Your message credit was returned. Try again.'); if(j&&typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' left'); } return; }
-      pushAssistant(j.text||'[no text]');
+      pushAssistant(j.text||'[no text]'); speakReply(j.text||'');
       if(typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' message'+(j.remaining===1?'':'s')+' left'+(j.cost>1?' (this persona is large, '+j.cost+' messages a reply)':'')); if(j.remaining===0) showProCard(); }
     }catch(e){ wait.remove(); pushAssistant('[hosted request failed] '+(e&&e.message?e.message:'network error')); }
     return;
@@ -2274,7 +2312,7 @@ async function sendChat(){const inp=document.getElementById('chatinput');const t
     body:JSON.stringify({model:localStorage.getItem('tg_model')||'claude-sonnet-4-5',max_tokens:1024,system:sysPrompt,messages:history.map(m=>({role:m.role,content:m.content}))})});
     const j=await res.json(); wait.remove();
     if(j.error){history.push({role:'assistant',content:'[error] '+j.error.message});}
-    else{history.push({role:'assistant',content:(j.content&&j.content[0]&&j.content[0].text)||'[no text]'});}
+    else{ const __t=(j.content&&j.content[0]&&j.content[0].text)||'[no text]'; history.push({role:'assistant',content:__t}); speakReply(__t); }
     renderChat();
   }catch(e){wait.remove();history.push({role:'assistant',content:'[request failed] '+e.message+' (a browser CORS block or bad key)'});renderChat();}}
 
@@ -2565,7 +2603,7 @@ function profileSummary(g){
 }
 async function renderProfile(id,opts){ opts=opts||{};
   const nameEl=document.getElementById('pname'); const pby=document.getElementById('pby'); pby.hidden=true; pby.textContent='';
-  const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public,owner,image_url').eq('id',id).maybeSingle();
+  const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public,owner,image_url,voice_id').eq('id',id).maybeSingle();
   if(error||!data){ nameEl.textContent='Persona not found'; document.getElementById('pavatar').textContent='?';
     document.getElementById('ppersona').textContent=opts.missingName?('@'+opts.handle+' has no public persona named "'+opts.missingName+'". It may have been renamed or made private.'):'This persona is private, or the link is wrong. Ask its owner to make it public.';
     if(opts.handle){ pby.hidden=false; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(opts.handle); a.textContent='@'+opts.handle; pby.append('See everything by ',a); }
@@ -2575,7 +2613,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; return; }
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
-  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase());
+  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); chatVoice=data.voice_id||'';
   handleFor(data.owner).then(h=>{ if(!h) return; pby.hidden=false; pby.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; pby.append('by ',a);
     try{ const q=new URLSearchParams(location.search); if(q.get('t')&&!q.get('u')){ q.delete('t'); q.set('u',h); q.set('p',nm); window.history.replaceState(null,'','?'+q.toString()); } }catch(_){} });
   document.getElementById('pcells').textContent='';

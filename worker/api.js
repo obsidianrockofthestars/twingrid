@@ -8,6 +8,8 @@
 //   GET  /api/credits     Authorization: Bearer <supabase access token>
 //   POST /api/chat        same auth, body { grid_id, messages, compose? }
 //   POST /api/rc-webhook  RevenueCat webhook, Authorization must equal env.RC_WEBHOOK_AUTH
+//   POST /api/media/voice same auth as chat, body { grid_id, text }: spends voiceCost(text), ticks the daily voice cap,
+//     calls Gemini TTS with the persona's voice_id, answers audio/wav (X-Cost, X-Remaining), stores nothing.
 //   POST /api/media/image same auth as chat, body { grid_id, style }: spends IMAGE_CREDITS, ticks the daily
 //                         cap, asks Google for one square persona image, returns it base64 (the page stores it)
 //   anything else         404 JSON
@@ -66,6 +68,76 @@ const MAX_BODY_BYTES = 256 * 1024;
 const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
 const IMAGE_CREDITS = 15;
 const IMAGE_DAILY_CAP = 10;
+
+// Persona voice (2026-09-02, Dylan's rulings by picker): Gemini TTS, 1 credit per 150 characters,
+// minimum 2, maximum 6 (text capped at 900 chars), 200 voiced replies a day per user, audio never
+// stored. Price read 2026-09-02 from ai.google.dev/gemini-api/docs/pricing: Gemini 3.1 Flash TTS
+// Preview $1 per million text tokens in, $20 per million audio tokens out, 25 audio tokens a second.
+// The voice list is Google's 30 prebuilt names, read from the speech-generation doc the same day.
+// TTS_MODEL var overrides the model id. The endpoint is the interactions API the doc shows for this
+// model; MICRO_PER_VOICE_CHAR is about 1.67 audio tokens a character at $20 per million.
+const DEFAULT_TTS_MODEL = "gemini-3.1-flash-tts-preview";
+const VOICE_CHARS_PER_CREDIT = 150;
+const VOICE_MIN_CREDITS = 2;
+const VOICE_MAX_CREDITS = 6;
+const VOICE_MAX_CHARS = VOICE_CHARS_PER_CREDIT * VOICE_MAX_CREDITS;
+const VOICE_DAILY_CAP = 200;
+const MICRO_PER_VOICE_CHAR = 34;
+export const GOOGLE_VOICES = new Set(("Zephyr Puck Charon Kore Fenrir Leda Orus Aoede Callirrhoe Autonoe Enceladus Iapetus Umbriel " +
+  "Algieba Despina Erinome Algenib Rasalgethi Laomedeia Achernar Alnilam Schedar Gacrux Pulcherrima Achird " +
+  "Zubenelgenubi Vindemiatrix Sadachbia Sadaltager Sulafat").split(" "));
+
+export function voiceCost(chars) {
+  const n = Math.ceil(Number(chars) / VOICE_CHARS_PER_CREDIT);
+  if (!Number.isFinite(n)) return VOICE_MIN_CREDITS;
+  return Math.max(VOICE_MIN_CREDITS, Math.min(VOICE_MAX_CREDITS, n));
+}
+
+// 16-bit mono PCM at 24 kHz to a WAV container. Pure byte work, no library.
+export function pcmToWav(pcm, sampleRate) {
+  const header = new ArrayBuffer(44);
+  const v = new DataView(header);
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, "RIFF"); v.setUint32(4, 36 + pcm.length, true); w(8, "WAVE");
+  w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  w(36, "data"); v.setUint32(40, pcm.length, true);
+  const out = new Uint8Array(44 + pcm.length);
+  out.set(new Uint8Array(header), 0); out.set(pcm, 44);
+  return out;
+}
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// Find the audio block in an interactions response without assuming its exact shape:
+// output_audio.data, or the last outputs[] item carrying base64 data with an audio type or mime.
+function findAudio(j) {
+  if (!j || typeof j !== "object") return null;
+  const oa = j.output_audio || j.outputAudio;
+  if (oa && typeof oa.data === "string") return { data: oa.data, mime: String(oa.mime_type || oa.mimeType || "audio/pcm") };
+  const outs = Array.isArray(j.outputs) ? j.outputs : (Array.isArray(j.output) ? j.output : []);
+  for (let i = outs.length - 1; i >= 0; i--) {
+    const o = outs[i];
+    if (!o || typeof o !== "object") continue;
+    if (typeof o.data === "string" && (o.type === "audio" || /audio|pcm/i.test(String(o.mime_type || o.mimeType || "")))) {
+      return { data: o.data, mime: String(o.mime_type || o.mimeType || "audio/pcm") };
+    }
+    const parts = Array.isArray(o.content) ? o.content : (Array.isArray(o.parts) ? o.parts : []);
+    for (let k = parts.length - 1; k >= 0; k--) {
+      const pt = parts[k];
+      if (pt && typeof pt.data === "string" && (pt.type === "audio" || /audio|pcm/i.test(String(pt.mime_type || pt.mimeType || "")))) {
+        return { data: pt.data, mime: String(pt.mime_type || pt.mimeType || "audio/pcm") };
+      }
+      if (pt && pt.inlineData && typeof pt.inlineData.data === "string") return { data: pt.inlineData.data, mime: String(pt.inlineData.mimeType || "audio/pcm") };
+    }
+  }
+  return null;
+}
 const IMAGE_STYLES = {
   portrait: "a warm, painterly portrait, soft natural light, head and shoulders, plain background",
   illustration: "a clean flat illustration, bold shapes, limited palette, head and shoulders",
@@ -717,6 +789,136 @@ async function handleRcWebhook(request, env) {
 // Entry point
 // ---------------------------------------------------------------------------
 
+async function fetchGridVoiceAsUser(env, token, gridId) {
+  const q = "/rest/v1/twingrid_grids?select=id,owner,voice_id&id=eq." + encodeURIComponent(gridId);
+  let res;
+  try {
+    res = await fetch(sbUrl(env, q), {
+      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token, Accept: "application/json" },
+    });
+  } catch (_) {
+    return { error: 502 };
+  }
+  if (!res.ok) return { error: res.status === 401 ? 401 : 502 };
+  let rows;
+  try { rows = await res.json(); } catch (_) { return { error: 502 }; }
+  if (!Array.isArray(rows) || rows.length !== 1) return { error: 404 };
+  return { grid: rows[0] };
+}
+
+// POST /api/media/voice, body { grid_id, text }. Anyone who can read the persona may hear it (RLS
+// decides, as the caller). Spends voiceCost(text) credits, ticks the daily cap, calls Gemini TTS
+// with the persona's voice_id, returns audio/wav with X-Cost and X-Remaining. Nothing is stored.
+async function handleMediaVoice(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  if (!env.GOOGLE_API_KEY) return json(request, 503, { error: "voice_not_configured" });
+
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const body = parsed.value || {};
+  if (typeof body.grid_id !== "string" || !UUID_RE.test(body.grid_id)) return json(request, 400, { error: "bad_grid_id" });
+  const text = typeof body.text === "string" ? body.text.trim() : "";
+  if (!text) return json(request, 400, { error: "bad_text" });
+  if (text.length > VOICE_MAX_CHARS) return json(request, 413, { error: "text_too_long", max: VOICE_MAX_CHARS });
+
+  if (await rateLimited(env, "voice:" + user.id, 30, 60)) {
+    return json(request, 429, { error: "rate_limited" }, { "Retry-After": "60" });
+  }
+
+  const g = await fetchGridVoiceAsUser(env, token, body.grid_id);
+  if (g.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (g.error === 401) return json(request, 401, { error: "unauthorized" });
+  if (g.error) return json(request, 502, { error: "grid_unavailable" });
+  const voice = typeof g.grid.voice_id === "string" ? g.grid.voice_id : "";
+  if (!GOOGLE_VOICES.has(voice)) return json(request, 409, { error: "no_voice" });
+
+  const cost = voiceCost(text.length);
+  if (!(await reserveCapacity(env, "google", text.length * MICRO_PER_VOICE_CHAR))) {
+    return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
+  }
+  const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: cost, p_kind: "voice" });
+  if (!spend.ok) return json(request, 502, { error: "credits_unavailable" });
+  const remaining = Number(spend.value);
+  if (!Number.isFinite(remaining) || remaining < 0) return json(request, 402, { error: "no_credits", cost });
+
+  const refund = async () => {
+    const r = await rpcService(env, "twingrid_grant_credits", {
+      p_user: user.id, p_delta: cost, p_kind: "refund", p_ref: "refund:" + crypto.randomUUID(), p_period_end: null,
+    });
+    if (!r.ok) console.log("refund_failed");
+    return r.ok ? Number(r.value) : remaining + cost;
+  };
+
+  const tick = await rpcService(env, "twingrid_media_tick", { p_user: user.id, p_kind: "voice", p_limit: VOICE_DAILY_CAP });
+  if (!tick.ok || tick.value !== true) {
+    const back = await refund();
+    return json(request, 429, { error: "daily_cap", cap: VOICE_DAILY_CAP, remaining: back }, { "Retry-After": "3600" });
+  }
+
+  const model = (typeof env.TTS_MODEL === "string" && env.TTS_MODEL.trim()) || DEFAULT_TTS_MODEL;
+  let audio = null;
+  let upstreamStatus = 0;
+  let upstreamMsg = "";
+  let shape = "";
+  try {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": env.GOOGLE_API_KEY },
+      body: JSON.stringify({
+        model,
+        input: text,
+        response_format: { type: "audio" },
+        generation_config: { speech_config: [{ voice }] },
+      }),
+    });
+    upstreamStatus = res.status;
+    if (res.ok) {
+      const j = await res.json();
+      audio = findAudio(j);
+      if (!audio && j && typeof j === "object") shape = Object.keys(j).slice(0, 8).join(",");
+    } else {
+      try {
+        const e = await res.json();
+        upstreamMsg = e && e.error && typeof e.error.message === "string" ? e.error.message.slice(0, 200) : "";
+      } catch (_) { /* non-JSON */ }
+    }
+  } catch (_) {
+    audio = null;
+  }
+
+  if (!audio) {
+    const back = await refund();
+    const u = await rpcService(env, "twingrid_media_untick", { p_user: user.id, p_kind: "voice" });
+    if (!u.ok) console.log("untick_failed");
+    console.log("voice_upstream_failed", upstreamStatus, upstreamMsg, shape); // status, vendor text, key names; never the reply text
+    return json(request, upstreamStatus === 429 ? 429 : 502, { error: "upstream_failed", upstream: upstreamStatus, upstream_msg: upstreamMsg, shape, remaining: back });
+  }
+
+  let bytes;
+  try { bytes = b64ToBytes(audio.data); } catch (_) { bytes = null; }
+  if (!bytes || bytes.length < 100) {
+    const back = await refund();
+    const u = await rpcService(env, "twingrid_media_untick", { p_user: user.id, p_kind: "voice" });
+    if (!u.ok) console.log("untick_failed");
+    return json(request, 502, { error: "empty_audio", remaining: back });
+  }
+  const isWav = bytes.length > 4 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
+  const rateMatch = /rate=(\d+)/.exec(audio.mime);
+  const wav = isWav ? bytes : pcmToWav(bytes, rateMatch ? Number(rateMatch[1]) : 24000);
+  return new Response(wav, {
+    status: 200,
+    headers: Object.assign(corsHeaders(request), {
+      "content-type": "audio/wav",
+      "cache-control": "no-store",
+      "X-Cost": String(cost),
+      "X-Remaining": String(remaining),
+      "Access-Control-Expose-Headers": "X-Cost, X-Remaining",
+    }),
+  });
+}
+
 export async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, "") || "/";
@@ -731,7 +933,8 @@ export async function handleApi(request, env) {
     if (path === "/api/chat" && method === "POST") return await handleChat(request, env);
     if (path === "/api/rc-webhook" && method === "POST") return await handleRcWebhook(request, env);
     if (path === "/api/media/image" && method === "POST") return await handleMediaImage(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image") {
+    if (path === "/api/media/voice" && method === "POST") return await handleMediaVoice(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });
