@@ -2710,17 +2710,31 @@ function nfInterviewText(){
   const lines=[];
   lines.push("I want you to write a short profile of me for a tool called Personakind, using what you already know about me from our past conversations and your memory of me. Answer the questions below in MY voice, as me, first person, plain language, one to three sentences each. Where you truly do not know, make your best honest guess from what you do know and keep it short; do not invent specifics like names, places or dates.");
   lines.push("");
-  lines.push("Reply with ONLY a JSON object, no commentary, using exactly these keys:");
+  lines.push("Reply with ONLY a JSON object, no commentary, using exactly these keys. Inside an answer use single quotes, never double quotes, so the JSON stays valid:");
   QSTEPS.forEach(st=>{ st.qs.forEach(q=>{ const hint=q.type==='choice'?(' Choose exactly one of: '+q.opts.join(', ')+'.'):''; lines.push('- "'+q.id+'": '+q.q+hint); }); });
   lines.push("");
   lines.push('Example shape: {"name":"...", "who":"...", "days":"...", "values":"...", "help":"...", "decide":"...", "direct":"Balanced", "never":"...", "peeves":"...", "formality":"Conversational", "phrases":"...", "humor":"...", "rule":"...", "line":"..."}');
   return lines.join("\n");
 }
+function nfLenientParse(txt, known){
+  // Find every "key": " position for a known key, take the text up to the next key as its value.
+  const hits=[]; const re=/"([a-z]+)"\s*:\s*"/g; let m;
+  while((m=re.exec(txt))){ if(known.has(m[1])) hits.push({k:m[1],start:m.index,valAt:m.index+m[0].length}); }
+  if(hits.length<3) return null;
+  const out={};
+  hits.forEach((h,i)=>{ const end=i+1<hits.length?hits[i+1].start:txt.lastIndexOf('}');
+    let v=txt.slice(h.valAt,end).replace(/\s*,?\s*$/,'').replace(/"\s*$/,'').replace(/\\"/g,'"').replace(/\\n/g,'\n').trim();
+    if(v) out[h.k]=v; });
+  return out;
+}
 function nfImportAnswers(raw){
   let txt=String(raw||'').trim(); const a=txt.indexOf('{'), b=txt.lastIndexOf('}'); if(a<0||b<0||b<=a) throw new Error('I could not find a { ... } block in that. Paste the whole reply from your AI.');
-  let obj; try{ obj=JSON.parse(txt.slice(a,b+1)); }catch(e){ throw new Error('That block is not valid JSON. Ask your AI to "reply with only the JSON object" and paste again.'); }
-  if(!obj||typeof obj!=='object'||Array.isArray(obj)) throw new Error('Expected a JSON object with the question keys.');
+  // Chat apps curl the quotes and AIs put unescaped quotes inside answers (seen 2026-09-02: "phrases":"Done > Perfect." "Money is a shackle." ...),
+  // so straighten the quotes first, try real JSON, and fall back to a key-by-key read over the 14 known keys.
+  txt=txt.replace(/[\u201C\u201D\u201E\u201F\u2033]/g,'"').replace(/[\u2018\u2019\u201A\u2032]/g,"'");
   const known=new Set(); QSTEPS.forEach(st=>st.qs.forEach(q=>known.add(q.id)));
+  let obj=null; try{ obj=JSON.parse(txt.slice(a,b+1)); }catch(e){ obj=nfLenientParse(txt.slice(a,b+1), known); }
+  if(!obj||typeof obj!=='object'||Array.isArray(obj)) throw new Error('That block is not valid JSON. Ask your AI to "reply with only the JSON object" and paste again.');
   let n=0; Object.keys(obj).forEach(k=>{ if(!known.has(k)) return; let v=obj[k]; if(v==null) return; v=String(v).trim(); if(!v) return; if(v.length>600) v=v.slice(0,600); nfAns[k]=v; n++; });
   if(n<3) throw new Error('Only '+n+' of the 14 answers were recognised. Check the keys match the interview.');
   return n;
