@@ -1701,7 +1701,8 @@ async function renderMod(){
 const app=document.getElementById('app');
 // Pretty path /@handle or /@handle/persona-name (Worker host only) is folded into the query form
 // ?u=handle&p=persona so every relative link on the page keeps working on both hosts.
-(function foldHandlePath(){ const m=/^\/@([A-Za-z0-9_]{3,30})(?:\/([^\/?#]+))?\/?$/.exec(location.pathname); if(!m) return;
+(function foldHandlePath(){ let pn=location.pathname; try{ pn=decodeURIComponent(pn); }catch(_){} // Cloudflare answers /@x with a 307 to /%40x, so the @ arrives encoded
+  const m=/^\/@([A-Za-z0-9_]{3,30})(?:\/([^\/?#]+))?\/?$/.exec(pn); if(!m) return;
   const q=new URLSearchParams(location.search); q.set('u',m[1].toLowerCase()); if(m[2]){ try{ q.set('p',decodeURIComponent(m[2])); }catch(_){ q.set('p',m[2]); } }
   try{ history.replaceState(null,'','/?'+q.toString()); }catch(_){} })();
 function onProfileRoute(){ return new URLSearchParams(location.search).get('t'); }
@@ -1796,7 +1797,7 @@ document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',p
 document.getElementById('email').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMagic(); } });
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
 document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
-SB.auth.onAuthStateChange(()=>{ if(!onProfileRoute() && !onExploreRoute()) refreshAuth(); });
+SB.auth.onAuthStateChange(()=>{ if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth(); });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
 // needs it. The profile page prints that label itself, so strip it for display only.
 // Never mutates the stored cell, so Copy prompt is untouched.
