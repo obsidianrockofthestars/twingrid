@@ -39,6 +39,22 @@ const MAX_CONTENT_CHARS = 2000;
 const MAX_SYSTEM_CHARS = 60000;
 const SYSTEM_CHARS_PER_CREDIT = 24000;
 
+// Capacity gate, 2026-09-02 (Dylan's ruling, CDD council). Both providers are prepaid on Dylan's
+// accounts, so the site pauses BEFORE a provider fails: every paid call reserves an estimate on
+// twingrid_capacity (micro-dollars) and is refused with 503 "capacity" when the estimate would
+// pass the funded amount minus the reserve. Anthropic Haiku 4.5: $1/MTok in = 1 micro per token,
+// $5/MTok out = 5 per token, tokens estimated at 3.5 chars each. Google image: $0.067 = 67000.
+const MICRO_PER_IMAGE = 67000;
+export function chatMicro(systemChars, messageChars) {
+  const inTok = Math.ceil((Number(systemChars) + Number(messageChars)) / 3.5);
+  const m = inTok * 1 + MAX_TOKENS * 5;
+  return Number.isFinite(m) && m > 0 ? m : 5000;
+}
+async function reserveCapacity(env, provider, micro) {
+  const r = await rpcService(env, "twingrid_capacity_spend", { p_provider: provider, p_micro: micro });
+  return r.ok && r.value === true;
+}
+
 export function chatCost(systemChars) {
   const n = Math.ceil(Number(systemChars) / SYSTEM_CHARS_PER_CREDIT);
   return Number.isFinite(n) && n > 1 ? Math.min(n, 3) : 1;
@@ -412,7 +428,11 @@ async function handleChat(request, env) {
   if (system.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
   if (system === GUARD) return json(request, 400, { error: "persona_empty" });
 
-  // Spend BEFORE calling Anthropic. -1 means nothing spendable. Cost scales with persona size.
+  // Capacity first (nothing is charged when the site is paused), then spend BEFORE calling Anthropic.
+  const msgChars = body.messages.reduce((a, m) => a + m.content.length, 0);
+  if (!(await reserveCapacity(env, "anthropic", chatMicro(system.length, msgChars)))) {
+    return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
+  }
   const cost = chatCost(system.length);
   const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: cost, p_kind: "use" });
   if (!spend.ok) return json(request, 502, { error: "credits_unavailable" });
@@ -568,7 +588,10 @@ async function handleMediaImage(request, env) {
     return json(request, 403, { error: "not_your_persona" });
   }
 
-  // Spend first, then the daily tick. A full day refunds the spend.
+  // Capacity first, then spend, then the daily tick. A full day refunds the spend.
+  if (!(await reserveCapacity(env, "google", MICRO_PER_IMAGE))) {
+    return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
+  }
   const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: IMAGE_CREDITS, p_kind: "image" });
   if (!spend.ok) return json(request, 502, { error: "credits_unavailable" });
   const remaining = Number(spend.value);

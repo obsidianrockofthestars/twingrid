@@ -387,6 +387,7 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .exhead h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;margin:6px 0 10px;color:var(--ink)}
 #explore .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
 #account .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
+#explore .excap{font-size:14px;margin-top:10px}
 #explore .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
 #account .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
 #explore .excard{display:block;text-align:left;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:22px;
@@ -1118,6 +1119,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div class="pk-kicker">Explore</div>
       <h1>Personas you can read</h1>
       <p class="exlede">Every one of these is a grid of plain cells somebody chose to publish. Open one to read how it thinks, or talk to it on your own key.</p>
+      <p class="exlede excap" id="excap" hidden aria-live="polite"></p>
       <div class="exfilters">
         <label class="exchk"><input type="checkbox" id="exhideofficial"> Hide starter personas</label>
         <button class="exclear" id="exclearhidden" type="button" hidden></button>
@@ -1407,6 +1409,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <li>No API key, nothing to set up. Talk to any public persona, or your own.</li>
       <li>Runs on Claude Haiku: fast, and cheap on purpose.</li>
       <li>Hard cap: 500 messages a month, or 6,000 a year to use whenever you like. Unused messages stay until the period ends. Cancel any time.</li>
+      <li>The limits, so nobody is surprised: a reply is 1 message (a very large persona is 2 or 3, the drawer says so); a persona image is 15 messages, up to 10 a day; hearing a reply costs 2 to 6, up to 200 a day. When the site is near its monthly capacity, hosted chat pauses and your messages stay yours.</li>
       <li>Rather use your own key? That stays free, always.</li>
     </ul>
     <div class="procard-btns"><button type="button" id="procard-buy" class="pk-btn solid">Buy for $5 a month</button><button type="button" id="procard-buy-year" class="pk-btn">Buy for $48 a year</button></div>
@@ -1927,7 +1930,7 @@ document.getElementById('facegen').onclick=async()=>{ if(!curId){ faceMsg('Save 
     let j=null; try{ j=await res.json(); }catch(_){}
     if(res.status===402){ faceMsg('Creating an image costs 15 hosted messages and you have none left.'); showProCard('An image costs 15 hosted messages. Buy a pack, or upload your own picture for free.'); return; }
     if(res.status===429){ faceMsg(j&&j.error==='daily_cap'?'That is 10 images today, the daily cap. Try again tomorrow; nothing was charged.':'Too many requests, try again in a minute.'); return; }
-    if(res.status===503){ faceMsg('Image creation is not switched on yet.'); return; }
+    if(res.status===503){ faceMsg(j&&j.error==='capacity'?'Image creation is paused: the site has reached its capacity for now. Nothing was charged.':'Image creation is not switched on yet.'); return; }
     if(!res.ok||!j||typeof j.image!=='string'){ faceMsg('The painter did not answer. Your messages were returned.'); if(j&&typeof j.remaining==='number'){ hostedRemaining=j.remaining; } return; }
     if(typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' message'+(j.remaining===1?'':'s')+' left'); }
     const bin=atob(j.image); const arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
@@ -2252,6 +2255,7 @@ async function sendChat(){const inp=document.getElementById('chatinput');const t
       if(res.status===401){ pushAssistant('[hosted] Your sign-in expired. Sign in again and resend.'); return; }
       if(res.status===404){ pushAssistant('[hosted] This persona is private and not yours, so hosted chat cannot read it.'); return; }
       if(res.status===429){ pushAssistant('[hosted] Slow down a little. Try again in a minute.'); return; }
+      if(res.status===503&&j&&j.error==='capacity'){ history.pop(); inp.value=text; renderChat(); pushAssistant('[hosted] Hosted chat is paused: the site has reached its capacity for now. Nothing was charged; your messages stay yours. Try later, or add your own key.'); return; }
       if(!res.ok||!j||typeof j.text!=='string'){ pushAssistant('[hosted] The model did not answer. Your message credit was returned. Try again.'); if(j&&typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' left'); } return; }
       pushAssistant(j.text||'[no text]');
       if(typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' message'+(j.remaining===1?'':'s')+' left'+(j.cost>1?' (this persona is large, '+j.cost+' messages a reply)':'')); if(j.remaining===0) showProCard(); }
@@ -2407,6 +2411,8 @@ async function renderExplore(){
   const grid=document.getElementById('exgrid'), foot=document.getElementById('exfoot');
   document.title='Explore \u00b7 Personakind';
   grid.innerHTML=''; foot.textContent='';
+  (async()=>{ try{ const {data}=await SB.rpc('twingrid_capacity_public'); const el=document.getElementById('excap'); if(!el||!Array.isArray(data)) return;
+    const pct=Math.max(...data.map(r=>Number(r.pct_used)||0)); el.textContent='Hosted capacity this month: '+pct+'% used. Hosted chat and image creation pause at 100%; your own key never does.'; el.hidden=false; }catch(_){} })();
   const empty=(title,msg)=>{ const d=document.createElement('div'); d.className='exempty';
     const h=document.createElement('h3'); h.textContent=title;
     const p=document.createElement('p'); p.textContent=msg; p.style.margin='0';

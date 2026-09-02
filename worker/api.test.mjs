@@ -33,6 +33,8 @@ const GRID = {
 const calls = [];
 let balance = 3;
 let anthropicMode = "ok"; // "ok" | "fail"
+let capacityOk = true;    // the capacity gate answer
+let capacityCalls = [];
 
 globalThis.fetch = async (url, init) => {
   const u = String(url);
@@ -60,6 +62,11 @@ globalThis.fetch = async (url, init) => {
     if (balance <= 0) return respond(200, -1);
     balance -= 1;
     return respond(200, balance);
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_capacity_spend")) {
+    capacityCalls.push(body);
+    if (typeof body.p_micro !== "number" || body.p_micro < 1) return respond(400, { message: "micro out of range" });
+    return respond(200, capacityOk);
   }
   if (u.endsWith("/rest/v1/rpc/twingrid_use_credits")) {
     if (body.p_kind !== "use" && body.p_kind !== "image" && body.p_kind !== "voice") return respond(400, { message: "unknown spend kind" });
@@ -352,8 +359,6 @@ await check("guardedPrompt port: unknown facet names in compose are ignored", as
   eq(p.split("# core / CONTEXT").length - 1, 1, "core appears once");
 });
 
-console.log("\n" + pass + " passed, " + fail + " failed");
-process.exit(fail ? 1 : 0);
 
 await check("chatCost: 1 credit per 24,000 chars of persona, floor 1, ceiling 3", async () => {
   eq(chatCost(0), 1, "0"); eq(chatCost(5849), 1, "5849"); eq(chatCost(24000), 1, "24000");
@@ -369,3 +374,33 @@ await check("13 messages -> 400 bad_messages (history cap is 12)", async () => {
   eq(r.status, 400, "status");
   eq((await r.json()).error, "bad_messages", "error");
 });
+
+await check("capacity gate: site paused -> 503 capacity, no credit spent, Anthropic not called", async () => {
+  balance = 3; capacityOk = false; calls.length = 0;
+  const r = await handleApi(req("/api/chat", {
+    method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }),
+    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "hi" }] }),
+  }), ENV);
+  capacityOk = true;
+  eq(r.status, 503, "status");
+  eq((await r.json()).error, "capacity", "error");
+  eq(balance, 3, "balance untouched");
+  if (calls.some((c) => c.url.includes("anthropic.com"))) throw new Error("Anthropic was called at capacity");
+  if (calls.some((c) => c.url.endsWith("/rpc/twingrid_use_credits"))) throw new Error("credits were spent at capacity");
+});
+
+await check("capacity gate: the reserve carries the persona, the messages and 700 output tokens", async () => {
+  capacityCalls.length = 0; balance = 3;
+  const r = await handleApi(req("/api/chat", {
+    method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }),
+    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "x".repeat(350) }] }),
+  }), ENV);
+  eq(r.status, 200, "status");
+  eq(capacityCalls.length, 1, "one reservation");
+  eq(capacityCalls[0].p_provider, "anthropic", "provider");
+  // system for the test grid is guard + two cells, well under 24k chars; 350 chars of messages = 100 tokens.
+  if (!(capacityCalls[0].p_micro > 3500 && capacityCalls[0].p_micro < 6000)) throw new Error("estimate out of the expected band: " + capacityCalls[0].p_micro);
+});
+
+console.log("\n" + pass + " passed, " + fail + " failed");
+process.exit(fail ? 1 : 0);
