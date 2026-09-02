@@ -117,26 +117,22 @@ function b64ToBytes(b64) {
 // Find the audio block in an interactions response without assuming its exact shape:
 // output_audio.data, or the last outputs[] item carrying base64 data with an audio type or mime.
 function findAudio(j) {
-  if (!j || typeof j !== "object") return null;
-  const oa = j.output_audio || j.outputAudio;
-  if (oa && typeof oa.data === "string") return { data: oa.data, mime: String(oa.mime_type || oa.mimeType || "audio/pcm") };
-  const outs = Array.isArray(j.outputs) ? j.outputs : (Array.isArray(j.output) ? j.output : []);
-  for (let i = outs.length - 1; i >= 0; i--) {
-    const o = outs[i];
-    if (!o || typeof o !== "object") continue;
-    if (typeof o.data === "string" && (o.type === "audio" || /audio|pcm/i.test(String(o.mime_type || o.mimeType || "")))) {
-      return { data: o.data, mime: String(o.mime_type || o.mimeType || "audio/pcm") };
+  // The first live call (2026-09-02) answered 200 with keys id,status,usage,created,updated,service_tier,steps,object:
+  // the audio sits somewhere under steps. Walk the tree (bounded) for a block with base64 data and an audio type or mime.
+  const isAudio = (o) => o && typeof o === "object" && typeof o.data === "string" && o.data.length > 100 &&
+    (o.type === "audio" || /audio|pcm|wav/i.test(String(o.mime_type || o.mimeType || o.mediaType || "")));
+  let found = null;
+  const walk = (o, depth) => {
+    if (found || !o || typeof o !== "object" || depth > 8) return;
+    if (isAudio(o)) { found = { data: o.data, mime: String(o.mime_type || o.mimeType || o.mediaType || "audio/pcm") }; return; }
+    if (o.inlineData && typeof o.inlineData.data === "string" && o.inlineData.data.length > 100) {
+      found = { data: o.inlineData.data, mime: String(o.inlineData.mimeType || "audio/pcm") }; return;
     }
-    const parts = Array.isArray(o.content) ? o.content : (Array.isArray(o.parts) ? o.parts : []);
-    for (let k = parts.length - 1; k >= 0; k--) {
-      const pt = parts[k];
-      if (pt && typeof pt.data === "string" && (pt.type === "audio" || /audio|pcm/i.test(String(pt.mime_type || pt.mimeType || "")))) {
-        return { data: pt.data, mime: String(pt.mime_type || pt.mimeType || "audio/pcm") };
-      }
-      if (pt && pt.inlineData && typeof pt.inlineData.data === "string") return { data: pt.inlineData.data, mime: String(pt.inlineData.mimeType || "audio/pcm") };
-    }
-  }
-  return null;
+    const vals = Array.isArray(o) ? o : Object.values(o);
+    for (let i = vals.length - 1; i >= 0 && !found; i--) walk(vals[i], depth + 1);
+  };
+  walk(j, 0);
+  return found;
 }
 const IMAGE_STYLES = {
   portrait: "a warm, painterly portrait, soft natural light, head and shoulders, plain background",
@@ -877,7 +873,12 @@ async function handleMediaVoice(request, env) {
     if (res.ok) {
       const j = await res.json();
       audio = findAudio(j);
-      if (!audio && j && typeof j === "object") shape = Object.keys(j).slice(0, 8).join(",");
+      if (!audio && j && typeof j === "object") {
+        // Key names only, two levels down, never values: enough to see the shape next time.
+        const step0 = Array.isArray(j.steps) && j.steps[0] && typeof j.steps[0] === "object" ? j.steps[0] : null;
+        const inner = step0 ? Object.keys(step0).map((k) => k + (Array.isArray(step0[k]) && step0[k][0] && typeof step0[k][0] === "object" ? "[" + Object.keys(step0[k][0]).join("|") + "]" : "")).join(",") : "";
+        shape = Object.keys(j).slice(0, 8).join(",") + (inner ? " / steps0:" + inner : "");
+      }
     } else {
       try {
         const e = await res.json();
