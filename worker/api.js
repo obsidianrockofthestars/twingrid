@@ -128,17 +128,24 @@ async function verifyUser(env, token) {
   return { id: u.id };
 }
 
+// Headers for a service-level call. SUPABASE_SERVICE_ROLE_KEY may be either the
+// legacy service_role JWT (starts with "eyJ", goes on apikey AND Authorization) or a
+// new sb_secret_ key (not a JWT: apikey ONLY, the platform rejects it as a Bearer).
+// https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys
+function serviceHeaders(env, extra) {
+  const key = env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const h = Object.assign({ apikey: key }, extra || {});
+  if (key.startsWith("eyJ")) h.Authorization = "Bearer " + key;
+  return h;
+}
+
 // Service role call to a PostgREST RPC. Returns { ok, value, status }.
 async function rpcService(env, fn, args) {
   let res;
   try {
     res = await fetch(sbUrl(env, "/rest/v1/rpc/" + fn), {
       method: "POST",
-      headers: {
-        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
-        "Content-Type": "application/json",
-      },
+      headers: serviceHeaders(env, { "Content-Type": "application/json" }),
       body: JSON.stringify(args),
     });
   } catch (_) {
@@ -157,11 +164,7 @@ async function readCredits(env, userId) {
   let res;
   try {
     res = await fetch(sbUrl(env, q), {
-      headers: {
-        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
-        Accept: "application/json",
-      },
+      headers: serviceHeaders(env, { Accept: "application/json" }),
     });
   } catch (_) {
     return null;
