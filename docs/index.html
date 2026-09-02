@@ -357,7 +357,7 @@ body.route-account{overflow:auto;background:var(--paper)}
 #home .hclaimrow .at{font-family:"IBM Plex Mono",monospace;color:var(--ink-dim)}
 #home .hclaimrow input{font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line-w);border-radius:10px;background:var(--paper);color:var(--ink);width:220px;max-width:100%}
 #home .hclaimmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em;margin-top:8px}
-#home .hrename{font:inherit;font-size:12.5px;background:none;border:0;color:var(--accent-w-deep);cursor:pointer;padding:2px 0;margin:2px 0 4px;text-decoration:underline;text-underline-offset:3px}
+#home .hrename{font:inherit;font-size:12px;background:none;border:0;color:var(--accent-w-deep);cursor:pointer;padding:2px 4px;margin-left:8px;text-decoration:underline;text-underline-offset:3px}
 #home .hrenrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 8px}
 #home .hrenrow input{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line-w);border-radius:10px;background:var(--paper);color:var(--ink);flex:1;min-width:160px}
 #home .hrenmsg{font-size:12.5px;color:var(--ink-dim)}
@@ -859,9 +859,9 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   #tutbody{padding:14px 14px}
   #tutbtn{display:none}
   #helpbtn{min-height:42px;padding:0 16px;font-size:14px;right:12px;bottom:12px}
-  #home .pnav,#explore .pnav,#mod .pnav{gap:8px}
-  #home .pnav .btn,#explore .pnav .btn,#mod .pnav .btn{padding:8px 12px;font-size:13px}
-  #home,#explore,#mod{padding-bottom:84px}
+  #home .pnav,#explore .pnav,#mod .pnav,#account .pnav{gap:8px;flex-wrap:wrap}
+  #home .pnav .btn,#explore .pnav .btn,#mod .pnav .btn,#account .pnav .btn{padding:8px 12px;font-size:13px}
+  #home,#explore,#mod,#account{padding-bottom:84px}
   #tutfoot label{flex-basis:100%}
 }
 
@@ -1240,8 +1240,10 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <nav class="pnav">
         <a class="brand" href="?" id="phome">Persona<span>kind</span></a>
         <span class="sp" style="flex:1"></span>
+        <a class="btn ghost" href="?" hidden data-home style="margin-right:10px">Home</a>
         <a class="btn ghost" href="?explore" style="margin-right:10px">Explore</a>
-        <button class="btn solid" data-auth id="pmake">Build your own</button>
+        <a class="btn ghost" href="?" hidden data-acct style="margin-right:10px">Account</a>
+        <button class="btn solid" data-auth data-anon id="pmake">Build your own</button>
       </nav>
       <div class="pid">
         <div class="pavatar" id="pavatar">T</div>
@@ -1405,7 +1407,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 </div>
 <style>
   #procard{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,14,10,.62);z-index:160;padding:12px}
-  #procard[hidden]{display:none}
+  #procard[hidden]{display:none!important}
   .procard-box{position:relative;max-width:440px;width:100%;background:var(--card-w,#fff);color:var(--ink,#211C17);border:1px solid var(--line-w,#E7DCC9);border-radius:18px;padding:22px 22px 18px;box-shadow:0 24px 70px rgba(0,0,0,.4);font-size:15px;line-height:1.5}
   .procard-box h2{font-family:var(--serif,Georgia,serif);font-weight:600;font-size:24px;margin:2px 0 6px}
   .procard-sub{margin:0 0 12px;color:var(--ink-soft,#5C5347);font-size:14px}
@@ -1639,10 +1641,9 @@ async function renderHome(){ const gen=++__homeGen;
         r.name=v; nm.textContent=v; ren.setAttribute('aria-label','Rename '+v); row.remove(); msg.textContent='Renamed to '+v+'.'; setTimeout(()=>{ if(msg.textContent==='Renamed to '+v+'.') msg.textContent=''; },2000); };
       inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); ok.click(); } if(e.key==='Escape') row.remove(); });
       row.append(inp,ok,no,st); nm.after(row); inp.focus(); inp.select(); };
-    c.appendChild(ren);
     const meta=document.createElement('div'); meta.className='hmeta';
     const tag=document.createElement('span'); tag.className=r.is_public?'hpub':'hpriv'; tag.textContent=r.is_public?'public':'private'; meta.appendChild(tag);
-    const when=document.createElement('span'); when.textContent='  edited '+new Date(r.updated_at).toLocaleDateString(); meta.appendChild(when); c.appendChild(meta);
+    const when=document.createElement('span'); when.textContent='  edited '+new Date(r.updated_at).toLocaleDateString(); meta.appendChild(when); meta.appendChild(ren); c.appendChild(meta);
     const acts=document.createElement('div'); acts.className='hacts';
     const edit=document.createElement('a'); edit.className='hbtn solid'; edit.href='?editor'; edit.textContent='Edit'; edit.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); }catch(_){} }; acts.appendChild(edit);
     const talk=document.createElement('a'); talk.className='hbtn'; talk.href='?editor'; talk.textContent='Talk to it'; talk.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); sessionStorage.setItem('pk_open_chat','1'); }catch(_){} }; acts.appendChild(talk);
