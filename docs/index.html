@@ -363,6 +363,11 @@ body.route-account{overflow:auto;background:var(--paper)}
 #home .hrenmsg{font-size:12.5px;color:var(--ink-dim)}
 #home .hhandle{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-dim);margin-top:6px}
 #home .hhandle a{color:var(--accent-w-deep)}
+.pkimg{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+#facebox{margin-top:12px;display:flex;align-items:center;gap:10px}
+#faceav{width:48px;height:48px;border-radius:14px;flex:none;display:grid;place-items:center;color:#fff;font-family:var(--serif);font-weight:600;font-size:22px;background:#C24B2A;overflow:hidden}
+#facebtns{display:flex;flex-direction:column;gap:6px}
+#facemsg{font-size:11.5px;color:var(--muted);margin-top:4px;min-height:1.1em}
 #profile .pby{font-size:13px;color:var(--ink-dim);margin-top:4px}
 #profile .pby a{color:var(--accent-w-deep)}
 
@@ -456,6 +461,7 @@ body.route-home{overflow:auto;background:var(--paper)}
 #home select{font:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line-w);border-radius:10px;background:var(--card-w);color:var(--ink);min-height:44px}
 #home .hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;padding:6px 0 26px}
 #home .hcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(40,28,18,.05);display:flex;flex-direction:column;gap:10px}
+#home .hav{width:56px;height:56px;border-radius:16px;overflow:hidden;background:var(--paper-2)}
 #home .hname{font-family:var(--serif);font-weight:600;font-size:20px;color:var(--ink);line-height:1.2;word-break:break-word}
 #home .hmeta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim)}
 #home .hpub{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;border-radius:999px;padding:3px 9px;background:var(--accent-soft);color:var(--accent-w-deep)}
@@ -1083,6 +1089,8 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <h4 style="margin-top:20px">Grid</h4>
       <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="persona name">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
+      <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
+      <div id="facemsg" aria-live="polite"></div>
       <div class="note" id="shareline" style="margin-top:10px;display:none"></div>
       <button class="newbtn" id="delbtn" style="color:var(--dont-text);border-color:transparent;margin-top:14px">Delete this persona</button>
     </aside>
@@ -1408,6 +1416,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 <style>
   #procard{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,14,10,.62);z-index:160;padding:12px}
   #procard[hidden]{display:none!important}
+  [hidden]{display:none!important} /* 2026-09-02: .btn and .tbtn set display, which beat the hidden attribute on nav buttons */
   .procard-box{position:relative;max-width:440px;width:100%;background:var(--card-w,#fff);color:var(--ink,#211C17);border:1px solid var(--line-w,#E7DCC9);border-radius:18px;padding:22px 22px 18px;box-shadow:0 24px 70px rgba(0,0,0,.4);font-size:15px;line-height:1.5}
   .procard-box h2{font-family:var(--serif,Georgia,serif);font-weight:600;font-size:24px;margin:2px 0 6px}
   .procard-sub{margin:0 0 12px;color:var(--ink-soft,#5C5347);font-size:14px}
@@ -1618,7 +1627,7 @@ async function renderHome(){ const gen=++__homeGen;
   const grid=document.getElementById('hgrid'), msg=document.getElementById('hmsg'); grid.innerHTML=''; msg.textContent='';
   const owner=await ownerId();
   const [{data,error},myHandle]=await Promise.all([
-    SB.from('twingrid_grids').select('id,name,is_public,updated_at').eq('owner',owner).order('updated_at',{ascending:false}),
+    SB.from('twingrid_grids').select('id,name,is_public,updated_at,image_url').eq('owner',owner).order('updated_at',{ascending:false}),
     handleFor(owner)]);
   if(gen!==__homeGen) return; // a newer render started while we waited; it owns the grid
   grid.innerHTML='';
@@ -1627,7 +1636,9 @@ async function renderHome(){ const gen=++__homeGen;
   if(!data||!data.length){ const d=document.createElement('div'); d.className='hempty'; d.textContent='No personas yet. Pick a door below and make your first one.'; grid.appendChild(d); return; }
   data.forEach(r=>{
     const c=document.createElement('div'); c.className='hcard';
-    const nm=document.createElement('div'); nm.className='hname'; nm.textContent=r.name||'Untitled'; c.appendChild(nm);
+    const nm=document.createElement('div'); nm.className='hname'; nm.textContent=r.name||'Untitled';
+    if(r.image_url){ const hv=document.createElement('div'); hv.className='hav'; avatarInto(hv,r.image_url,''); c.appendChild(hv); }
+    c.appendChild(nm);
     const ren=document.createElement('button'); ren.type='button'; ren.className='hrename'; ren.textContent='Rename'; ren.setAttribute('aria-label','Rename '+(r.name||'Untitled'));
     ren.onclick=()=>{ if(c.querySelector('.hrenrow')) return; const row=document.createElement('div'); row.className='hrenrow';
       const inp=document.createElement('input'); inp.type='text'; inp.maxLength=80; inp.value=r.name||''; inp.setAttribute('aria-label','New name');
@@ -1737,6 +1748,10 @@ const HANDLE_RE=/^[a-z0-9_]{3,30}$/;
 function ilikeEscape(t){ return String(t).replace(/[\\%_]/g,m=>'\\'+m); }
 async function accountByHandle(h){ if(!HANDLE_RE.test(h)) return null;
   const {data}=await SB.from('twingrid_accounts').select('id,handle,display_name,bio,avatar_theme,is_official,is_suspended').eq('handle',h).maybeSingle(); return data||null; }
+// Persona image on any avatar box: the image if the grid has one (our own bucket only, enforced by the database),
+// else the theme initial. src is an attribute set on an <img>, never markup.
+const MEDIA_BASE='https://jpepcqazscmhakxvutpg.supabase.co/storage/v1/object/public/twingrid-media/';
+function avatarInto(el,url,initial){ el.textContent=''; if(url&&typeof url==='string'&&url.indexOf(MEDIA_BASE)===0){ const im=document.createElement('img'); im.className='pkimg'; im.alt=''; im.decoding='async'; im.loading='lazy'; im.src=url; el.appendChild(im); } else { el.textContent=initial; } }
 const __handleCache={};
 // Account entry points: every [data-acct] button shows "@handle" and links to the signed-in user's page (or to Home,
 // where the claim card lives, when there is no handle yet); [data-home] shows when signed in; [data-anon] hides then.
@@ -1851,7 +1866,7 @@ let mode='single'; const sel={specialist:null,mode:null,role:null,register:"vibe
 // ---------- clones (db) ----------
 let __clonesGen=0;
 async function loadClones(){ const gen=++__clonesGen;
-  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data').eq('owner',await ownerId()).order('updated_at',{ascending:false});
+  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data,image_url').eq('owner',await ownerId()).order('updated_at',{ascending:false});
   if(gen!==__clonesGen) return;
   const list=document.getElementById('clonelist'); list.innerHTML='';
   if(error){ list.innerHTML=''; const ep=document.createElement('p'); ep.className='note'; ep.textContent=error.message; list.appendChild(ep); return; }
@@ -1861,7 +1876,7 @@ async function loadClones(){ const gen=++__clonesGen;
   if(!curId && data.length){ selectClone(data[0]); }
 }
 function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facets:[]}; reindex(); rebuildKinds();
-  document.getElementById('gridname').value=r.name||''; document.getElementById('ispublic').checked=!!r.is_public;
+  document.getElementById('gridname').value=r.name||''; document.getElementById('ispublic').checked=!!r.is_public; faceShow(r.image_url||null);
   buildBoard(); render();
   // refit whenever a different persona is loaded, not just once per page load
   if(__isPhone()) requestAnimationFrame(autoView);
@@ -1877,6 +1892,35 @@ document.getElementById('savebtn').onclick=async()=>{ if(!curId)return;
   const b=document.getElementById('savebtn'); b.textContent='Saving...';
   const {error}=await SB.from('twingrid_grids').update({name:document.getElementById('gridname').value,is_public:document.getElementById('ispublic').checked,data:GRID}).eq('id',curId);
   b.textContent=error?'Error':'Saved'; setTimeout(()=>b.textContent='Save',1400); updateShare(); loadClones(); };
+// ---------- persona image, upload half (2026-09-02) ----------
+// Everything happens in the browser: crop to a square, shrink to 512, encode as webp, put it in the uploader's own
+// folder of the twingrid-media bucket (storage RLS), then point the grid's image_url at it (a trigger refuses any
+// url outside that folder). No server, no per-upload cost. Moderation is the existing report path.
+let __faceUrl=null;
+function faceShow(url){ __faceUrl=url||null; const av=document.getElementById('faceav'); const nm=(document.getElementById('gridname').value||'P').trim();
+  avatarInto(av,__faceUrl,(nm[0]||'P').toUpperCase()); document.getElementById('faceclear').hidden=!__faceUrl; document.getElementById('facemsg').textContent=''; }
+function faceMsg(t){ document.getElementById('facemsg').textContent=t||''; }
+async function faceEncode(file){ const bmp=await createImageBitmap(file); const side=Math.min(bmp.width,bmp.height); const sx=(bmp.width-side)/2, sy=(bmp.height-side)/2;
+  const cv=document.createElement('canvas'); cv.width=512; cv.height=512; cv.getContext('2d').drawImage(bmp,sx,sy,side,side,0,0,512,512); bmp.close&&bmp.close();
+  const blob=await new Promise(r=>cv.toBlob(r,'image/webp',0.86)); if(!blob) throw new Error('could not encode'); return blob; }
+function facePathOf(url){ return url&&url.indexOf(MEDIA_BASE)===0 ? decodeURIComponent(url.slice(MEDIA_BASE.length)) : null; }
+document.getElementById('faceup').onclick=()=>{ if(!curId){ faceMsg('Save the persona first, then add a face.'); return; } document.getElementById('facefile').click(); };
+document.getElementById('facefile').onchange=async(e)=>{ const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f||!curId) return;
+  if(f.size>8*1024*1024){ faceMsg('That file is over 8 MB. Pick a smaller one.'); return; }
+  const {data:{user}}=await SB.auth.getUser(); if(!user){ faceMsg('Sign in first.'); return; }
+  faceMsg('Preparing...');
+  try{ const blob=await faceEncode(f); const path=user.id+'/'+curId+'/'+Date.now()+'.webp';
+    faceMsg('Uploading...');
+    const {error:ue}=await SB.storage.from('twingrid-media').upload(path,blob,{contentType:'image/webp',upsert:false}); if(ue) throw ue;
+    const url=MEDIA_BASE+path; const old=facePathOf(__faceUrl);
+    const {error:ge}=await SB.from('twingrid_grids').update({image_url:url}).eq('id',curId); if(ge){ try{ await SB.storage.from('twingrid-media').remove([path]); }catch(_){} throw ge; }
+    if(old){ try{ await SB.storage.from('twingrid-media').remove([old]); }catch(_){} }
+    faceShow(url); faceMsg('Face saved. It shows on your cards and page.'); loadClones();
+  }catch(err){ faceMsg('Could not save the image: '+String((err&&err.message)||err).slice(0,120)); } };
+document.getElementById('faceclear').onclick=async()=>{ if(!curId||!__faceUrl) return; const old=facePathOf(__faceUrl);
+  const {error}=await SB.from('twingrid_grids').update({image_url:null}).eq('id',curId); if(error){ faceMsg('Could not remove it: '+String(error.message||'').slice(0,100)); return; }
+  if(old){ try{ await SB.storage.from('twingrid-media').remove([old]); }catch(_){} }
+  faceShow(null); faceMsg('Image removed.'); loadClones(); };
 document.getElementById('delbtn').onclick=async()=>{ if(!curId)return; if(!confirm('Delete this persona permanently?'))return;
   await SB.from('twingrid_grids').delete().eq('id',curId); curId=null; GRID={facets:[]}; reindex(); buildBoard(); render(); loadClones(); };
 
@@ -2346,7 +2390,7 @@ async function renderExplore(){
     d.append(h,p); grid.appendChild(d); };
 
   const {data,error}=await SB.from('twingrid_grids')
-    .select('id,name,data,owner,updated_at').eq('is_public',true).order('updated_at',{ascending:false});
+    .select('id,name,data,owner,updated_at,image_url').eq('is_public',true).order('updated_at',{ascending:false});
   if(error){ empty('Could not load the directory','Try again in a moment.'); return; }
   const all=data||[];
   if(!all.length){ empty('Nothing published yet','Be the first. Build a persona, flip the public switch, and it lands here.'); return; }
@@ -2391,7 +2435,7 @@ async function renderExplore(){
     const av=document.createElement('div'); av.className='exav';
     // 'The Coach' and 'The Creator' both start with T, so skip a leading article
     const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'') || nm.trim();
-    av.style.background=acc; av.textContent=(initSrc[0]||'P').toUpperCase();
+    av.style.background=acc; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
     const idb=document.createElement('div');
     const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
     const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
@@ -2456,14 +2500,14 @@ async function renderAccount(handle){
         if(error){ msg.textContent='Could not save: '+String(error.message||'').slice(0,120); return; }
         msg.textContent='Saved.'; setTimeout(()=>renderAccount(handle),500); }; }
   }catch(_){}
-  const {data:rows,error}=await SB.from('twingrid_grids').select('id,name,data,updated_at').eq('owner',acc.id).eq('is_public',true).order('updated_at',{ascending:false});
+  const {data:rows,error}=await SB.from('twingrid_grids').select('id,name,data,updated_at,image_url').eq('owner',acc.id).eq('is_public',true).order('updated_at',{ascending:false});
   if(error){ empty('Could not load personas','Try again in a moment.'); return; }
   if(!rows||!rows.length){ empty('No public personas yet','When '+dn+' makes one public it lands here.'); return; }
   rows.forEach(r=>{ const g=(r.data&&r.data.facets)?r.data:{facets:[]}; const nm=String(r.name||'Untitled persona');
     const rawTheme=(g.theme&&typeof g.theme==='string')?g.theme.trim():''; const accn=/^#[0-9a-fA-F]{6}$/.test(rawTheme)?inkSafe(rawTheme):'#C24B2A';
     const card=document.createElement('a'); card.className='excard'; card.setAttribute('href',shareUrlFor(r.id,nm,acc.handle).replace(location.origin+location.pathname,''));
     const top=document.createElement('div'); top.className='extop'; const avx=document.createElement('div'); avx.className='exav'; avx.style.background=accn;
-    const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'')||nm.trim(); avx.textContent=(initSrc[0]||'P').toUpperCase();
+    const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'')||nm.trim(); avatarInto(avx,r.image_url,(initSrc[0]||'P').toUpperCase());
     const idb=document.createElement('div'); const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
     const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
     const meta=document.createElement('div'); meta.className='exmeta'; meta.textContent=cells+' short cells to read \u00b7 edited '+new Date(r.updated_at).toLocaleDateString();
@@ -2487,7 +2531,7 @@ function profileSummary(g){
 }
 async function renderProfile(id,opts){ opts=opts||{};
   const nameEl=document.getElementById('pname'); const pby=document.getElementById('pby'); pby.hidden=true; pby.textContent='';
-  const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public,owner').eq('id',id).maybeSingle();
+  const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public,owner,image_url').eq('id',id).maybeSingle();
   if(error||!data){ nameEl.textContent='Persona not found'; document.getElementById('pavatar').textContent='?';
     document.getElementById('ppersona').textContent=opts.missingName?('@'+opts.handle+' has no public persona named "'+opts.missingName+'". It may have been renamed or made private.'):'This persona is private, or the link is wrong. Ask its owner to make it public.';
     if(opts.handle){ pby.hidden=false; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(opts.handle); a.textContent='@'+opts.handle; pby.append('See everything by ',a); }
@@ -2497,7 +2541,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; return; }
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
-  nameEl.textContent=nm; document.getElementById('pavatar').textContent=(nm.trim()[0]||'T').toUpperCase();
+  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase());
   handleFor(data.owner).then(h=>{ if(!h) return; pby.hidden=false; pby.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; pby.append('by ',a);
     try{ const q=new URLSearchParams(location.search); if(q.get('t')&&!q.get('u')){ q.delete('t'); q.set('u',h); q.set('p',nm); window.history.replaceState(null,'','?'+q.toString()); } }catch(_){} });
   document.getElementById('pcells').textContent='';
