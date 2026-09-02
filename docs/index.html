@@ -357,6 +357,10 @@ body.route-account{overflow:auto;background:var(--paper)}
 #home .hclaimrow .at{font-family:"IBM Plex Mono",monospace;color:var(--ink-dim)}
 #home .hclaimrow input{font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line-w);border-radius:10px;background:var(--paper);color:var(--ink);width:220px;max-width:100%}
 #home .hclaimmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em;margin-top:8px}
+#home .hrename{font:inherit;font-size:12.5px;background:none;border:0;color:var(--accent-w-deep);cursor:pointer;padding:2px 0;margin:2px 0 4px;text-decoration:underline;text-underline-offset:3px}
+#home .hrenrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 8px}
+#home .hrenrow input{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line-w);border-radius:10px;background:var(--paper);color:var(--ink);flex:1;min-width:160px}
+#home .hrenmsg{font-size:12.5px;color:var(--ink-dim)}
 #home .hhandle{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-dim);margin-top:6px}
 #home .hhandle a{color:var(--accent-w-deep)}
 #profile .pby{font-size:13px;color:var(--ink-dim);margin-top:4px}
@@ -1060,6 +1064,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <button class="tbtn acc" id="savebtn">Save</button>
     <select class="tbtn" id="actas" hidden aria-label="Work as"></select>
     <a class="tbtn" id="modlink" href="?mod" hidden>Moderation</a>
+    <a class="tbtn" href="?" hidden data-acct>Account</a>
     <span class="who" id="who"></span>
     <button class="tbtn" id="signout">Sign out</button>
   </div>
@@ -1097,7 +1102,9 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <nav class="pnav">
       <a class="brand" href="?">Persona<span>kind</span></a>
       <span class="sp" style="flex:1"></span>
-      <button class="btn solid" data-auth>Build your own</button>
+      <a class="btn" href="?" id="exhome" hidden data-home>Home</a>
+      <a class="btn" href="?" hidden data-acct>Account</a>
+      <button class="btn solid" data-auth data-anon>Build your own</button>
     </nav>
     <div class="exhead">
       <div class="pk-kicker">Explore</div>
@@ -1147,6 +1154,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <span class="sp" style="flex:1"></span>
       <a class="btn" href="?explore">Explore</a>
       <a class="btn" id="hmodlink" href="?mod" hidden>Moderation</a>
+      <a class="btn" id="hacct" href="?" hidden data-acct>Account</a>
       <button class="btn" id="hsignout" type="button">Sign out</button>
     </nav>
     <div class="hhead">
@@ -1201,13 +1209,15 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <nav class="pnav">
       <a class="brand" href="?">Persona<span>kind</span></a>
       <span class="sp" style="flex:1"></span>
+      <a class="btn" href="?" hidden data-home>Home</a>
       <a class="btn" href="?explore">Explore</a>
-      <button class="btn solid" data-auth id="acbuild">Build your own</button>
+      <a class="btn" href="?" hidden data-acct>Account</a>
+      <button class="btn solid" data-auth data-anon id="acbuild">Build your own</button>
     </nav>
     <div class="achead">
       <div class="acav" id="acav">P</div>
       <div style="flex:1;min-width:240px">
-        <div class="pk-kicker">Personakind member</div>
+        <div class="pk-kicker" style="text-align:left">Personakind member</div>
         <h1 class="acname" id="acname">Persona</h1>
         <div class="achandle" id="achandle"></div>
         <p class="acbio" id="acbio"></p>
@@ -1616,6 +1626,20 @@ async function renderHome(){ const gen=++__homeGen;
   data.forEach(r=>{
     const c=document.createElement('div'); c.className='hcard';
     const nm=document.createElement('div'); nm.className='hname'; nm.textContent=r.name||'Untitled'; c.appendChild(nm);
+    const ren=document.createElement('button'); ren.type='button'; ren.className='hrename'; ren.textContent='Rename'; ren.setAttribute('aria-label','Rename '+(r.name||'Untitled'));
+    ren.onclick=()=>{ if(c.querySelector('.hrenrow')) return; const row=document.createElement('div'); row.className='hrenrow';
+      const inp=document.createElement('input'); inp.type='text'; inp.maxLength=80; inp.value=r.name||''; inp.setAttribute('aria-label','New name');
+      const ok=document.createElement('button'); ok.type='button'; ok.className='hbtn solid'; ok.textContent='Save';
+      const no=document.createElement('button'); no.type='button'; no.className='hbtn'; no.textContent='Cancel';
+      const st=document.createElement('span'); st.className='hrenmsg';
+      no.onclick=()=>row.remove();
+      ok.onclick=async()=>{ const v=inp.value.trim().slice(0,80); if(!v){ st.textContent='Give it a name.'; return; } ok.disabled=true; st.textContent='Saving...';
+        const {error}=await SB.from('twingrid_grids').update({name:v}).eq('id',r.id); ok.disabled=false;
+        if(error){ st.textContent='Could not save: '+String(error.message||'').slice(0,80); return; }
+        r.name=v; nm.textContent=v; ren.setAttribute('aria-label','Rename '+v); row.remove(); msg.textContent='Renamed to '+v+'.'; setTimeout(()=>{ if(msg.textContent==='Renamed to '+v+'.') msg.textContent=''; },2000); };
+      inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); ok.click(); } if(e.key==='Escape') row.remove(); });
+      row.append(inp,ok,no,st); nm.after(row); inp.focus(); inp.select(); };
+    c.appendChild(ren);
     const meta=document.createElement('div'); meta.className='hmeta';
     const tag=document.createElement('span'); tag.className=r.is_public?'hpub':'hpriv'; tag.textContent=r.is_public?'public':'private'; meta.appendChild(tag);
     const when=document.createElement('span'); when.textContent='  edited '+new Date(r.updated_at).toLocaleDateString(); meta.appendChild(when); c.appendChild(meta);
@@ -1656,7 +1680,7 @@ function homeHandleUi(owner,myHandle){
       else if(/row-level security|permission/i.test(m)) msg.textContent='Sign in again, then try.';
       else msg.textContent='Could not claim it: '+m.slice(0,120);
       return; }
-    __handleCache[owner]=h; msg.textContent='Done. @'+h+' is yours.'; setTimeout(()=>renderHome(),600); };
+    __handleCache[owner]=h; msg.textContent='Done. @'+h+' is yours.'; syncAcctNav(); setTimeout(()=>renderHome(),600); };
 }
 document.getElementById('hsignout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
 document.querySelectorAll('[data-hpath]').forEach(b=>b.addEventListener('click',()=>{ try{ sessionStorage.setItem('pk_pending_path',b.dataset.hpath); }catch(_){} location.href=location.origin+location.pathname+'?editor'; }));
@@ -1670,7 +1694,7 @@ async function renderMod(){
   const {data:isMod,error:merr}=await SB.rpc('twingrid_is_moderator');
   if(merr||!isMod){ empty('This account is not a moderator.'); return; }
   let status=new URLSearchParams(location.search).get('status')||'open';
-  ['open','reviewing','actioned','dismissed'].forEach(st=>{ const b=document.createElement('button'); b.className='mtab'; b.setAttribute('role','tab'); b.setAttribute('aria-pressed', st===status); b.textContent=st; b.onclick=()=>{ const u=new URL(location.href); u.searchParams.set('status',st); history.replaceState(null,'',u); renderMod(); }; tabs.appendChild(b); });
+  ['open','reviewing','actioned','dismissed'].forEach(st=>{ const b=document.createElement('button'); b.className='mtab'; b.setAttribute('role','tab'); b.setAttribute('aria-pressed', st===status); b.textContent=st; b.onclick=()=>{ const u=new URL(location.href); u.searchParams.set('status',st); window.history.replaceState(null,'',u); renderMod(); }; tabs.appendChild(b); });
   const {data:rows,error}=await SB.rpc('twingrid_mod_reports',{p_status:status});
   if(error){ empty(error.message); return; }
   if(!rows||!rows.length){ empty('No '+status+' reports.'); return; }
@@ -1704,7 +1728,7 @@ const app=document.getElementById('app');
 (function foldHandlePath(){ let pn=location.pathname; try{ pn=decodeURIComponent(pn); }catch(_){} // Cloudflare answers /@x with a 307 to /%40x, so the @ arrives encoded
   const m=/^\/@([A-Za-z0-9_]{3,30})(?:\/([^\/?#]+))?\/?$/.exec(pn); if(!m) return;
   const q=new URLSearchParams(location.search); q.set('u',m[1].toLowerCase()); if(m[2]){ try{ q.set('p',decodeURIComponent(m[2])); }catch(_){ q.set('p',m[2]); } }
-  try{ history.replaceState(null,'','/?'+q.toString()); }catch(_){} })();
+  try{ window.history.replaceState(null,'','/?'+q.toString()); }catch(_){} })(); // window. on purpose: this module has a chat-log variable named history
 function onProfileRoute(){ return new URLSearchParams(location.search).get('t'); }
 function onAccountRoute(){ const u=new URLSearchParams(location.search).get('u'); return u?u.trim().toLowerCase():null; }
 function accountPersonaParam(){ return new URLSearchParams(location.search).get('p'); }
@@ -1713,6 +1737,13 @@ function ilikeEscape(t){ return String(t).replace(/[\\%_]/g,m=>'\\'+m); }
 async function accountByHandle(h){ if(!HANDLE_RE.test(h)) return null;
   const {data}=await SB.from('twingrid_accounts').select('id,handle,display_name,bio,avatar_theme,is_official,is_suspended').eq('handle',h).maybeSingle(); return data||null; }
 const __handleCache={};
+// Account entry points: every [data-acct] button shows "@handle" and links to the signed-in user's page (or to Home,
+// where the claim card lives, when there is no handle yet); [data-home] shows when signed in; [data-anon] hides then.
+async function syncAcctNav(){ let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session?session.user.id:null; }catch(_){}
+  const h=uid?await handleFor(uid):null;
+  document.querySelectorAll('[data-acct]').forEach(a=>{ a.hidden=!uid; a.textContent=h?('@'+h):'Account'; a.href=h?('?u='+encodeURIComponent(h)):'?'; a.title=h?'Your page: name, bio, public personas':'Claim your handle on Home'; });
+  document.querySelectorAll('[data-home]').forEach(a=>{ a.hidden=!uid; });
+  document.querySelectorAll('[data-anon]').forEach(b=>{ b.hidden=!!uid; }); }
 async function handleFor(uid){ if(!uid) return null; if(uid in __handleCache) return __handleCache[uid];
   const {data}=await SB.from('twingrid_accounts').select('handle').eq('id',uid).maybeSingle(); __handleCache[uid]=data?data.handle:null; return __handleCache[uid]; }
 // Share link for a grid: the handle form when the owner has one, the uuid form otherwise. The uuid form stays valid forever.
@@ -1797,7 +1828,7 @@ document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',p
 document.getElementById('email').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMagic(); } });
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
 document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
-SB.auth.onAuthStateChange(()=>{ if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth(); });
+SB.auth.onAuthStateChange(()=>{ syncAcctNav(); if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth(); });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
 // needs it. The profile page prints that label itself, so strip it for display only.
 // Never mutates the stored cell, so Copy prompt is untouched.
@@ -2415,7 +2446,7 @@ async function renderAccount(handle){
   document.getElementById('acsharebtn').onclick=()=>{ const b=document.getElementById('acsharebtn'); navigator.clipboard.writeText(location.origin+location.pathname+'?u='+encodeURIComponent(acc.handle)).then(()=>{ b.textContent='Copied'; setTimeout(()=>b.textContent='Copy page link',1400); }); };
   // own page: edit name and bio (RLS: twingrid_operates(id) on UPDATE)
   try{ const {data:{session}}=await SB.auth.getSession(); const me=session?session.user.id:null; const mine=!!me&&(me===acc.id||(await ownerId())===acc.id);
-    if(mine){ editBtn.hidden=false; document.getElementById('acbuild').hidden=true;
+    if(mine){ editBtn.hidden=false;
       editBtn.onclick=()=>{ document.getElementById('acname_in').value=acc.display_name||''; document.getElementById('acbio_in').value=acc.bio||''; document.getElementById('acmsg').textContent=''; form.classList.add('open'); document.getElementById('acname_in').focus(); };
       document.getElementById('accancel').onclick=()=>form.classList.remove('open');
       form.onsubmit=async(e)=>{ e.preventDefault(); const msg=document.getElementById('acmsg'); msg.textContent='Saving...';
@@ -2423,7 +2454,6 @@ async function renderAccount(handle){
         const {error}=await SB.from('twingrid_accounts').update({display_name,bio}).eq('id',acc.id);
         if(error){ msg.textContent='Could not save: '+String(error.message||'').slice(0,120); return; }
         msg.textContent='Saved.'; setTimeout(()=>renderAccount(handle),500); }; }
-    else { document.getElementById('acbuild').hidden=false; }
   }catch(_){}
   const {data:rows,error}=await SB.from('twingrid_grids').select('id,name,data,updated_at').eq('owner',acc.id).eq('is_public',true).order('updated_at',{ascending:false});
   if(error){ empty('Could not load personas','Try again in a moment.'); return; }
@@ -2468,7 +2498,7 @@ async function renderProfile(id,opts){ opts=opts||{};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
   nameEl.textContent=nm; document.getElementById('pavatar').textContent=(nm.trim()[0]||'T').toUpperCase();
   handleFor(data.owner).then(h=>{ if(!h) return; pby.hidden=false; pby.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; pby.append('by ',a);
-    try{ const q=new URLSearchParams(location.search); if(q.get('t')&&!q.get('u')){ q.delete('t'); q.set('u',h); q.set('p',nm); history.replaceState(null,'','?'+q.toString()); } }catch(_){} });
+    try{ const q=new URLSearchParams(location.search); if(q.get('t')&&!q.get('u')){ q.delete('t'); q.set('u',h); q.set('p',nm); window.history.replaceState(null,'','?'+q.toString()); } }catch(_){} });
   document.getElementById('pcells').textContent='';
   document.getElementById('pfacetcount').textContent='';
   document.getElementById('psummary').textContent=profileSummary(g);
@@ -2738,6 +2768,6 @@ const HELP_FAQ=[
   new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});
   new MutationObserver(sync).observe(document.getElementById('tour'),{attributes:true,attributeFilter:['class']});
 })();
-applyT(); route(); if(window.__helpSync) window.__helpSync();
+applyT(); route(); if(window.__helpSync) window.__helpSync(); syncAcctNav();
 </script>
 </body></html>
