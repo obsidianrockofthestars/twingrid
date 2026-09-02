@@ -426,8 +426,10 @@ async function handleChat(request, env) {
       p_user: user.id, p_delta: 1, p_kind: "refund", p_ref: ref, p_period_end: null,
     });
     if (!r.ok) console.log("refund_failed"); // no user data, no content
+    // Upstream HTTP status only (0 = fetch threw). A number, never a body, never a key.
+    console.log("upstream_failed", upstreamStatus);
     const status = upstreamStatus === 429 ? 429 : 502;
-    return json(request, status, { error: "upstream_failed", remaining: r.ok ? Number(r.value) : remaining + 1 });
+    return json(request, status, { error: "upstream_failed", upstream: upstreamStatus, remaining: r.ok ? Number(r.value) : remaining + 1 });
   }
 
   return json(request, 200, { text, remaining, model });
