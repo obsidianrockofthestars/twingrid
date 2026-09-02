@@ -616,6 +616,9 @@ async function handleMediaImage(request, env) {
 
   if (!b64) {
     const back = await refund();
+    // Give the daily slot back too: a rejected call is not one of the user's ten.
+    const u = await rpcService(env, "twingrid_media_untick", { p_user: user.id, p_kind: "image" });
+    if (!u.ok) console.log("untick_failed");
     console.log("image_upstream_failed", upstreamStatus, upstreamMsg);
     return json(request, upstreamStatus === 429 ? 429 : 502, { error: "upstream_failed", upstream: upstreamStatus, upstream_msg: upstreamMsg, remaining: back });
   }

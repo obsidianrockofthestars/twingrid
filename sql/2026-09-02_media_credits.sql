@@ -79,3 +79,25 @@ end;
 $$;
 revoke execute on function public.twingrid_media_tick(uuid, text, int) from public, anon, authenticated;
 grant execute on function public.twingrid_media_tick(uuid, text, int) to service_role;
+
+-- Added the same afternoon (migration twingrid_media_untick): a failed Google call gives the daily slot back.
+create or replace function public.twingrid_media_untick(p_user uuid, p_kind text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_day date := (now() at time zone 'UTC')::date;
+begin
+  if p_kind = 'image' then
+    update public.twingrid_media_daily set images = greatest(0, images - 1) where user_id = p_user and day = v_day;
+  elsif p_kind = 'voice' then
+    update public.twingrid_media_daily set voices = greatest(0, voices - 1) where user_id = p_user and day = v_day;
+  else
+    raise exception 'unknown media kind' using errcode = '22023';
+  end if;
+end;
+$$;
+revoke execute on function public.twingrid_media_untick(uuid, text) from public, anon, authenticated;
+grant execute on function public.twingrid_media_untick(uuid, text) to service_role;
