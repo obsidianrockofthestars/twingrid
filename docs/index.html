@@ -1014,7 +1014,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   <footer class="pk-foot">
     <div class="pk-wrap">
       <span class="pk-brand">Persona<b>kind</b></span>
-      <span class="discl">Personas are AI, not real people, and every published page says so. Chat runs on your own API key, with you in the loop. Built in the open.</span>
+      <span class="discl">Personas are AI, not real people, and every published page says so. Chat runs on your own API key, with you in the loop. Built in the open. <a href="terms.html" style="color:inherit">Terms and Privacy</a>.</span>
     </div>
   </footer>
 </div>
@@ -1027,6 +1027,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div class="k">Passwordless sign in</div>
       <h2 id="authttl">Create your twin</h2>
       <p class="lead">Enter your email and we'll send a one-time sign-in link. No password to remember, nothing to install.</p>
+      <label class="trust" style="margin:0 0 14px;cursor:pointer;align-items:center"><input type="checkbox" id="termsok" style="margin:0 2px 0 0;width:16px;height:16px;flex:none"><span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" rel="noopener" style="color:var(--accent)">Terms and Privacy Notice</a>.</span></label>
       <button class="oauthbtn" id="googlebtn" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Continue with Google</span></button>
       <div class="orline"><span>or</span></div>
       <label for="email">Email address</label>
@@ -1298,7 +1299,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <button class="pctrl-b" id="preport" type="button">Report</button>
       <span class="pctrl-msg" id="pctrlmsg" role="status"></span>
     </div>
-    <p class="pdisc">This is an AI persona built on Personakind, not a real person. It only knows what its owner wrote on this page.</p>
+    <p class="pdisc">This is an AI persona built on Personakind, not a real person. It only knows what its owner wrote on this page. <a href="terms.html" style="color:inherit">Terms and Privacy</a>.</p>
     <div class="facets">
       <h2>Everything its owner wrote</h2>
       <div class="fgrid" id="pfacets"></div>
@@ -1815,7 +1816,9 @@ document.querySelectorAll('[data-path]').forEach(b=>b.addEventListener('click',(
 document.getElementById('authx').onclick=closeAuth;
 authEl.addEventListener('click',e=>{ if(e.target===authEl) closeAuth(); });
 window.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAuth(); });
-async function sendMagic(){ const email=document.getElementById('email').value.trim();
+const TERMS_VERSION='2026-09-02';
+function termsAgreed(){ const c=document.getElementById('termsok'); const err=document.getElementById('autherr'); if(c&&!c.checked){ err.textContent='Please tick the box to agree to the Terms and Privacy Notice first.'; c.focus(); return false; } try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} return true; }
+async function sendMagic(){ if(!termsAgreed()) return; const email=document.getElementById('email').value.trim();
   const err=document.getElementById('autherr'), btn=document.getElementById('sendlink');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Please enter a valid email address.'; return; }
   err.textContent=''; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Sending...';
@@ -1826,13 +1829,13 @@ async function sendMagic(){ const email=document.getElementById('email').value.t
 document.getElementById('sendlink').onclick=sendMagic;
 // --- restored sign-in paths. 3 of the existing accounts are Google, 2 are email+password. ---
 const authReturn=()=>location.origin+location.pathname;
-document.getElementById('googlebtn').onclick=async()=>{ const err=document.getElementById('autherr'); err.textContent='';
+document.getElementById('googlebtn').onclick=async()=>{ const err=document.getElementById('autherr'); err.textContent=''; if(!termsAgreed()) return;
   const {error}=await SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:authReturn()}});
   if(error) err.textContent='Could not start Google sign in. Please use the email link instead.'; };
 const pwWrap=document.getElementById('pwwrap'), pwToggle=document.getElementById('pwtoggle');
 function pwReset(){ pwWrap.hidden=true; pwToggle.textContent='I already have a password'; const p=document.getElementById('password'); if(p) p.value=''; }
 pwToggle.onclick=()=>{ if(pwWrap.hidden){ pwWrap.hidden=false; pwToggle.textContent='Use a sign-in link instead'; setTimeout(()=>document.getElementById('password').focus(),40); } else pwReset(); };
-async function signInPw(){ const email=document.getElementById('email').value.trim(), pw=document.getElementById('password').value;
+async function signInPw(){ if(!termsAgreed()) return; const email=document.getElementById('email').value.trim(), pw=document.getElementById('password').value;
   const err=document.getElementById('autherr'), btn=document.getElementById('pwbtn');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Please enter the email address on your account.'; return; }
   if(!pw){ err.textContent='Please enter your password.'; return; }
@@ -1847,7 +1850,9 @@ document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',p
 document.getElementById('email').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMagic(); } });
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
 document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
-SB.auth.onAuthStateChange(()=>{ syncAcctNav(); if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth(); });
+SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
+  // Terms acceptance record (2026-09-02): the box was ticked in this browser before sign-in, so stamp the version on the user once.
+  try{ const u=session&&session.user; const md=(u&&u.user_metadata)||{}; if(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')===TERMS_VERSION){ SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}).catch(()=>{}); } }catch(_){} });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
 // needs it. The profile page prints that label itself, so strip it for display only.
 // Never mutates the stored cell, so Copy prompt is untouched.
