@@ -1068,7 +1068,6 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div id="tutbody" tabindex="0"></div>
     </div>
     <div id="tutfoot">
-      <label><input type="checkbox" id="tutnoshow"> Don't show this again when I sign in</label>
       <button type="button" id="tutprev">Back</button>
       <button type="button" class="solid" id="tutnext">Next</button>
       <button type="button" id="tutclose">Close</button>
@@ -1084,7 +1083,6 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <a class="brand" href="?">Persona<span>kind</span></a>
       <span class="sp" style="flex:1"></span>
       <a class="btn" href="?explore">Explore</a>
-      <button class="btn" id="htutnav" type="button">Tutorial</button>
       <a class="btn" id="hmodlink" href="?mod" hidden>Moderation</a>
       <button class="btn" id="hsignout" type="button">Sign out</button>
     </nav>
@@ -1451,20 +1449,18 @@ function tutShow(i){ __tutI=Math.max(0,Math.min(TUT_CHAPTERS.length-1,i)); const
   document.getElementById('tutprev').disabled=(__tutI===0);
   document.getElementById('tutnext').textContent=(__tutI===TUT_CHAPTERS.length-1)?'Done':'Next';
   body.scrollTop=0; }
-function tutOpen(i){ if(__tour) tourEnd(); document.getElementById('tutnoshow').checked=tutDismissed(); tutShow(i||0); tutEl.classList.add('open'); document.getElementById('tutbody').focus(); }
-function tutClose(){ tutSetDismissed(document.getElementById('tutnoshow').checked); tutEl.classList.remove('open'); }
+function tutOpen(i){ if(__tour) tourEnd(); tutShow(i||0); tutEl.classList.add('open'); document.getElementById('tutbody').focus(); }
+function tutClose(){ tutSetDismissed(true); tutEl.classList.remove('open'); }
 function tutIsOpen(){ return tutEl.classList.contains('open'); }
-// First sign-in: open the tutorial once on Home, unless the box was ticked. Returns true when it fired.
+// First sign-in: open the tutorial once per browser on Home. Closing it marks it seen; the Tutorial pill reopens it any time.
 function tutMaybe(delay){ if(tutDismissed()) return false; setTimeout(()=>{ if(!__tour&&!tutIsOpen()) tutOpen(0); }, delay||500); return true; }
 document.getElementById('tutx').onclick=tutClose;
 document.getElementById('tutclose').onclick=tutClose;
 document.getElementById('tutprev').onclick=()=>tutShow(__tutI-1);
 document.getElementById('tutnext').onclick=()=>{ if(__tutI>=TUT_CHAPTERS.length-1){ tutClose(); return; } tutShow(__tutI+1); };
-document.getElementById('tutnoshow').onchange=e=>tutSetDismissed(e.target.checked);
 tutEl.addEventListener('click',e=>{ if(e.target===tutEl) tutClose(); });
 window.addEventListener('keydown',e=>{ if(e.key==='Escape'&&tutIsOpen()) tutClose(); });
 document.getElementById('tutbtn').onclick=()=>tutOpen(0);
-document.getElementById('htutnav').onclick=()=>tutOpen(0);
 
 // ---------- first-run tour ----------
 // Dylan, 2026-08-29: "a play by play on how to use it, with pop ups". One spotlight and one card per step,
@@ -1510,12 +1506,15 @@ window.addEventListener('resize',()=>{ if(__tour) tourPlace(); });
 document.getElementById('htourbtn').onclick=()=>tourStart('home',TOUR_HOME);
 function tourMaybe(name, steps, delay){ if(tourSeen(name)) return; setTimeout(()=>{ if(!__tour&&!tutIsOpen()) tourStart(name,steps); }, delay||600); }
 // The board is the engine room. Signed-in users land here instead: plain cards, three doors, one link to the board.
-async function renderHome(){
+let __homeGen=0; // refreshAuth can fire several times at load (auth events); only the newest render may paint
+async function renderHome(){ const gen=++__homeGen;
   document.body.className='marketing route-home'; app.style.display='none'; closeAuth();
   document.title='Home \u00b7 Personakind';
   const grid=document.getElementById('hgrid'), msg=document.getElementById('hmsg'); grid.innerHTML=''; msg.textContent='';
   const owner=await ownerId();
   const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,updated_at').eq('owner',owner).order('updated_at',{ascending:false});
+  if(gen!==__homeGen) return; // a newer render started while we waited; it owns the grid
+  grid.innerHTML='';
   if(error){ const d=document.createElement('div'); d.className='hempty'; d.textContent=error.message; grid.appendChild(d); return; }
   if(!data||!data.length){ const d=document.createElement('div'); d.className='hempty'; d.textContent='No personas yet. Pick a door below and make your first one.'; grid.appendChild(d); return; }
   data.forEach(r=>{
@@ -1584,6 +1583,7 @@ function route(){ const twin=onProfileRoute();
 async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
   if(session && !onEditorRoute()){ await renderHome(); initOperator(session); if(!tutMaybe(700)) tourMaybe('home',TOUR_HOME,700); return; }
   if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones(); initOperator(session);
+    if(window.__editorBooted) return; window.__editorBooted=true;
     try{ const g=sessionStorage.getItem('pk_open_grid'); if(g){ sessionStorage.removeItem('pk_open_grid'); const b=[...document.querySelectorAll('#clonelist .clone')].find(x=>x.dataset.gid===g); if(b) b.click(); }
       if(sessionStorage.getItem('pk_open_chat')){ sessionStorage.removeItem('pk_open_chat'); setTimeout(()=>document.getElementById('chatbtn').click(),200); } else { tourMaybe('editor',TOUR_EDITOR,900); } }catch(_){}
     try{ const __p=sessionStorage.getItem('pk_pending_path');
@@ -1665,8 +1665,10 @@ const kindOf=n=>byName[n].kind, ncells=n=>Object.keys(byName[n].cells).length;
 let mode='single'; const sel={specialist:null,mode:null,role:null,register:"vibe"}; const on=new Set(); const queue=[];
 
 // ---------- clones (db) ----------
-async function loadClones(){
+let __clonesGen=0;
+async function loadClones(){ const gen=++__clonesGen;
   const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,data').eq('owner',await ownerId()).order('updated_at',{ascending:false});
+  if(gen!==__clonesGen) return;
   const list=document.getElementById('clonelist'); list.innerHTML='';
   if(error){ list.innerHTML=''; const ep=document.createElement('p'); ep.className='note'; ep.textContent=error.message; list.appendChild(ep); return; }
   if(!data.length){ list.innerHTML=''; const np=document.createElement('p'); np.className='note'; np.textContent='No personas yet.'; const nb=document.createElement('button'); nb.className='newbtn'; nb.style.marginTop='6px'; nb.textContent='+ Create your first persona'; nb.onclick=()=>window.__openChooser&&window.__openChooser(); list.append(np,nb); }
@@ -1974,7 +1976,8 @@ async function hostedToken(){ try{ const {data}=await SB.auth.getSession(); retu
 async function refreshCredits(){ const token=await hostedToken(); if(!token){ hostedRemaining=null; setCreditsLine(''); return null; }
   try{ const r=await fetch(HOSTED_API+'/credits',{headers:{Authorization:'Bearer '+token}}); if(!r.ok){ setCreditsLine(''); return null; }
     const j=await r.json(); hostedRemaining=Number(j.balance)||0;
-    setCreditsLine(hostedRemaining>0 ? 'Hosted chat: '+hostedRemaining+' message'+(hostedRemaining===1?'':'s')+' left' : 'Hosted chat: no messages left. Add your own key, or buy 500 for $5.');
+    const ended=j.period_end && new Date(j.period_end).getTime()<Date.now(); if(ended) hostedRemaining=0;
+    setCreditsLine(ended ? 'Hosted chat: your month ended. Renew for 500 more, or add your own key.' : hostedRemaining>0 ? 'Hosted chat: '+hostedRemaining+' message'+(hostedRemaining===1?'':'s')+' left' : 'Hosted chat: no messages left. Add your own key, or buy 500 for $5.');
     return hostedRemaining; }catch(_){ setCreditsLine(''); return null; } }
 async function openChat(){ if(localStorage.getItem('tg_key')){ setCreditsLine(''); chat.classList.add('open'); renderChat(); return; }
   const token=await hostedToken(); if(!token){ settings.classList.add('open'); return; }
@@ -1993,7 +1996,7 @@ async function sendChat(){const inp=document.getElementById('chatinput');const t
     try{ const res=await fetch(HOSTED_API+'/chat',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({grid_id:gridId,messages:msgs,compose:composeState()})});
       let j=null; try{ j=await res.json(); }catch(_){ j=null; }
       wait.remove();
-      if(res.status===402){ history.pop(); inp.value=text; renderChat(); hostedRemaining=0; setCreditsLine('Hosted chat: no messages left.'); showProCard(); return; }
+      if(res.status===402){ history.pop(); inp.value=text; renderChat(); hostedRemaining=0; setCreditsLine('Hosted chat: no messages left this month. Renew for 500 more, or add your own key.'); showProCard(); return; }
       if(res.status===401){ pushAssistant('[hosted] Your sign-in expired. Sign in again and resend.'); return; }
       if(res.status===404){ pushAssistant('[hosted] This persona is private and not yours, so hosted chat cannot read it.'); return; }
       if(res.status===429){ pushAssistant('[hosted] Slow down a little. Try again in a minute.'); return; }
