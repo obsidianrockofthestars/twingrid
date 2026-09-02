@@ -334,37 +334,97 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #explore{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
 body.route-explore #explore{display:block}
 body.route-explore{overflow:auto;background:var(--paper)}
+#account{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
+body.route-account #account{display:block}
+body.route-account{overflow:auto;background:var(--paper)}
+#account .achead{display:flex;align-items:flex-start;gap:20px;padding:26px 0 30px;border-bottom:1px solid var(--line-w);margin-bottom:30px;flex-wrap:wrap}
+#account .acav{width:72px;height:72px;border-radius:20px;flex:none;display:grid;place-items:center;color:#fff;font-family:var(--serif);font-weight:600;font-size:32px;background:#C24B2A}
+#account .acname{font-family:var(--serif);font-weight:600;font-size:clamp(26px,4vw,38px);letter-spacing:-.02em;margin:0 0 4px;color:var(--ink)}
+#account .achandle{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-dim)}
+#account .acbio{color:var(--ink-soft);font-size:16px;line-height:1.6;max-width:62ch;margin:10px 0 0;white-space:pre-wrap}
+#account .acedit{margin-top:14px;display:none;flex-direction:column;gap:8px;max-width:520px}
+#account .acedit.open{display:flex}
+#account .acedit input,#account .acedit textarea{font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line-w);border-radius:10px;background:var(--card-w);color:var(--ink)}
+#account .acedit textarea{min-height:90px;resize:vertical}
+#account .acrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#account .acmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em}
+#account .acempty{grid-column:1/-1;background:var(--paper-2);border:1px dashed var(--line-w);border-radius:16px;padding:44px 28px;text-align:center;color:var(--ink-soft)}
+#home .hclaim{background:var(--card-w);border:1px solid var(--accent-w);border-radius:16px;padding:18px 20px;margin:18px 0 6px;display:none}
+#home .hclaim.open{display:block}
+#home .hclaim h2{font-family:var(--serif);font-weight:600;font-size:21px;margin:0 0 6px;color:var(--ink)}
+#home .hclaim p{margin:0 0 12px;color:var(--ink-soft);font-size:14.5px;line-height:1.55}
+#home .hclaimrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#home .hclaimrow .at{font-family:"IBM Plex Mono",monospace;color:var(--ink-dim)}
+#home .hclaimrow input{font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line-w);border-radius:10px;background:var(--paper);color:var(--ink);width:220px;max-width:100%}
+#home .hclaimmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em;margin-top:8px}
+#home .hhandle{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-dim);margin-top:6px}
+#home .hhandle a{color:var(--accent-w-deep)}
+#profile .pby{font-size:13px;color:var(--ink-dim);margin-top:4px}
+#profile .pby a{color:var(--accent-w-deep)}
+
 #explore .pnav{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+#account .pnav{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
 #explore .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
+#account .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
 #explore .pnav .brand span{color:var(--accent-w)}
+#account .pnav .brand span{color:var(--accent-w)}
 #explore .btn.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
+#account .btn.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
 #explore .btn.solid:hover{background:var(--accent-w-deep)}
+#account .btn.solid:hover{background:var(--accent-w-deep)}
 #explore .exhead{padding:26px 0 30px;border-bottom:1px solid var(--line-w);margin-bottom:30px}
+#account .exhead{padding:26px 0 30px;border-bottom:1px solid var(--line-w);margin-bottom:30px}
 #explore .exhead h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;margin:6px 0 10px;color:var(--ink)}
+#account .exhead h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;margin:6px 0 10px;color:var(--ink)}
 #explore .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
+#account .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
 #explore .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
+#account .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
 #explore .excard{display:block;text-align:left;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:22px;
   box-shadow:0 2px 12px rgba(40,28,18,.05);cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s,transform .15s}
+#account .excard{display:block;text-align:left;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:22px;
+  box-shadow:0 2px 12px rgba(40,28,18,.05);cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s,transform .15s}
 #explore .excard:hover{border-color:var(--accent-w);box-shadow:0 10px 26px rgba(40,28,18,.10);transform:translateY(-2px)}
+#account .excard:hover{border-color:var(--accent-w);box-shadow:0 10px 26px rgba(40,28,18,.10);transform:translateY(-2px)}
 #explore .excard .extop{display:flex;align-items:center;gap:13px;margin-bottom:13px}
+#account .excard .extop{display:flex;align-items:center;gap:13px;margin-bottom:13px}
 #explore .exav{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;color:#fff;
   font-family:var(--serif);font-weight:600;font-size:21px}
+#account .exav{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;color:#fff;
+  font-family:var(--serif);font-weight:600;font-size:21px}
 #explore .exname{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--ink);line-height:1.2}
+#account .exname{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--ink);line-height:1.2}
 #explore .exmeta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);margin-top:3px}
+#account .exmeta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);margin-top:3px}
 #explore .exsnip{color:var(--ink-soft);font-size:14px;line-height:1.55;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin:0 0 12px}
+#account .exsnip{color:var(--ink-soft);font-size:14px;line-height:1.55;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin:0 0 12px}
 #explore .exby{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-dim);
   border-top:1px solid var(--line-w);padding-top:11px}
+#account .exby{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-dim);
+  border-top:1px solid var(--line-w);padding-top:11px}
 #explore .exbadge{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
   background:var(--accent-soft);color:var(--accent-w-deep);border-radius:999px;padding:3px 9px}
+#account .exbadge{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  background:var(--accent-soft);color:var(--accent-w-deep);border-radius:999px;padding:3px 9px}
 #explore .exfoot{color:var(--ink-dim);font-size:13px;line-height:1.6;padding:16px 0 60px;max-width:70ch}
+#account .exfoot{color:var(--ink-dim);font-size:13px;line-height:1.6;padding:16px 0 60px;max-width:70ch}
 #explore .exempty{grid-column:1/-1;background:var(--paper-2);border:1px dashed var(--line-w);border-radius:16px;
   padding:44px 28px;text-align:center;color:var(--ink-soft)}
+#account .exempty{grid-column:1/-1;background:var(--paper-2);border:1px dashed var(--line-w);border-radius:16px;
+  padding:44px 28px;text-align:center;color:var(--ink-soft)}
 #explore .exempty h3{font-family:var(--serif);font-weight:600;color:var(--ink);margin:0 0 8px;font-size:21px}
+#account .exempty h3{font-family:var(--serif);font-weight:600;color:var(--ink);margin:0 0 8px;font-size:21px}
 #explore .exfilters{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
+#account .exfilters{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
 #explore .exchk{display:inline-flex;align-items:center;gap:9px;font-size:14px;color:var(--ink-soft);cursor:pointer;min-height:44px}
+#account .exchk{display:inline-flex;align-items:center;gap:9px;font-size:14px;color:var(--ink-soft);cursor:pointer;min-height:44px}
 #explore .exchk input{width:17px;height:17px;accent-color:var(--accent-w);cursor:pointer}
+#account .exchk input{width:17px;height:17px;accent-color:var(--accent-w);cursor:pointer}
 #explore .exclear{background:none;border:0;font:inherit;font-size:13.5px;color:var(--accent-w-deep);text-decoration:underline;
+  text-underline-offset:3px;cursor:pointer;padding:6px 2px;min-height:44px}
+#account .exclear{background:none;border:0;font:inherit;font-size:13.5px;color:var(--accent-w-deep);text-decoration:underline;
   text-underline-offset:3px;cursor:pointer;padding:6px 2px;min-height:44px}
 
 /* first-run tour: one spotlight, one card, no library */
@@ -1094,6 +1154,13 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <h1>Your personas</h1>
       <p class="exlede">A persona is a version of you, or a character, written as plain cells anyone can read. Make one, read it, talk to it, and share it when it feels right.</p>
       <div class="hctl"><select id="hactas" hidden aria-label="Work as"></select><span class="hmsg" id="hmsg"></span></div>
+      <div class="hhandle" id="hhandle" hidden></div>
+      <div class="hclaim" id="hclaim">
+        <h2>Claim your handle</h2>
+        <p>Your handle is your page: personakind.com/@you. Letters, numbers and underscores, 3 to 30 characters. You can change your display name any time; the handle is yours for good.</p>
+        <div class="hclaimrow"><span class="at">@</span><input id="hclaiminput" type="text" maxlength="30" autocomplete="off" spellcheck="false" aria-label="Handle" placeholder="yourname"><button class="hbtn solid" type="button" id="hclaimbtn">Claim it</button></div>
+        <div class="hclaimmsg" id="hclaimmsg" aria-live="polite"></div>
+      </div>
     </div>
     <div class="hgrid" id="hgrid"></div>
     <div class="hnew">
@@ -1128,6 +1195,34 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 </div>
 
 <!-- ============ PUBLIC TWINOGRAPH PROFILE ============ -->
+<!-- ============ ACCOUNT (public @handle page) ============ -->
+<div id="account">
+  <div class="wrap">
+    <nav class="pnav">
+      <a class="brand" href="?">Persona<span>kind</span></a>
+      <span class="sp" style="flex:1"></span>
+      <a class="btn" href="?explore">Explore</a>
+      <button class="btn solid" data-auth id="acbuild">Build your own</button>
+    </nav>
+    <div class="achead">
+      <div class="acav" id="acav">P</div>
+      <div style="flex:1;min-width:240px">
+        <div class="pk-kicker">Personakind member</div>
+        <h1 class="acname" id="acname">Persona</h1>
+        <div class="achandle" id="achandle"></div>
+        <p class="acbio" id="acbio"></p>
+        <div class="acrow" style="margin-top:12px"><button class="btn" type="button" id="aceditbtn" hidden>Edit name and bio</button><button class="btn" type="button" id="acsharebtn">Copy page link</button></div>
+        <form class="acedit" id="acedit">
+          <input id="acname_in" type="text" maxlength="60" placeholder="Display name" aria-label="Display name">
+          <textarea id="acbio_in" maxlength="300" placeholder="A line or two about you, or about who these personas are." aria-label="Bio"></textarea>
+          <div class="acrow"><button class="btn solid" type="submit">Save</button><button class="btn" type="button" id="accancel">Cancel</button><span class="acmsg" id="acmsg" aria-live="polite"></span></div>
+        </form>
+      </div>
+    </div>
+    <div class="exgrid" id="acgrid"></div>
+    <p class="exfoot" id="acfoot"></p>
+  </div>
+</div>
 <div id="profile">
   <div class="phero">
     <div class="band" id="pband"></div>
@@ -1142,6 +1237,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
         <div class="pavatar" id="pavatar">T</div>
         <div>
           <h1 id="pname">Persona</h1>
+          <div class="pby" id="pby" hidden></div>
           <div class="meta">
             <span class="badge" id="pkind">AI persona</span>
             <span id="pcells"></span>
@@ -1509,9 +1605,12 @@ async function renderHome(){ const gen=++__homeGen;
   document.title='Home \u00b7 Personakind';
   const grid=document.getElementById('hgrid'), msg=document.getElementById('hmsg'); grid.innerHTML=''; msg.textContent='';
   const owner=await ownerId();
-  const {data,error}=await SB.from('twingrid_grids').select('id,name,is_public,updated_at').eq('owner',owner).order('updated_at',{ascending:false});
+  const [{data,error},myHandle]=await Promise.all([
+    SB.from('twingrid_grids').select('id,name,is_public,updated_at').eq('owner',owner).order('updated_at',{ascending:false}),
+    handleFor(owner)]);
   if(gen!==__homeGen) return; // a newer render started while we waited; it owns the grid
   grid.innerHTML='';
+  homeHandleUi(owner,myHandle);
   if(error){ const d=document.createElement('div'); d.className='hempty'; d.textContent=error.message; grid.appendChild(d); return; }
   if(!data||!data.length){ const d=document.createElement('div'); d.className='hempty'; d.textContent='No personas yet. Pick a door below and make your first one.'; grid.appendChild(d); return; }
   data.forEach(r=>{
@@ -1524,10 +1623,40 @@ async function renderHome(){ const gen=++__homeGen;
     const edit=document.createElement('a'); edit.className='hbtn solid'; edit.href='?editor'; edit.textContent='Edit'; edit.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); }catch(_){} }; acts.appendChild(edit);
     const talk=document.createElement('a'); talk.className='hbtn'; talk.href='?editor'; talk.textContent='Talk to it'; talk.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); sessionStorage.setItem('pk_open_chat','1'); }catch(_){} }; acts.appendChild(talk);
     const share=document.createElement('button'); share.className='hbtn'; share.type='button'; share.textContent=r.is_public?'Copy share link':'Private';
-    if(r.is_public){ share.onclick=()=>{ const url=location.origin+location.pathname+'?t='+encodeURIComponent(r.id); navigator.clipboard.writeText(url).then(()=>{ share.textContent='Copied'; setTimeout(()=>share.textContent='Copy share link',1400); }); }; }
+    if(r.is_public){ share.onclick=()=>{ const url=shareUrlFor(r.id,r.name,myHandle); navigator.clipboard.writeText(url).then(()=>{ share.textContent='Copied'; setTimeout(()=>share.textContent='Copy share link',1400); }); }; }
     else { share.disabled=true; share.title='Tick "make public" in the editor to get a share link.'; }
     acts.appendChild(share); c.appendChild(acts); grid.appendChild(c);
   });
+}
+// Handle line and claim card on Home. A handle is claimed once (unique, case-insensitive, reserved words refused by the
+// database) and never typed into the page as HTML: every render below is textContent.
+function homeHandleUi(owner,myHandle){
+  const line=document.getElementById('hhandle'), claim=document.getElementById('hclaim');
+  if(myHandle){ line.hidden=false; line.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(myHandle); a.textContent='@'+myHandle; line.append('Your page: ',a); claim.classList.remove('open'); return; }
+  line.hidden=true; if(!owner) { claim.classList.remove('open'); return; }
+  claim.classList.add('open');
+  const inp=document.getElementById('hclaiminput'), btn=document.getElementById('hclaimbtn'), msg=document.getElementById('hclaimmsg');
+  if(inp.dataset.wired) return; inp.dataset.wired='1';
+  let timer=null, lastOk='';
+  function norm(){ return inp.value.trim().toLowerCase(); }
+  inp.addEventListener('input',()=>{ inp.value=inp.value.replace(/[^A-Za-z0-9_]/g,''); const h=norm(); lastOk=''; clearTimeout(timer);
+    if(!h){ msg.textContent=''; return; }
+    if(!HANDLE_RE.test(h)){ msg.textContent='3 to 30 characters: letters, numbers, underscores.'; return; }
+    msg.textContent='Checking...';
+    timer=setTimeout(async()=>{ const {data,error}=await SB.rpc('twingrid_handle_available',{h}); if(norm()!==h) return;
+      if(error){ msg.textContent='Could not check right now.'; return; }
+      if(data){ lastOk=h; msg.textContent='@'+h+' is free.'; } else { msg.textContent='@'+h+' is taken.'; } },350); });
+  btn.onclick=async()=>{ const h=norm(); if(!HANDLE_RE.test(h)){ msg.textContent='3 to 30 characters: letters, numbers, underscores.'; return; }
+    btn.disabled=true; msg.textContent='Claiming...';
+    const {error}=await SB.from('twingrid_accounts').insert({id:owner,handle:h});
+    btn.disabled=false;
+    if(error){ const m=String(error.message||''); const code=String(error.code||'');
+      if(code==='23505'||/duplicate|unique/i.test(m)) msg.textContent='@'+h+' was just taken. Try another.';
+      else if(code==='23514'||/check constraint|reserved/i.test(m)) msg.textContent='That handle is reserved. Try another.';
+      else if(/row-level security|permission/i.test(m)) msg.textContent='Sign in again, then try.';
+      else msg.textContent='Could not claim it: '+m.slice(0,120);
+      return; }
+    __handleCache[owner]=h; msg.textContent='Done. @'+h+' is yours.'; setTimeout(()=>renderHome(),600); };
 }
 document.getElementById('hsignout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
 document.querySelectorAll('[data-hpath]').forEach(b=>b.addEventListener('click',()=>{ try{ sessionStorage.setItem('pk_pending_path',b.dataset.hpath); }catch(_){} location.href=location.origin+location.pathname+'?editor'; }));
@@ -1570,10 +1699,35 @@ async function renderMod(){
 
 // ---------- auth ----------
 const app=document.getElementById('app');
+// Pretty path /@handle or /@handle/persona-name (Worker host only) is folded into the query form
+// ?u=handle&p=persona so every relative link on the page keeps working on both hosts.
+(function foldHandlePath(){ const m=/^\/@([A-Za-z0-9_]{3,30})(?:\/([^\/?#]+))?\/?$/.exec(location.pathname); if(!m) return;
+  const q=new URLSearchParams(location.search); q.set('u',m[1].toLowerCase()); if(m[2]){ try{ q.set('p',decodeURIComponent(m[2])); }catch(_){ q.set('p',m[2]); } }
+  try{ history.replaceState(null,'','/?'+q.toString()); }catch(_){} })();
 function onProfileRoute(){ return new URLSearchParams(location.search).get('t'); }
+function onAccountRoute(){ const u=new URLSearchParams(location.search).get('u'); return u?u.trim().toLowerCase():null; }
+function accountPersonaParam(){ return new URLSearchParams(location.search).get('p'); }
+const HANDLE_RE=/^[a-z0-9_]{3,30}$/;
+function ilikeEscape(t){ return String(t).replace(/[\\%_]/g,m=>'\\'+m); }
+async function accountByHandle(h){ if(!HANDLE_RE.test(h)) return null;
+  const {data}=await SB.from('twingrid_accounts').select('id,handle,display_name,bio,avatar_theme,is_official,is_suspended').eq('handle',h).maybeSingle(); return data||null; }
+const __handleCache={};
+async function handleFor(uid){ if(!uid) return null; if(uid in __handleCache) return __handleCache[uid];
+  const {data}=await SB.from('twingrid_accounts').select('handle').eq('id',uid).maybeSingle(); __handleCache[uid]=data?data.handle:null; return __handleCache[uid]; }
+// Share link for a grid: the handle form when the owner has one, the uuid form otherwise. The uuid form stays valid forever.
+function shareUrlFor(id,name,handle){ const base=location.origin+location.pathname;
+  if(handle&&name) return base+'?u='+encodeURIComponent(handle)+'&p='+encodeURIComponent(name);
+  return base+'?t='+encodeURIComponent(id); }
+async function resolveHandlePersona(h,name){ const a=await accountByHandle(h); if(!a) return {acc:null,id:null};
+  const {data}=await SB.from('twingrid_grids').select('id,name').eq('owner',a.id).eq('is_public',true).ilike('name',ilikeEscape(name)).limit(1);
+  return {acc:a,id:(data&&data[0])?data[0].id:null}; }
 function onExploreRoute(){ return new URLSearchParams(location.search).has('explore'); }
 function route(){ const twin=onProfileRoute();
   if(twin){ document.body.className='marketing route-profile'; app.style.display='none'; renderProfile(twin); return; }
+  const acct=onAccountRoute();
+  if(acct){ const pn=accountPersonaParam(); app.style.display='none';
+    if(pn){ document.body.className='marketing route-profile'; resolveHandlePersona(acct,pn).then(r=>{ if(r.id) renderProfile(r.id,{handle:acct}); else renderProfile('00000000-0000-0000-0000-000000000000',{handle:acct,missingName:pn}); }); return; }
+    document.body.className='marketing route-account'; renderAccount(acct); return; }
   if(onExploreRoute()){ document.body.className='marketing route-explore'; app.style.display='none'; renderExplore(); return; }
   if(onModRoute()){ document.body.className='marketing route-mod'; app.style.display='none'; renderMod(); return; }
   document.body.className='marketing route-landing'; refreshAuth(); }
@@ -2067,7 +2221,7 @@ document.getElementById('chatinput').addEventListener('keydown',e=>{if(e.key==='
 // ---------- share link ----------
 function updateShare(){ const el=document.getElementById('shareline'); if(!el)return;
   const pub=document.getElementById('ispublic').checked;
-  if(curId&&pub){ const url=location.origin+location.pathname+'?t='+curId; el.style.display='block'; el.innerHTML='';
+  if(curId&&pub){ const url=shareUrlFor(curId,(document.getElementById('gridname')||{}).value||'',__editorHandle); el.style.display='block'; el.innerHTML='';
     const lab=document.createElement('div'); lab.textContent='Public page (Save to publish edits):'; lab.style.marginBottom='6px'; lab.style.color='var(--dim)';
     const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener'; a.textContent='Open twinograph \u2197'; a.style.display='inline-block';
     const c=document.createElement('button'); c.className='newbtn'; c.style.marginTop='6px'; c.textContent='Copy share link';
@@ -2075,6 +2229,7 @@ function updateShare(){ const el=document.getElementById('shareline'); if(!el)re
     el.append(lab,a,c);
   } else { el.style.display='none'; el.innerHTML=''; } }
 const ipEl=document.getElementById('ispublic'); if(ipEl) ipEl.addEventListener('change',updateShare);
+let __editorHandle=null; (async()=>{ try{ __editorHandle=await handleFor(await ownerId()); updateShare(); }catch(_){} })();
 
 // ---------- public twinograph profile ----------
 let PROFILE_GRID=null;
@@ -2222,10 +2377,10 @@ async function renderExplore(){
     if(a && a.is_official){
       officials++;
       const b=document.createElement('span'); b.className='exbadge'; b.textContent='Starter persona';
-      const t=document.createElement('span'); t.textContent='Published by @'+a.handle;
+      const t=document.createElement('a'); t.href='?u='+encodeURIComponent(a.handle); t.textContent='Published by @'+a.handle; t.onclick=e=>{ e.stopPropagation(); };
       by.append(b,t);
     } else if(a){
-      const t=document.createElement('span'); t.textContent='@'+a.handle; by.appendChild(t);
+      const t=document.createElement('a'); t.href='?u='+encodeURIComponent(a.handle); t.textContent='@'+a.handle; t.onclick=e=>{ e.stopPropagation(); }; by.appendChild(t);
     } else {
       const t=document.createElement('span'); t.textContent='A Personakind member'; by.appendChild(t);
     }
@@ -2243,6 +2398,49 @@ async function renderExplore(){
 const CELL_LABEL={CONTEXT:'Who it is',DO:'What it helps with',DONT:'What it will not do',GATES:'Its hard rules',VOICE:'How it sounds'};
 function cellLabel(c){ return CELL_LABEL[c]||c; }
 // A stranger arriving from a shared link needs a sentence about the persona, not a count of internal objects.
+async function renderAccount(handle){
+  const nameEl=document.getElementById('acname'), hEl=document.getElementById('achandle'), bioEl=document.getElementById('acbio'), av=document.getElementById('acav'),
+        grid=document.getElementById('acgrid'), foot=document.getElementById('acfoot'), editBtn=document.getElementById('aceditbtn'), form=document.getElementById('acedit');
+  document.title='@'+handle+' \u00b7 Personakind';
+  grid.innerHTML=''; foot.textContent=''; editBtn.hidden=true; form.classList.remove('open'); bioEl.textContent='';
+  const empty=(t,m)=>{ const d=document.createElement('div'); d.className='acempty'; const h=document.createElement('h3'); h.textContent=t; const p=document.createElement('p'); p.textContent=m; p.style.margin='0'; d.append(h,p); grid.appendChild(d); };
+  const acc=HANDLE_RE.test(handle)?await accountByHandle(handle):null;
+  if(!acc||acc.is_suspended){ nameEl.textContent='No page at @'+handle; hEl.textContent=''; av.textContent='?'; empty('Nothing here','There is no Personakind member with that handle, or their page is not public yet.'); return; }
+  const THEMES={coral:'#C24B2A',teal:'#2F7D6E',violet:'#7D4A78',blue:'#4A5C9E',gold:'#8A6A16',rose:'#A8392F'};
+  av.style.background=THEMES[acc.avatar_theme]||THEMES.coral;
+  const dn=(acc.display_name&&acc.display_name.trim())||('@'+acc.handle);
+  nameEl.textContent=dn; hEl.textContent='@'+acc.handle+(acc.is_official?'  \u00b7 official':''); av.textContent=(dn.replace(/^@/,'')[0]||'P').toUpperCase();
+  bioEl.textContent=acc.bio||'';
+  document.getElementById('acsharebtn').onclick=()=>{ const b=document.getElementById('acsharebtn'); navigator.clipboard.writeText(location.origin+location.pathname+'?u='+encodeURIComponent(acc.handle)).then(()=>{ b.textContent='Copied'; setTimeout(()=>b.textContent='Copy page link',1400); }); };
+  // own page: edit name and bio (RLS: twingrid_operates(id) on UPDATE)
+  try{ const {data:{session}}=await SB.auth.getSession(); const me=session?session.user.id:null; const mine=!!me&&(me===acc.id||(await ownerId())===acc.id);
+    if(mine){ editBtn.hidden=false; document.getElementById('acbuild').hidden=true;
+      editBtn.onclick=()=>{ document.getElementById('acname_in').value=acc.display_name||''; document.getElementById('acbio_in').value=acc.bio||''; document.getElementById('acmsg').textContent=''; form.classList.add('open'); document.getElementById('acname_in').focus(); };
+      document.getElementById('accancel').onclick=()=>form.classList.remove('open');
+      form.onsubmit=async(e)=>{ e.preventDefault(); const msg=document.getElementById('acmsg'); msg.textContent='Saving...';
+        const display_name=document.getElementById('acname_in').value.trim().slice(0,60)||null, bio=document.getElementById('acbio_in').value.trim().slice(0,300)||null;
+        const {error}=await SB.from('twingrid_accounts').update({display_name,bio}).eq('id',acc.id);
+        if(error){ msg.textContent='Could not save: '+String(error.message||'').slice(0,120); return; }
+        msg.textContent='Saved.'; setTimeout(()=>renderAccount(handle),500); }; }
+    else { document.getElementById('acbuild').hidden=false; }
+  }catch(_){}
+  const {data:rows,error}=await SB.from('twingrid_grids').select('id,name,data,updated_at').eq('owner',acc.id).eq('is_public',true).order('updated_at',{ascending:false});
+  if(error){ empty('Could not load personas','Try again in a moment.'); return; }
+  if(!rows||!rows.length){ empty('No public personas yet','When '+dn+' makes one public it lands here.'); return; }
+  rows.forEach(r=>{ const g=(r.data&&r.data.facets)?r.data:{facets:[]}; const nm=String(r.name||'Untitled persona');
+    const rawTheme=(g.theme&&typeof g.theme==='string')?g.theme.trim():''; const accn=/^#[0-9a-fA-F]{6}$/.test(rawTheme)?inkSafe(rawTheme):'#C24B2A';
+    const card=document.createElement('a'); card.className='excard'; card.setAttribute('href',shareUrlFor(r.id,nm,acc.handle).replace(location.origin+location.pathname,''));
+    const top=document.createElement('div'); top.className='extop'; const avx=document.createElement('div'); avx.className='exav'; avx.style.background=accn;
+    const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'')||nm.trim(); avx.textContent=(initSrc[0]||'P').toUpperCase();
+    const idb=document.createElement('div'); const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
+    const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
+    const meta=document.createElement('div'); meta.className='exmeta'; meta.textContent=cells+' short cells to read \u00b7 edited '+new Date(r.updated_at).toLocaleDateString();
+    idb.append(n,meta); top.append(avx,idb); card.appendChild(top);
+    const core=g.facets.find(f=>f.name==='core')||g.facets[0]; const snipText=(core&&core.cells)?cellBody(core.cells.CONTEXT||core.cells.DO||''):'';
+    const snip=document.createElement('p'); snip.className='exsnip'; snip.textContent=snipText||'A persona with nothing written yet.'; card.appendChild(snip);
+    grid.appendChild(card); });
+  foot.textContent=rows.length+(rows.length===1?' public persona.':' public personas.')+' Open one to read it, copy it into your own AI, or talk to it here.';
+}
 function profileSummary(g){
   const fs=(g&&g.facets)||[]; const core=fs.find(f=>f.name==='core')||fs[0];
   let t=(core&&core.cells)?cellBody(core.cells.CONTEXT||''):'';
@@ -2255,11 +2453,12 @@ function profileSummary(g){
   if(t.length<=180) return t;
   return t.slice(0,180).replace(/\s+\S*$/,'')+'\u2026';
 }
-async function renderProfile(id){
-  const nameEl=document.getElementById('pname');
-  const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public').eq('id',id).maybeSingle();
+async function renderProfile(id,opts){ opts=opts||{};
+  const nameEl=document.getElementById('pname'); const pby=document.getElementById('pby'); pby.hidden=true; pby.textContent='';
+  const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public,owner').eq('id',id).maybeSingle();
   if(error||!data){ nameEl.textContent='Persona not found'; document.getElementById('pavatar').textContent='?';
-    document.getElementById('ppersona').textContent='This persona is private, or the link is wrong. Ask its owner to make it public.';
+    document.getElementById('ppersona').textContent=opts.missingName?('@'+opts.handle+' has no public persona named "'+opts.missingName+'". It may have been renamed or made private.'):'This persona is private, or the link is wrong. Ask its owner to make it public.';
+    if(opts.handle){ pby.hidden=false; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(opts.handle); a.textContent='@'+opts.handle; pby.append('See everything by ',a); }
     document.getElementById('pfacets').innerHTML=''; document.getElementById('pcells').textContent='';
     document.getElementById('pfacetcount').textContent=''; document.getElementById('pkind').textContent='not found';
     const __ct=document.getElementById('pctatalk'); if(__ct)__ct.style.display='none';
@@ -2267,6 +2466,8 @@ async function renderProfile(id){
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
   nameEl.textContent=nm; document.getElementById('pavatar').textContent=(nm.trim()[0]||'T').toUpperCase();
+  handleFor(data.owner).then(h=>{ if(!h) return; pby.hidden=false; pby.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; pby.append('by ',a);
+    try{ const q=new URLSearchParams(location.search); if(q.get('t')&&!q.get('u')){ q.delete('t'); q.set('u',h); q.set('p',nm); history.replaceState(null,'','?'+q.toString()); } }catch(_){} });
   document.getElementById('pcells').textContent='';
   document.getElementById('pfacetcount').textContent='';
   document.getElementById('psummary').textContent=profileSummary(g);
@@ -2507,7 +2708,7 @@ const HELP_FAQ=[
     if(/route-profile/.test(c)) return {name:'profile',steps:TOUR_PROFILE};
     return null; }
   function allowed(){ const c=document.body.className||'';
-    return c==='' || /route-home|route-profile|route-explore/.test(c); }
+    return c==='' || /route-home|route-profile|route-explore|route-account/.test(c); }
   function close(){ panel.hidden=true; btn.setAttribute('aria-expanded','false'); }
   function open(){ const t=tourForView(); tbtn.hidden=!t; panel.hidden=false; btn.setAttribute('aria-expanded','true'); }
   HELP_FAQ.forEach((f,i)=>{
