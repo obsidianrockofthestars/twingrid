@@ -29,9 +29,20 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 const MAX_TOKENS = 700;
 
-const MAX_MESSAGES = 24;
-const MAX_CONTENT_CHARS = 6000;
+// Cost fix, 2026-09-02 (Dylan's ruling, CDD council): the page sends at most 12 turns of 2,000 chars,
+// the persona block is sent as a cacheable system block (Anthropic caches only prompts of 4,096+
+// tokens, smaller ones are simply not cached), and a reply costs 1 credit per 24,000 chars of
+// persona text, so a 41,000-char composition costs 2 and the 60,000 ceiling costs 3. The Worker
+// returns the cost so the drawer can say so.
+const MAX_MESSAGES = 12;
+const MAX_CONTENT_CHARS = 2000;
 const MAX_SYSTEM_CHARS = 60000;
+const SYSTEM_CHARS_PER_CREDIT = 24000;
+
+export function chatCost(systemChars) {
+  const n = Math.ceil(Number(systemChars) / SYSTEM_CHARS_PER_CREDIT);
+  return Number.isFinite(n) && n > 1 ? Math.min(n, 3) : 1;
+}
 const MAX_BODY_BYTES = 256 * 1024;
 
 // Persona images (2026-09-02, Dylan's rulings): Google's image model, 15 credits a try, 10 a day per user,
@@ -401,11 +412,12 @@ async function handleChat(request, env) {
   if (system.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
   if (system === GUARD) return json(request, 400, { error: "persona_empty" });
 
-  // Spend BEFORE calling Anthropic. -1 means nothing spendable.
-  const spend = await rpcService(env, "twingrid_use_credit", { p_user: user.id });
+  // Spend BEFORE calling Anthropic. -1 means nothing spendable. Cost scales with persona size.
+  const cost = chatCost(system.length);
+  const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: cost, p_kind: "use" });
   if (!spend.ok) return json(request, 502, { error: "credits_unavailable" });
   const remaining = Number(spend.value);
-  if (!Number.isFinite(remaining) || remaining < 0) return json(request, 402, { error: "no_credits" });
+  if (!Number.isFinite(remaining) || remaining < 0) return json(request, 402, { error: "no_credits", cost });
 
   const model = (typeof env.HOSTED_MODEL === "string" && env.HOSTED_MODEL.trim()) || DEFAULT_MODEL;
   let text = null;
@@ -423,7 +435,7 @@ async function handleChat(request, env) {
       body: JSON.stringify({
         model,
         max_tokens: MAX_TOKENS,
-        system,
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
         messages: body.messages.map((m) => ({ role: m.role, content: m.content })),
       }),
     });
@@ -448,16 +460,16 @@ async function handleChat(request, env) {
     // Refund the credit we took. A failed refund is logged as a code only.
     const ref = "refund:" + crypto.randomUUID();
     const r = await rpcService(env, "twingrid_grant_credits", {
-      p_user: user.id, p_delta: 1, p_kind: "refund", p_ref: ref, p_period_end: null,
+      p_user: user.id, p_delta: cost, p_kind: "refund", p_ref: ref, p_period_end: null,
     });
     if (!r.ok) console.log("refund_failed"); // no user data, no content
     // Upstream HTTP status only (0 = fetch threw). A number, never a body, never a key.
     console.log("upstream_failed", upstreamStatus, upstreamType, upstreamMsg);
     const status = upstreamStatus === 429 ? 429 : 502;
-    return json(request, status, { error: "upstream_failed", upstream: upstreamStatus, upstream_type: upstreamType, upstream_msg: upstreamMsg, remaining: r.ok ? Number(r.value) : remaining + 1 });
+    return json(request, status, { error: "upstream_failed", upstream: upstreamStatus, upstream_type: upstreamType, upstream_msg: upstreamMsg, remaining: r.ok ? Number(r.value) : remaining + cost });
   }
 
-  return json(request, 200, { text, remaining, model });
+  return json(request, 200, { text, remaining, model, cost });
 }
 
 const GRANT_EVENTS = new Set(["INITIAL_PURCHASE", "RENEWAL", "NON_RENEWING_PURCHASE"]);

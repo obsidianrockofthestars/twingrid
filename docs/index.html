@@ -2244,17 +2244,17 @@ async function sendChat(){const inp=document.getElementById('chatinput');const t
     const gridId=currentGridId(); if(!gridId){ pushAssistant('[hosted] Save this persona first, then chat. Hosted chat reads the saved persona.'); return; }
     inp.value='';history.push({role:'user',content:text});renderChat();
     const b=document.getElementById('chatbody');const wait=document.createElement('div');wait.className='msg a';wait.textContent='...';b.appendChild(wait);b.scrollTop=b.scrollHeight;
-    let msgs=history.slice(-24).map(m=>({role:m.role,content:m.content.slice(0,6000)})); while(msgs.length&&msgs[0].role!=='user') msgs.shift();
+    let msgs=history.slice(-12).map(m=>({role:m.role,content:m.content.slice(0,2000)})); while(msgs.length&&msgs[0].role!=='user') msgs.shift(); // 12 turns of 2,000 chars: the Worker refuses more (cost fix, 2026-09-02)
     try{ const res=await fetch(HOSTED_API+'/chat',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({grid_id:gridId,messages:msgs,compose:composeState()})});
       let j=null; try{ j=await res.json(); }catch(_){ j=null; }
       wait.remove();
-      if(res.status===402){ history.pop(); inp.value=text; renderChat(); hostedRemaining=0; setCreditsLine('Hosted chat: no messages left on your plan. Renew, or add your own key.'); showProCard(); return; }
+      if(res.status===402){ history.pop(); inp.value=text; renderChat(); hostedRemaining=0; setCreditsLine(j&&j.cost>1 ? 'Hosted chat: this persona costs '+j.cost+' messages a reply and you have fewer left. Renew, or add your own key.' : 'Hosted chat: no messages left on your plan. Renew, or add your own key.'); showProCard(); return; }
       if(res.status===401){ pushAssistant('[hosted] Your sign-in expired. Sign in again and resend.'); return; }
       if(res.status===404){ pushAssistant('[hosted] This persona is private and not yours, so hosted chat cannot read it.'); return; }
       if(res.status===429){ pushAssistant('[hosted] Slow down a little. Try again in a minute.'); return; }
       if(!res.ok||!j||typeof j.text!=='string'){ pushAssistant('[hosted] The model did not answer. Your message credit was returned. Try again.'); if(j&&typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' left'); } return; }
       pushAssistant(j.text||'[no text]');
-      if(typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' message'+(j.remaining===1?'':'s')+' left'); if(j.remaining===0) showProCard(); }
+      if(typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' message'+(j.remaining===1?'':'s')+' left'+(j.cost>1?' (this persona is large, '+j.cost+' messages a reply)':'')); if(j.remaining===0) showProCard(); }
     }catch(e){ wait.remove(); pushAssistant('[hosted request failed] '+(e&&e.message?e.message:'network error')); }
     return;
   }

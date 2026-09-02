@@ -2,7 +2,7 @@
 // with a fake that answers the Supabase and Anthropic shapes the handler uses.
 // Run: node worker/api.test.mjs
 
-import { handleApi, guardedPrompt } from "./api.js";
+import { handleApi, guardedPrompt, chatCost } from "./api.js";
 
 const ENV = {
   SUPABASE_URL: "https://example.supabase.co",
@@ -61,6 +61,12 @@ globalThis.fetch = async (url, init) => {
     balance -= 1;
     return respond(200, balance);
   }
+  if (u.endsWith("/rest/v1/rpc/twingrid_use_credits")) {
+    if (body.p_kind !== "use" && body.p_kind !== "image" && body.p_kind !== "voice") return respond(400, { message: "unknown spend kind" });
+    if (balance < body.p_cost) return respond(200, -1);
+    balance -= body.p_cost;
+    return respond(200, balance);
+  }
   if (u.endsWith("/rest/v1/rpc/twingrid_grant_credits")) {
     balance += body.p_delta;
     return respond(200, balance);
@@ -68,7 +74,9 @@ globalThis.fetch = async (url, init) => {
   if (u === "https://api.anthropic.com/v1/messages") {
     if (anthropicMode === "fail") return respond(529, { error: { type: "overloaded_error", message: "Overloaded" } });
     // Assert the request shape without printing any content.
-    if (!body.system.startsWith("You are role-playing a published Personakind persona")) throw new Error("guard preamble missing");
+    if (!Array.isArray(body.system) || body.system.length !== 1 || body.system[0].type !== "text") throw new Error("system must be one text block");
+    if (!body.system[0].text.startsWith("You are role-playing a published Personakind persona")) throw new Error("guard preamble missing");
+    if (!body.system[0].cache_control || body.system[0].cache_control.type !== "ephemeral") throw new Error("system block is not marked cacheable");
     if (body.max_tokens !== 700) throw new Error("max_tokens should be 700");
     if (headers["x-api-key"] !== ENV.ANTHROPIC_API_KEY) throw new Error("x-api-key missing");
     if (headers["anthropic-version"] !== "2023-06-01") throw new Error("anthropic-version missing");
@@ -144,7 +152,7 @@ await check("malformed body (bad role) -> 400", async () => {
 await check("malformed body (content too long) -> 400", async () => {
   const r = await handleApi(req("/api/chat", {
     method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }),
-    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "x".repeat(6001) }] }),
+    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "x".repeat(2001) }] }),
   }), ENV);
   eq(r.status, 400, "status");
   eq((await r.json()).error, "bad_content", "error");
@@ -181,7 +189,8 @@ await check("happy path chat: spends one credit, returns text and remaining", as
   eq(j.model, ENV.HOSTED_MODEL, "model");
   eq(r.headers.get("Access-Control-Allow-Origin"), "https://personakind.com", "cors");
   // Spend happened before Anthropic was called.
-  const idxSpend = calls.findIndex((c) => c.url.endsWith("/rpc/twingrid_use_credit"));
+  const idxSpend = calls.findIndex((c) => c.url.endsWith("/rpc/twingrid_use_credits"));
+  eq(j.cost, 1, "cost");
   const idxAnth = calls.findIndex((c) => c.url === "https://api.anthropic.com/v1/messages");
   if (!(idxSpend >= 0 && idxAnth > idxSpend)) throw new Error("credit was not spent before the Anthropic call");
 });
@@ -345,3 +354,18 @@ await check("guardedPrompt port: unknown facet names in compose are ignored", as
 
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
+
+await check("chatCost: 1 credit per 24,000 chars of persona, floor 1, ceiling 3", async () => {
+  eq(chatCost(0), 1, "0"); eq(chatCost(5849), 1, "5849"); eq(chatCost(24000), 1, "24000");
+  eq(chatCost(24001), 2, "24001"); eq(chatCost(41355), 2, "41355"); eq(chatCost(60000), 3, "60000"); eq(chatCost(NaN), 1, "NaN");
+});
+
+await check("13 messages -> 400 bad_messages (history cap is 12)", async () => {
+  const msgs = []; for (let i = 0; i < 13; i++) msgs.push({ role: i % 2 ? "assistant" : "user", content: "m" });
+  const r = await handleApi(req("/api/chat", {
+    method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }),
+    body: JSON.stringify({ grid_id: GRID_ID, messages: msgs }),
+  }), ENV);
+  eq(r.status, 400, "status");
+  eq((await r.json()).error, "bad_messages", "error");
+});
