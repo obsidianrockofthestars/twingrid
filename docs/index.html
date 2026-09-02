@@ -378,7 +378,6 @@ body.route-explore{overflow:auto;background:var(--paper)}
 #tourcard .tstep{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim,#726858);flex:1}
 #tourcard button{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:9px 14px;cursor:pointer;min-height:44px;border:1px solid var(--line-w,#E7DCC9);background:none;color:var(--ink,#211C17)}
 #tourcard button.solid{background:var(--accent-w,#E0653C);border-color:var(--accent-w,#E0653C);color:#fff}
-#home .htour{font:inherit;font-size:13.5px;background:none;border:1px solid var(--line-w);color:var(--ink-soft);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:44px}
 
 /* home (signed in): plain cards, no engine room */
 #home{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
@@ -794,7 +793,11 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   #tutnav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line-w,#E7DCC9);padding:8px}
   #tutnav button{white-space:nowrap;font-size:13px;padding:8px 10px}
   #tutbody{padding:14px 14px}
-  #tutbtn{right:96px;padding:0 14px;font-size:14px}
+  #tutbtn{display:none}
+  #helpbtn{min-height:42px;padding:0 16px;font-size:14px;right:12px;bottom:12px}
+  #home .pnav,#explore .pnav,#mod .pnav{gap:8px}
+  #home .pnav .btn,#explore .pnav .btn,#mod .pnav .btn{padding:8px 12px;font-size:13px}
+  #home,#explore,#mod{padding-bottom:84px}
   #tutfoot label{flex-basis:100%}
 }
 
@@ -1090,7 +1093,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div class="pk-kicker">Home</div>
       <h1>Your personas</h1>
       <p class="exlede">A persona is a version of you, or a character, written as plain cells anyone can read. Make one, read it, talk to it, and share it when it feels right.</p>
-      <div class="hctl"><select id="hactas" hidden aria-label="Work as"></select><button class="htour" type="button" id="htourbtn">Show me around</button><span class="hmsg" id="hmsg"></span></div>
+      <div class="hctl"><select id="hactas" hidden aria-label="Work as"></select><span class="hmsg" id="hmsg"></span></div>
     </div>
     <div class="hgrid" id="hgrid"></div>
     <div class="hnew">
@@ -1464,13 +1467,7 @@ document.getElementById('tutbtn').onclick=()=>tutOpen(0);
 
 // ---------- first-run tour ----------
 // Dylan, 2026-08-29: "a play by play on how to use it, with pop ups". One spotlight and one card per step,
-// positioned from the real element, remembered per browser so it runs once. Replay from "Show me around".
-const TOUR_HOME=[
-  {sel:'#home .hhead h1', t:'Your personas live here', x:'A persona is a version of you, or a character, written as short plain-language cells. Nothing hidden: what it says is exactly what it is.'},
-  {sel:'#home .hgrid', t:'Each card is one persona', x:'Edit opens it. Talk to it lets you chat with it on your own AI key. Copy share link hands it to someone once it is public.'},
-  {sel:'#home .hnew', t:'Three ways to make a new one', x:'Answer a few questions and it writes itself, start from a template and swap in your words, or let your own AI interview you. The Tutorial button walks each one step by step.'},
-  {sel:'#home .hfoot a', t:'The advanced editor is optional', x:'It shows every cell and every connection on a board. Same persona, more knobs. You never have to open it.'}
-];
+// positioned from the real element, remembered per browser so it runs once. Home has no tour (Dylan, 2026-09-02): the Tutorial is the one onboarding there; the editor keeps its tour, replayable from Help.
 const TOUR_EDITOR=[
   {sel:'#clonelist', t:'Your personas', x:'Pick one here. The board on the right is that persona, spread out so you can see all of it.'},
   {sel:'#stage .node', t:'This is a cell group', x:'Each box holds a few cells: CONTEXT (what it knows), DO, DONT, GATES (its limits), VOICE (how it sounds). Click a cell to edit the words.'},
@@ -1503,7 +1500,6 @@ document.getElementById('tournext').onclick=()=>{ if(!__tour) return; if(__tourI
 document.getElementById('tourskip').onclick=tourEnd;
 window.addEventListener('keydown',e=>{ if(e.key==='Escape'&&__tour) tourEnd(); });
 window.addEventListener('resize',()=>{ if(__tour) tourPlace(); });
-document.getElementById('htourbtn').onclick=()=>tourStart('home',TOUR_HOME);
 function tourMaybe(name, steps, delay){ if(tourSeen(name)) return; setTimeout(()=>{ if(!__tour&&!tutIsOpen()) tourStart(name,steps); }, delay||600); }
 // The board is the engine room. Signed-in users land here instead: plain cards, three doors, one link to the board.
 let __homeGen=0; // refreshAuth can fire several times at load (auth events); only the newest render may paint
@@ -1581,7 +1577,7 @@ function route(){ const twin=onProfileRoute();
   if(onModRoute()){ document.body.className='marketing route-mod'; app.style.display='none'; renderMod(); return; }
   document.body.className='marketing route-landing'; refreshAuth(); }
 async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
-  if(session && !onEditorRoute()){ await renderHome(); initOperator(session); if(!tutMaybe(700)) tourMaybe('home',TOUR_HOME,700); return; }
+  if(session && !onEditorRoute()){ await renderHome(); initOperator(session); tutMaybe(700); return; }
   if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones(); initOperator(session);
     if(window.__editorBooted) return; window.__editorBooted=true;
     try{ const g=sessionStorage.getItem('pk_open_grid'); if(g){ sessionStorage.removeItem('pk_open_grid'); const b=[...document.querySelectorAll('#clonelist .clone')].find(x=>x.dataset.gid===g); if(b) b.click(); }
@@ -2208,7 +2204,7 @@ async function renderExplore(){
     const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
     const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
     const meta=document.createElement('div'); meta.className='exmeta';
-    meta.textContent=g.facets.length+' facets \u00b7 '+cells+' cells';
+    meta.textContent=cells+' short cells to read \u00b7 edited '+new Date(r.updated_at).toLocaleDateString();
     idb.append(n,meta); top.append(av,idb); card.appendChild(top);
 
     const core=g.facets.find(f=>f.name==='core')||g.facets[0];
@@ -2504,7 +2500,6 @@ const HELP_FAQ=[
   if(!btn||!panel) return;
   function tourForView(){ const c=document.body.className||'';
     if(c==='') return {name:'editor',steps:TOUR_EDITOR};
-    if(/route-home/.test(c)) return {name:'home',steps:TOUR_HOME};
     if(/route-profile/.test(c)) return {name:'profile',steps:TOUR_PROFILE};
     return null; }
   function allowed(){ const c=document.body.className||'';
