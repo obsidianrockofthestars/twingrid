@@ -1089,7 +1089,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <h4 style="margin-top:20px">Grid</h4>
       <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="persona name">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
-      <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
+      <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
       <div id="facemsg" aria-live="polite"></div>
       <div class="note" id="shareline" style="margin-top:10px;display:none"></div>
       <button class="newbtn" id="delbtn" style="color:var(--dont-text);border-color:transparent;margin-top:14px">Delete this persona</button>
@@ -1917,6 +1917,29 @@ document.getElementById('facefile').onchange=async(e)=>{ const f=e.target.files&
     if(old){ try{ await SB.storage.from('twingrid-media').remove([old]); }catch(_){} }
     faceShow(url); faceMsg('Face saved. It shows on your cards and page.'); loadClones();
   }catch(err){ faceMsg('Could not save the image: '+String((err&&err.message)||err).slice(0,120)); } };
+// Paid create: the Worker spends 15 credits, ticks the daily cap and asks Google; the page stores the result in
+// the uploader's own folder through the same path as an upload, so the database rules are identical.
+document.getElementById('facegen').onclick=async()=>{ if(!curId){ faceMsg('Save the persona first, then create a face.'); return; }
+  const btn=document.getElementById('facegen'); const token=await hostedToken(); if(!token){ faceMsg('Sign in first.'); return; }
+  const {data:{user}}=await SB.auth.getUser(); if(!user){ faceMsg('Sign in first.'); return; }
+  btn.disabled=true; faceMsg('Painting... this takes about 10 seconds.');
+  try{ const res=await fetch('/api/media/image',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({grid_id:curId,style:document.getElementById('facestyle').value})});
+    let j=null; try{ j=await res.json(); }catch(_){}
+    if(res.status===402){ faceMsg('Creating an image costs 15 hosted messages and you have none left.'); showProCard('An image costs 15 hosted messages. Buy a pack, or upload your own picture for free.'); return; }
+    if(res.status===429){ faceMsg(j&&j.error==='daily_cap'?'That is 10 images today, the daily cap. Try again tomorrow; nothing was charged.':'Too many requests, try again in a minute.'); return; }
+    if(res.status===503){ faceMsg('Image creation is not switched on yet.'); return; }
+    if(!res.ok||!j||typeof j.image!=='string'){ faceMsg('The painter did not answer. Your messages were returned.'); if(j&&typeof j.remaining==='number'){ hostedRemaining=j.remaining; } return; }
+    if(typeof j.remaining==='number'){ hostedRemaining=j.remaining; setCreditsLine('Hosted chat: '+j.remaining+' message'+(j.remaining===1?'':'s')+' left'); }
+    const bin=atob(j.image); const arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    const blob=await faceEncode(new Blob([arr],{type:j.mime||'image/png'}));
+    faceMsg('Saving...'); const path=user.id+'/'+curId+'/'+Date.now()+'.webp';
+    const {error:ue}=await SB.storage.from('twingrid-media').upload(path,blob,{contentType:'image/webp',upsert:false}); if(ue) throw ue;
+    const url=MEDIA_BASE+path; const old=facePathOf(__faceUrl);
+    const {error:ge}=await SB.from('twingrid_grids').update({image_url:url}).eq('id',curId); if(ge){ try{ await SB.storage.from('twingrid-media').remove([path]); }catch(_){} throw ge; }
+    if(old){ try{ await SB.storage.from('twingrid-media').remove([old]); }catch(_){} }
+    faceShow(url); faceMsg('Face created and saved. Not happy? Create again, 15 messages a try, or upload your own.'); loadClones();
+  }catch(err){ faceMsg('Could not save the image: '+String((err&&err.message)||err).slice(0,120)); }
+  finally{ btn.disabled=false; } };
 document.getElementById('faceclear').onclick=async()=>{ if(!curId||!__faceUrl) return; const old=facePathOf(__faceUrl);
   const {error}=await SB.from('twingrid_grids').update({image_url:null}).eq('id',curId); if(error){ faceMsg('Could not remove it: '+String(error.message||'').slice(0,100)); return; }
   if(old){ try{ await SB.storage.from('twingrid-media').remove([old]); }catch(_){} }

@@ -16,7 +16,9 @@
     // Current Haiku as of 2026-09-01 (https://platform.claude.com/docs/en/models/overview). Bump here, no code change.
     "HOSTED_MODEL": "claude-haiku-4-5-20251001",
     // RevenueCat Web Billing product id -> credits granted per purchase or renewal. Must match the RC dashboard.
-    "CREDIT_PACKS": "{\"pk_hosted_500_month\":500,\"pk_hosted_6000_year\":6000}"
+    "CREDIT_PACKS": "{\"pk_hosted_500_month\":500,\"pk_hosted_6000_year\":6000}",
+    // Google image model for persona portraits (2026-09-02); a newer id can be set here or in the dashboard.
+    "IMAGE_MODEL": "gemini-2.5-flash-image"
   },
   // Secrets, set once with `wrangler secret put`: ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH.
   "assets": {

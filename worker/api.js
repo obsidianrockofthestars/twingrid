@@ -8,10 +8,12 @@
 //   GET  /api/credits     Authorization: Bearer <supabase access token>
 //   POST /api/chat        same auth, body { grid_id, messages, compose? }
 //   POST /api/rc-webhook  RevenueCat webhook, Authorization must equal env.RC_WEBHOOK_AUTH
+//   POST /api/media/image same auth as chat, body { grid_id, style }: spends IMAGE_CREDITS, ticks the daily
+//                         cap, asks Google for one square persona image, returns it base64 (the page stores it)
 //   anything else         404 JSON
 //
-// Secrets (wrangler secret put): ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH
-// Vars (wrangler.jsonc "vars"):  SUPABASE_URL, SUPABASE_ANON_KEY, HOSTED_MODEL, CREDIT_PACKS
+// Secrets (wrangler secret put): ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH, GOOGLE_API_KEY
+// Vars (wrangler.jsonc "vars"):  SUPABASE_URL, SUPABASE_ANON_KEY, HOSTED_MODEL, CREDIT_PACKS, IMAGE_MODEL
 // Optional binding:              RATE_KV (KV namespace). Skipped entirely when absent.
 //
 // Privacy rule: message content, system prompts and grid cells are never logged.
@@ -32,6 +34,17 @@ const MAX_CONTENT_CHARS = 6000;
 const MAX_SYSTEM_CHARS = 60000;
 const MAX_BODY_BYTES = 256 * 1024;
 
+// Persona images (2026-09-02, Dylan's rulings): Google's image model, 15 credits a try, 10 a day per user,
+// costs carried by the user through the ledger. IMAGE_MODEL var overrides the model id without a code deploy.
+const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
+const IMAGE_CREDITS = 15;
+const IMAGE_DAILY_CAP = 10;
+const IMAGE_STYLES = {
+  portrait: "a warm, painterly portrait, soft natural light, head and shoulders, plain background",
+  illustration: "a clean flat illustration, bold shapes, limited palette, head and shoulders",
+  pixel: "16-bit pixel art, head and shoulders, plain background",
+  watercolor: "a loose watercolor portrait on textured paper, head and shoulders",
+};
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------------------------------------------------------------------------
@@ -468,6 +481,147 @@ function creditPacks(env) {
   }
 }
 
+// Fetch name, owner and data of a grid AS THE CALLER (RLS decides visibility).
+async function fetchGridMetaAsUser(env, token, gridId) {
+  const q = "/rest/v1/twingrid_grids?select=id,name,owner,data&id=eq." + encodeURIComponent(gridId);
+  let res;
+  try {
+    res = await fetch(sbUrl(env, q), {
+      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token, Accept: "application/json" },
+    });
+  } catch (_) {
+    return { error: 502 };
+  }
+  if (!res.ok) return { error: res.status === 401 ? 401 : 502 };
+  let rows;
+  try {
+    rows = await res.json();
+  } catch (_) {
+    return { error: 502 };
+  }
+  if (!Array.isArray(rows) || rows.length === 0) return { error: 404 };
+  return { grid: rows[0] };
+}
+
+// Does the caller operate this owner (own account, or operator of an official one)? Asked AS THE CALLER.
+async function operatesAsUser(env, token, owner) {
+  let res;
+  try {
+    res = await fetch(sbUrl(env, "/rest/v1/rpc/twingrid_operates"), {
+      method: "POST",
+      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ target: owner }),
+    });
+  } catch (_) {
+    return false;
+  }
+  if (!res.ok) return false;
+  try {
+    return (await res.json()) === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+// One line of who the persona is, from its core CONTEXT cell. Flattened to a single line, capped, and framed as
+// a description inside a fixed prompt: the cell is data for the painter, never an instruction.
+function personaBlurb(data) {
+  try {
+    const facets = data && Array.isArray(data.facets) ? data.facets : [];
+    const core = facets.find((f) => f && f.name === "core") || facets[0];
+    const raw = core && core.cells ? cellBody(core.cells.CONTEXT || core.cells.DO || "") : "";
+    return String(raw).replace(/[\r\n\t]+/g, " ").replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, " ").trim().slice(0, 400);
+  } catch (_) {
+    return "";
+  }
+}
+
+async function handleMediaImage(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  if (!env.GOOGLE_API_KEY) return json(request, 503, { error: "image_not_configured" });
+
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const body = parsed.value || {};
+  if (typeof body.grid_id !== "string" || !UUID_RE.test(body.grid_id)) return json(request, 400, { error: "bad_grid_id" });
+  const style = typeof body.style === "string" && IMAGE_STYLES[body.style] ? body.style : "portrait";
+
+  const g = await fetchGridMetaAsUser(env, token, body.grid_id);
+  if (g.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (g.error === 401) return json(request, 401, { error: "unauthorized" });
+  if (g.error) return json(request, 502, { error: "grid_unavailable" });
+  if (g.grid.owner !== user.id && !(await operatesAsUser(env, token, g.grid.owner))) {
+    return json(request, 403, { error: "not_your_persona" });
+  }
+
+  // Spend first, then the daily tick. A full day refunds the spend.
+  const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: IMAGE_CREDITS, p_kind: "image" });
+  if (!spend.ok) return json(request, 502, { error: "credits_unavailable" });
+  const remaining = Number(spend.value);
+  if (!Number.isFinite(remaining) || remaining < 0) return json(request, 402, { error: "no_credits", cost: IMAGE_CREDITS });
+
+  const refund = async () => {
+    const r = await rpcService(env, "twingrid_grant_credits", {
+      p_user: user.id, p_delta: IMAGE_CREDITS, p_kind: "refund", p_ref: "refund:" + crypto.randomUUID(), p_period_end: null,
+    });
+    if (!r.ok) console.log("refund_failed");
+    return r.ok ? Number(r.value) : remaining + IMAGE_CREDITS;
+  };
+
+  const tick = await rpcService(env, "twingrid_media_tick", { p_user: user.id, p_kind: "image", p_limit: IMAGE_DAILY_CAP });
+  if (!tick.ok || tick.value !== true) {
+    const back = await refund();
+    return json(request, 429, { error: "daily_cap", cap: IMAGE_DAILY_CAP, remaining: back }, { "Retry-After": "3600" });
+  }
+
+  const name = String(g.grid.name || "a persona").replace(/[^\x20-\x7E]/g, "").slice(0, 80);
+  const blurb = personaBlurb(g.grid.data);
+  const prompt =
+    "Create one square profile picture for a fictional character called \"" + name + "\". Render it as " + IMAGE_STYLES[style] + ". " +
+    "No text, no letters, no watermark, no logos, one subject only, safe for a general audience. " +
+    (blurb ? "The character is described by its author as: " + blurb : "");
+
+  const model = (typeof env.IMAGE_MODEL === "string" && env.IMAGE_MODEL.trim()) || DEFAULT_IMAGE_MODEL;
+  let b64 = null;
+  let mime = "";
+  let upstreamStatus = 0;
+  let upstreamMsg = "";
+  try {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": env.GOOGLE_API_KEY },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1" } },
+      }),
+    });
+    upstreamStatus = res.status;
+    if (res.ok) {
+      const j = await res.json();
+      const parts = j && Array.isArray(j.candidates) && j.candidates[0] && j.candidates[0].content && Array.isArray(j.candidates[0].content.parts)
+        ? j.candidates[0].content.parts : [];
+      const img = parts.find((pt) => pt && pt.inlineData && typeof pt.inlineData.data === "string");
+      if (img) { b64 = img.inlineData.data; mime = String(img.inlineData.mimeType || "image/png"); }
+    } else {
+      try {
+        const e = await res.json();
+        upstreamMsg = e && e.error && typeof e.error.message === "string" ? e.error.message.slice(0, 200) : "";
+      } catch (_) { /* non-JSON */ }
+    }
+  } catch (_) {
+    b64 = null;
+  }
+
+  if (!b64) {
+    const back = await refund();
+    console.log("image_upstream_failed", upstreamStatus, upstreamMsg);
+    return json(request, upstreamStatus === 429 ? 429 : 502, { error: "upstream_failed", upstream: upstreamStatus, upstream_msg: upstreamMsg, remaining: back });
+  }
+  return json(request, 200, { image: b64, mime, remaining, model, style });
+}
+
 async function handleRcWebhook(request, env) {
   // RevenueCat sends the dashboard-configured value verbatim in the
   // Authorization header of every POST. Compare the whole header.
@@ -538,7 +692,8 @@ export async function handleApi(request, env) {
     if (path === "/api/credits" && method === "GET") return await handleCredits(request, env);
     if (path === "/api/chat" && method === "POST") return await handleChat(request, env);
     if (path === "/api/rc-webhook" && method === "POST") return await handleRcWebhook(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook") {
+    if (path === "/api/media/image" && method === "POST") return await handleMediaImage(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });
