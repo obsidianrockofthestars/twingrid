@@ -1953,7 +1953,6 @@ function pkRepaintThemePanel(){ pkThemePanel(document.getElementById('themebox')
     const d=Object.assign({},(row.data&&row.data.facets)?row.data:{facets:[]}); d.theme=raw;
     const {error}=await SB.from('twingrid_grids').update({data:d}).eq('id',curId); if(error) return 'Could not save the colour: '+String(error.message||'').slice(0,100);
     GRID.theme=raw; loadClones(); return null; }}); }
-pkRepaintThemePanel();
 function voiceCostFor(text){ return Math.max(2, Math.min(6, Math.ceil(text.length/150))); }
 async function speakReply(text){ if(!speakOn||!chatVoice||!text) return;
   if(chatVoice==='browser'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text.slice(0,900)); window.speechSynthesis.speak(u); }catch(_){} return; }
@@ -2489,6 +2488,8 @@ function pkThemePanel(host,opts){ if(!host) return; const label=host.querySelect
   inp.addEventListener('input',()=>{ accent=inp.value.toUpperCase(); paint(); });
   inp.addEventListener('change',()=>{ accent=inp.value.toUpperCase(); paint(); save(); });
   paint(); }
+// hotfix 2026-09-03: the first paint runs here, below every const it reads (a call above PK_THEMES threw at load and stopped the module)
+pkRepaintThemePanel();
 function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
 // ---------- viewer-side hiding and reporting ----------
 // A label is necessary and not sufficient. Meta shipped "AI managed by Meta" on their
