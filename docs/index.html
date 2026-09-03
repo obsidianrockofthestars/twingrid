@@ -108,7 +108,7 @@ button{font-family:inherit}
 .axischips{display:flex;gap:10px;align-items:center;padding:8px 16px;overflow-x:auto;background:var(--surface);border-bottom:1px solid var(--line)}
 .grp{display:flex;gap:5px;align-items:center}
 .grp .lbl{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.chip{font-size:11.5px;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:999px;padding:3px 9px;white-space:nowrap}
+.chip{font-size:11.5px;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:999px;padding:3px 9px;min-height:24px;white-space:nowrap}
 .chip:hover{color:var(--text)}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
 .pbtn{font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:999px;padding:4px 11px;white-space:nowrap}
@@ -388,7 +388,7 @@ body.route-account{overflow:auto;background:var(--paper)}
 #home .hclaimrow .at{font-family:"IBM Plex Mono",monospace;color:var(--ink-dim)}
 #home .hclaimrow input{font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line-w);border-radius:10px;background:var(--paper);color:var(--ink);width:220px;max-width:100%}
 #home .hclaimmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em;margin-top:8px}
-#home .hrename{font:inherit;font-size:12px;background:none;border:0;color:var(--accent-w-deep);cursor:pointer;padding:2px 4px;margin-left:8px;text-decoration:underline;text-underline-offset:3px}
+#home .hrename{font:inherit;font-size:12px;background:none;border:0;color:var(--accent-w-deep);cursor:pointer;padding:2px 6px;min-height:24px;min-width:24px;display:inline-flex;align-items:center;margin-left:8px;text-decoration:underline;text-underline-offset:3px}
 #home .hrenrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 8px}
 #home .hrenrow input{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line-w);border-radius:10px;background:var(--paper);color:var(--ink);flex:1;min-width:160px}
 #home .hrenmsg{font-size:12.5px;color:var(--ink-dim)}
@@ -472,13 +472,13 @@ body.route-account{overflow:auto;background:var(--paper)}
 #tour{position:fixed;inset:0;z-index:140;display:none}
 #tour.open{display:block}
 #tourspot{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,14,10,.62);pointer-events:none;transition:all .25s ease;border:2px solid var(--accent-w)}
-#tourcard{position:absolute;max-width:340px;width:calc(100vw - 32px);background:var(--card-w,#fff);color:var(--ink,#211C17);border-radius:16px;padding:18px 18px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font-size:15px;line-height:1.5}
+#tourcard{position:absolute;max-width:340px;width:calc(100vw - 32px);background:var(--card-w);color:var(--ink);border-radius:16px;padding:18px 18px 14px;box-shadow:0 18px 50px rgba(0,0,0,.35);font-size:15px;line-height:1.5}
 #tourcard h3{font-family:var(--serif,Georgia,serif);font-weight:600;font-size:19px;margin:0 0 6px}
-#tourcard p{margin:0 0 12px;color:var(--ink-soft,#5C5347)}
+#tourcard p{margin:0 0 12px;color:var(--ink-soft)}
 #tourcard .trow{display:flex;align-items:center;gap:8px}
-#tourcard .tstep{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim,#726858);flex:1}
-#tourcard button{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:9px 14px;cursor:pointer;min-height:44px;border:1px solid var(--line-w,#E7DCC9);background:none;color:var(--ink,#211C17)}
-#tourcard button.solid{background:var(--accent-w,#E0653C);border-color:var(--accent-w,#E0653C);color:#fff}
+#tourcard .tstep{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);flex:1}
+#tourcard button{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:9px 14px;cursor:pointer;min-height:44px;border:1px solid var(--line-w);background:none;color:var(--ink)}
+#tourcard button.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
 
 /* home (signed in): plain cards, no engine room */
 #home{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
@@ -841,53 +841,53 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 
 
 /* profile: plain-language summary + demoted BYOK link (2026-08-29 sweep) */
-.psum{margin:8px 0 0;font-size:15.5px;line-height:1.55;color:var(--ink,#1a1a1a);opacity:.8;max-width:52ch}
+.psum{margin:8px 0 0;font-size:15.5px;line-height:1.55;color:var(--ink);opacity:.8;max-width:52ch}
 .pcopytext{display:block;width:100%;margin:10px 0 0;min-height:120px;padding:8px;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;
-  border:1px solid var(--line,#d9d4cc);border-radius:10px;background:#fff;color:var(--ink,#1a1a1a);resize:vertical}
+  border:1px solid var(--line-w);border-radius:10px;background:var(--card-w);color:var(--ink);resize:vertical}
 .linkbtn{display:block;width:100%;margin:10px 0 0;min-height:44px;background:none;border:0;padding:0;text-align:left;
-  font:400 13.5px/1.4 inherit;color:var(--ink,#1a1a1a);opacity:.8;text-decoration:underline;cursor:pointer}
+  font:400 13.5px/1.4 inherit;color:var(--ink);opacity:.8;text-decoration:underline;cursor:pointer}
 
 /* always-on help (2026-08-29). Layer 1 is scripted: no network, no key, works for anyone. */
 #helpbtn{position:fixed;right:16px;bottom:16px;z-index:55;min-height:48px;min-width:48px;padding:0 20px;border-radius:999px;
-  border:1px solid var(--line,#d9d4cc);background:var(--paper,#fff);color:var(--ink,#1a1a1a);font:600 15px/1 Archivo,system-ui,sans-serif;
+  border:1px solid var(--line-w);background:var(--paper);color:var(--ink);font:600 15px/1 Archivo,system-ui,sans-serif;
   box-shadow:0 6px 20px rgba(0,0,0,.16);cursor:pointer}
-#helpbtn:hover{background:var(--accent-soft,#f4efe8)}
+#helpbtn:hover{background:var(--accent-soft)}
 /* step-by-step tutorial (Dylan, 2026-09-01): one dialog, chapters on the left, numbered steps on the right,
    "Take me there" buttons that press the real controls, a don't-show-again box, and a Tutorial pill on every view. */
 #tutbtn{position:fixed;right:110px;bottom:16px;z-index:55;min-height:48px;padding:0 18px;border-radius:999px;
-  border:1px solid var(--line,#d9d4cc);background:var(--paper,#fff);color:var(--ink,#1a1a1a);font:600 15px/1 Archivo,system-ui,sans-serif;
+  border:1px solid var(--line-w);background:var(--paper);color:var(--ink);font:600 15px/1 Archivo,system-ui,sans-serif;
   box-shadow:0 6px 20px rgba(0,0,0,.16);cursor:pointer}
-#tutbtn:hover{background:var(--accent-soft,#f4efe8)}
+#tutbtn:hover{background:var(--accent-soft)}
 #tut{position:fixed;inset:0;z-index:150;display:none;background:rgba(20,14,10,.62);align-items:center;justify-content:center;padding:12px}
 #tut.open{display:flex}
-#tutbox{background:var(--card-w,#fff);color:var(--ink,#211C17);border-radius:18px;width:min(860px,100%);max-height:min(92vh,760px);display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.4);overflow:hidden;font-size:15px;line-height:1.55}
-#tuthead{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line-w,#E7DCC9)}
+#tutbox{background:var(--card-w);color:var(--ink);border-radius:18px;width:min(860px,100%);max-height:min(92vh,760px);display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.4);overflow:hidden;font-size:15px;line-height:1.55}
+#tuthead{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line-w)}
 #tuthead h2{font-family:var(--serif,Georgia,serif);font-weight:600;font-size:20px;margin:0;flex:1}
 #tuthead .tx{background:none;border:0;font-size:28px;line-height:1;min-height:44px;min-width:44px;cursor:pointer;color:inherit}
 #tutmain{display:grid;grid-template-columns:230px 1fr;flex:1;min-height:0}
-#tutnav{border-right:1px solid var(--line-w,#E7DCC9);padding:10px;overflow:auto;display:flex;flex-direction:column;gap:4px}
-#tutnav button{font:inherit;font-size:14px;text-align:left;background:none;border:1px solid transparent;border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--ink-soft,#5C5347);min-height:44px}
-#tutnav button[aria-current="true"]{background:var(--accent-soft,#f4efe8);color:var(--ink,#211C17);border-color:var(--line-w,#E7DCC9);font-weight:600}
+#tutnav{border-right:1px solid var(--line-w);padding:10px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+#tutnav button{font:inherit;font-size:14px;text-align:left;background:none;border:1px solid transparent;border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--ink-soft);min-height:44px}
+#tutnav button[aria-current="true"]{background:var(--accent-soft);color:var(--ink);border-color:var(--line-w);font-weight:600}
 #tutbody{padding:18px 22px;overflow:auto}
 #tutbody h3{font-family:var(--serif,Georgia,serif);font-weight:600;font-size:22px;margin:0 0 6px}
-#tutbody .tlede{margin:0 0 14px;color:var(--ink-soft,#5C5347)}
+#tutbody .tlede{margin:0 0 14px;color:var(--ink-soft)}
 #tutbody ol{margin:0;padding:0;list-style:none;counter-reset:tstep}
 #tutbody ol li{position:relative;padding:0 0 14px 44px;counter-increment:tstep}
-#tutbody ol li::before{content:counter(tstep);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--accent-w,#E0653C);color:#fff;font:700 14px/30px "IBM Plex Mono",monospace;text-align:center}
+#tutbody ol li::before{content:counter(tstep);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--accent-w);color:#fff;font:700 14px/30px "IBM Plex Mono",monospace;text-align:center}
 #tutbody ol li b{display:block;margin-bottom:2px}
-#tutbody ol li p{margin:0;color:var(--ink-soft,#5C5347)}
-#tutbody ol li code{font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--accent-soft,#f4efe8);padding:2px 6px;border-radius:6px;word-break:break-all}
-#tutbody .tgo{font:inherit;font-size:13.5px;font-weight:600;margin-top:8px;border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px;border:1px solid var(--accent-w,#E0653C);background:none;color:var(--accent-w,#E0653C)}
-#tutbody .tgo:hover{background:var(--accent-soft,#f4efe8)}
-#tutbody .tnote{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--accent-soft,#f4efe8);font-size:13.5px;color:var(--ink,#211C17)}
-#tutfoot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line-w,#E7DCC9);flex-wrap:wrap}
-#tutfoot label{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-soft,#5C5347);flex:1;min-height:44px;cursor:pointer}
-#tutfoot input{width:18px;height:18px;accent-color:var(--accent-w,#E0653C)}
-#tutfoot button{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:9px 16px;cursor:pointer;min-height:44px;border:1px solid var(--line-w,#E7DCC9);background:none;color:var(--ink,#211C17)}
-#tutfoot button.solid{background:var(--accent-w,#E0653C);border-color:var(--accent-w,#E0653C);color:#fff}
+#tutbody ol li p{margin:0;color:var(--ink-soft)}
+#tutbody ol li code{font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--accent-soft);padding:2px 6px;border-radius:6px;word-break:break-all}
+#tutbody .tgo{font:inherit;font-size:13.5px;font-weight:600;margin-top:8px;border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px;border:1px solid var(--accent-w);background:none;color:var(--accent-w)}
+#tutbody .tgo:hover{background:var(--accent-soft)}
+#tutbody .tnote{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--accent-soft);font-size:13.5px;color:var(--ink)}
+#tutfoot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line-w);flex-wrap:wrap}
+#tutfoot label{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-soft);flex:1;min-height:44px;cursor:pointer}
+#tutfoot input{width:18px;height:18px;accent-color:var(--accent-w)}
+#tutfoot button{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:9px 16px;cursor:pointer;min-height:44px;border:1px solid var(--line-w);background:none;color:var(--ink)}
+#tutfoot button.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
 @media (max-width:640px){
   #tutmain{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-  #tutnav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line-w,#E7DCC9);padding:8px}
+  #tutnav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line-w);padding:8px}
   #tutnav button{white-space:nowrap;font-size:13px;padding:8px 10px}
   #tutbody{padding:14px 14px}
   #tutbtn{display:none}
@@ -900,20 +900,20 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 
 #helppanel{position:fixed;right:12px;left:12px;bottom:76px;z-index:56;max-width:380px;margin-left:auto;
   max-height:min(70vh,70svh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
-  background:var(--paper,#fff);color:var(--ink,#1a1a1a);border:1px solid var(--line,#d9d4cc);border-radius:16px;
+  background:var(--paper);color:var(--ink);border:1px solid var(--line-w);border-radius:16px;
   box-shadow:0 18px 50px rgba(0,0,0,.24);padding:16px;font-family:Archivo,system-ui,sans-serif}
 #helppanel .hph{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 #helppanel .hph h3{margin:0;font-size:17px;flex:1}
 #helppanel .hpx{background:none;border:0;font-size:26px;line-height:1;min-height:44px;min-width:44px;cursor:pointer;color:inherit}
 #helppanel .hpshow{display:block;width:100%;min-height:46px;margin:0 0 12px;border-radius:12px;cursor:pointer;
-  border:1px solid var(--line,#d9d4cc);background:var(--accent-soft,#f4efe8);color:inherit;font:600 15px/1.3 inherit}
+  border:1px solid var(--line-w);background:var(--accent-soft);color:inherit;font:600 15px/1.3 inherit}
 #helppanel .hpq button.q{display:block;width:100%;text-align:left;min-height:46px;padding:11px 12px;margin:0 0 6px;cursor:pointer;
-  border:1px solid var(--line,#d9d4cc);border-radius:12px;background:transparent;color:inherit;font:500 15px/1.35 inherit}
-#helppanel .hpq button.q[aria-expanded="true"]{background:var(--accent-soft,#f4efe8)}
-#helppanel .hpa{padding:2px 12px 12px;font-size:14px;line-height:1.6;color:var(--ink,#1a1a1a);opacity:.86}
+  border:1px solid var(--line-w);border-radius:12px;background:transparent;color:inherit;font:500 15px/1.35 inherit}
+#helppanel .hpq button.q[aria-expanded="true"]{background:var(--accent-soft)}
+#helppanel .hpa{padding:2px 12px 12px;font-size:14px;line-height:1.6;color:var(--ink);opacity:.86}
 #helppanel .hpa button.go{margin-top:8px;min-height:44px;padding:0 14px;border-radius:10px;cursor:pointer;
-  border:1px solid currentColor;background:transparent;color:var(--ink,#1a1a1a);opacity:1;font:600 14px/1 inherit}
-#helppanel .hpfoot{margin:12px 0 0;font-size:12.5px;color:var(--ink,#1a1a1a);opacity:.65}
+  border:1px solid currentColor;background:transparent;color:var(--ink);opacity:1;font:600 14px/1 inherit}
+#helppanel .hpfoot{margin:12px 0 0;font-size:12.5px;color:var(--ink);opacity:.65}
 @media (max-width:420px){ #helppanel{max-height:min(62vh,62svh)} }
 </style>
 </head><body>
@@ -1111,7 +1111,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <aside class="side">
       <div class="sidehead"><h4>My personas</h4><button class="drawerclose" id="drawerclose" type="button" aria-label="Close the persona list"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <div id="clonelist"></div>
-      <button class="newbtn" id="newpersona" style="border-style:solid;border-color:var(--accent-w,#E0653C);color:var(--accent-w,#E0653C)">+ New persona</button>
+      <button class="newbtn" id="newpersona" style="border-style:solid;border-color:var(--accent-w);color:var(--accent-w)">+ New persona</button>
       <button class="newbtn" id="newblank">+ New from blank template</button>
       <button class="newbtn" id="newshow">+ New from showcase</button>
       <h4 style="margin-top:20px">Grid</h4>
@@ -1169,7 +1169,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 </div>
 
 <button id="tutbtn" type="button" aria-haspopup="dialog" hidden>Tutorial</button>
-<div id="termsbar" hidden role="region" aria-label="Terms update" style="position:fixed;left:12px;right:12px;bottom:76px;z-index:57;max-width:560px;margin:0 auto;background:var(--surface,#161C24);color:var(--text,#E7E4DC);border:1px solid var(--line,#2A323E);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;font-size:14px;line-height:1.5;box-shadow:0 12px 40px rgba(0,0,0,.35)">
+<div id="termsbar" hidden role="region" aria-label="Terms update" style="position:fixed;left:12px;right:12px;bottom:76px;z-index:57;max-width:560px;margin:0 auto;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;font-size:14px;line-height:1.5;box-shadow:0 12px 40px rgba(0,0,0,.35)">
   <span style="flex:1">We added a <a href="terms.html" target="_blank" rel="noopener" style="color:inherit">Terms of Service and Privacy Notice</a>. To keep using your account you need to be 18 or older and agree to it.</span>
   <button type="button" id="termsagree" class="pk-btn solid" style="flex:none">I agree</button>
 </div>
@@ -1454,13 +1454,13 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   #procard{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,14,10,.62);z-index:160;padding:12px}
   #procard[hidden]{display:none!important}
   [hidden]{display:none!important} /* 2026-09-02: .btn and .tbtn set display, which beat the hidden attribute on nav buttons */
-  .procard-box{position:relative;max-width:440px;width:100%;background:var(--card-w,#fff);color:var(--ink,#211C17);border:1px solid var(--line-w,#E7DCC9);border-radius:18px;padding:22px 22px 18px;box-shadow:0 24px 70px rgba(0,0,0,.4);font-size:15px;line-height:1.5}
+  .procard-box{position:relative;max-width:440px;width:100%;background:var(--card-w);color:var(--ink);border:1px solid var(--line-w);border-radius:18px;padding:22px 22px 18px;box-shadow:0 24px 70px rgba(0,0,0,.4);font-size:15px;line-height:1.5}
   .procard-box h2{font-family:var(--serif,Georgia,serif);font-weight:600;font-size:24px;margin:2px 0 6px}
-  .procard-sub{margin:0 0 12px;color:var(--ink-soft,#5C5347);font-size:14px}
-  .procard-list{margin:0 0 16px;padding-left:18px;font-size:14px;line-height:1.55;color:var(--ink,#211C17)}
+  .procard-sub{margin:0 0 12px;color:var(--ink-soft);font-size:14px}
+  .procard-list{margin:0 0 16px;padding-left:18px;font-size:14px;line-height:1.55;color:var(--ink)}
   .procard-btns{display:flex;flex-wrap:wrap;gap:10px}
-.procard-status{min-height:18px;margin:10px 0 0;font-size:13.5px;color:var(--ink-soft,#5C5347)}
-  .procard-x{position:absolute;top:8px;right:10px;background:none;border:0;color:var(--ink-soft,#5C5347);font-size:26px;line-height:1;min-height:44px;min-width:44px;cursor:pointer}
+.procard-status{min-height:18px;margin:10px 0 0;font-size:13.5px;color:var(--ink-soft)}
+  .procard-x{position:absolute;top:8px;right:10px;background:none;border:0;color:var(--ink-soft);font-size:26px;line-height:1;min-height:44px;min-width:44px;cursor:pointer}
 </style>
 
 <div class="drawer" id="chat">
