@@ -241,7 +241,7 @@ h1.big .g{background:var(--grad);-webkit-background-clip:text;background-clip:te
 body.route-profile #profile{display:block}
 body.route-profile{overflow:auto}
 .phero{position:relative;overflow:hidden;padding:26px 0 30px;border-bottom:1px solid var(--line)}
-.phero .band{position:absolute;inset:0;z-index:0;opacity:.85;background:var(--pbg,radial-gradient(80% 120% at 20% -20%,rgba(140,108,255,.25),transparent 60%))}
+.phero .band{position:absolute;inset:0;z-index:0;opacity:.85;background:radial-gradient(80% 120% at 20% -20%,rgba(140,108,255,.25),transparent 60%)}
 .phero .wrap{position:relative;z-index:1}
 .pnav{display:flex;align-items:center;gap:12px;margin-bottom:30px}
 .pnav .brand{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:18px;color:var(--text)}
@@ -306,30 +306,61 @@ body:not(.marketing){overflow:hidden}
 
 /* ============ Personakind warm theme: the public twinograph ============ */
 body.route-profile{background:var(--paper);color:var(--ink)}
-#profile .phero{border-bottom:1px solid var(--line-w);padding:22px 0 34px}
+/* the owner's theme (2026-09-03): #profile and the chat drawer on a persona page read these eight variables,
+   set inline by pkApplyTheme from deriveTheme(). No rule outside them may read a --p* variable. */
+#profile{background:var(--pbg);color:var(--ptext);min-height:100vh;min-height:100svh}
+#profile .phero{border-bottom:1px solid var(--pline);padding:22px 0 34px}
 #profile .phero .band{opacity:.6}
-#profile .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
-#profile .pnav .brand span{color:var(--accent-w)}
-#profile .pavatar{border-radius:20px;color:var(--pacc-text,#fff);font-family:var(--serif);font-weight:600;background:var(--pacc,var(--accent-w));box-shadow:0 14px 34px rgba(27,27,36,.20)}
-#profile .pid h1{font-family:var(--serif);font-weight:600;letter-spacing:-.02em;color:var(--ink)}
-#profile .pid .meta{color:var(--ink-dim)}
-#profile .pid .badge{border:1px solid var(--accent-soft);background:var(--accent-soft);color:var(--accent-w-deep)}
-#profile .persona,#profile .pcta,#profile .fcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;box-shadow:0 2px 12px rgba(27,27,36,.05)}
-#profile .persona h2,#profile .fcard .fh .kd{color:var(--ink-dim)}
-#profile .persona .body{color:var(--ink);max-height:none;overflow:visible}
-#profile .pcta h3,#profile .facets h2{font-family:var(--serif);font-weight:600;color:var(--ink)}
-#profile .pcta p{color:var(--ink-soft)}
-#profile .fcard .fh .nm{color:var(--ink)}
-#profile .psec .psh,#profile .fcard .cell .cl{color:var(--accent-w-deep)}
-#profile .psec .psb{color:var(--ink)}
-#profile .fcard .cell .cv{color:var(--ink-soft);max-height:none;overflow:hidden;
+#profile .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ptext)}
+#profile .pnav .brand span{color:var(--pacc)}
+#profile .pavatar{border-radius:20px;color:var(--pacc-text);font-family:var(--serif);font-weight:600;background:var(--pacc);box-shadow:0 14px 34px rgba(27,27,36,.20)}
+#profile .pid h1{font-family:var(--serif);font-weight:600;letter-spacing:-.02em;color:var(--ptext)}
+#profile .pid .meta{color:var(--pmuted)}
+#profile .pid .badge{border:1px solid var(--pline);background:transparent;color:var(--pacc-ink)}
+#profile .persona,#profile .pcta,#profile .fcard{background:var(--psurf);border:1px solid var(--pline);border-radius:16px;box-shadow:0 2px 12px rgba(27,27,36,.05)}
+#profile .persona h2,#profile .fcard .fh .kd{color:var(--pmuted)}
+#profile .persona .body{color:var(--ptext);max-height:none;overflow:visible}
+#profile .pcta h3,#profile .facets h2{font-family:var(--serif);font-weight:600;color:var(--ptext)}
+#profile .pcta p{color:var(--pmuted)}
+#profile .fcard .fh .nm{color:var(--ptext)}
+#profile .psec .psh,#profile .fcard .cell .cl{color:var(--pacc-ink)}
+#profile .psec .psb{color:var(--ptext)}
+#profile .fcard .cell .cv{color:var(--pmuted);max-height:none;overflow:hidden;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4}
-#profile .pdisc{color:var(--ink-dim)}
-#profile .btn.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
-#profile .btn.solid:hover{background:var(--accent-w-deep)}
-#profile .btn.ghost{border-color:var(--line-w);color:var(--ink);background:transparent}
-#profile .btn.ghost:hover{border-color:var(--accent-w);color:var(--accent-w-deep)}
+#profile .pdisc{color:var(--pmuted)}
+#profile .btn.solid{background:var(--pacc);border-color:var(--pacc);color:var(--pacc-text)}
+#profile .btn.solid:hover{filter:brightness(.94)}
+#profile .btn.ghost{border-color:var(--pline);color:var(--ptext);background:transparent}
+#profile .btn.ghost:hover{border-color:var(--pacc);color:var(--pacc-ink)}
 
+body.route-profile #chat{background:var(--psurf);color:var(--ptext);border-left-color:var(--pline)}
+body.route-profile #chat .dhead,body.route-profile #chat .chatin{border-color:var(--pline)}
+body.route-profile #chat .msg.a{background:var(--pbg);border-color:var(--pline);color:var(--ptext)}
+body.route-profile #chat .msg.u{background:var(--pacc);color:var(--pacc-text)}
+body.route-profile #chat .msg.sys,body.route-profile #chat .x,body.route-profile #chat .dfoot{color:var(--pmuted)}
+body.route-profile #chat textarea{background:var(--pbg);color:var(--ptext);border-color:var(--pline)}
+body.route-profile #chat .savebtn{background:var(--pacc);border-color:var(--pacc);color:var(--pacc-text)}
+#profile .pctrl-b{border-color:var(--pline);color:var(--pmuted)}
+#profile .pctrl-b:hover{border-color:var(--pacc);color:var(--pacc-ink)}
+#profile .pctrl-msg,#profile .rptcard .k{color:var(--pmuted)}
+#profile .psum,#profile .linkbtn{color:var(--ptext)}
+#profile .pcopytext{background:var(--pbg);color:var(--ptext);border-color:var(--pline)}
+/* owner colour panel (editor Face box and the account page) */
+.pk-themebox{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.pk-themerow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pk-themebox input[type=color]{width:44px;height:32px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px;cursor:pointer}
+.pk-base{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--line);background:transparent;color:inherit;border-radius:999px;padding:5px 11px;cursor:pointer;min-height:32px}
+.pk-base[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pk-swatches{display:flex;gap:6px;flex-wrap:wrap}
+.pk-swatch{width:26px;height:26px;border-radius:8px;border:2px solid transparent;cursor:pointer;padding:0}
+.pk-swatch[aria-pressed="true"]{border-color:var(--text)}
+.pk-preview{display:flex;gap:6px;flex-wrap:wrap;font-size:12.5px}
+.pk-preview span{padding:6px 10px;border-radius:8px;border:1px solid transparent}
+.pk-preview b{font-weight:600;margin-left:6px;font-family:"IBM Plex Mono",monospace;font-size:11px}
+#account .pk-themebox input[type=color],#account .pk-base{border-color:var(--line-w)}
+#account .pk-base[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+#account .pk-swatch[aria-pressed="true"]{border-color:var(--ink)}
+#account .pk-themebox .note{font-size:13px;color:var(--ink-soft)}
 /* ============ Explore ============ */
 #explore{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
 body.route-explore #explore{display:block}
@@ -368,8 +399,8 @@ body.route-account{overflow:auto;background:var(--paper)}
 #faceav{width:48px;height:48px;border-radius:14px;flex:none;display:grid;place-items:center;color:#fff;font-family:var(--serif);font-weight:600;font-size:22px;background:var(--brand);overflow:hidden}
 #facebtns{display:flex;flex-direction:column;gap:6px}
 #facemsg{font-size:11.5px;color:var(--muted);margin-top:4px;min-height:1.1em}
-#profile .pby{font-size:13px;color:var(--ink-dim);margin-top:4px}
-#profile .pby a{color:var(--accent-w-deep)}
+#profile .pby{font-size:13px;color:var(--pmuted);margin-top:4px}
+#profile .pby a{color:var(--pacc-ink)}
 
 #explore .pnav{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
 #account .pnav{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
@@ -1089,6 +1120,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
       <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
       <div id="facemsg" aria-live="polite"></div>
       <div id="voicebox" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="facevoice" class="note" style="margin:0">Voice</label><select id="facevoice" class="tbtn" aria-label="Persona voice" style="font-size:12px;padding:6px 8px"><option value="">No voice</option><option value="browser">Browser voice (free)</option></select><span class="note" id="voicenote" style="margin:0">Gemini voices cost 2 to 6 messages a reply to hear; the browser voice is free.</span></div>
+      <div class="pk-themebox" id="themebox"><label class="note" style="margin:0">Colour</label></div>
       <div class="note" id="shareline" style="margin-top:10px;display:none"></div>
       <button class="newbtn" id="delbtn" style="color:var(--dont-text);border-color:transparent;margin-top:14px">Delete this persona</button>
     </aside>
@@ -1237,6 +1269,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
           <input id="acname_in" type="text" maxlength="60" placeholder="Display name" aria-label="Display name">
           <textarea id="acbio_in" maxlength="300" placeholder="A line or two about you, or about who these personas are." aria-label="Bio"></textarea>
           <div class="acrow"><button class="btn solid" type="submit">Save</button><button class="btn" type="button" id="accancel">Cancel</button><span class="acmsg" id="acmsg" aria-live="polite"></span></div>
+          <div class="pk-themebox" id="acthemebox"><label class="note" style="margin:0">Default colour for new personas</label></div>
         </form>
       </div>
     </div>
@@ -1888,7 +1921,7 @@ async function loadClones(){ const gen=++__clonesGen;
     const nm=document.createElement('span'); nm.textContent=r.name||'Untitled'; b.appendChild(nm); if(r.is_public){ const pb=document.createElement('span'); pb.className='pub'; pb.textContent='public'; b.appendChild(pb); } b.onclick=()=>selectClone(r); list.appendChild(b); });
   if(!curId && data.length){ selectClone(data[0]); }
 }
-function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facets:[]}; reindex(); rebuildKinds();
+function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facets:[]}; reindex(); rebuildKinds(); try{ pkRepaintThemePanel(); }catch(_){}
   document.getElementById('gridname').value=r.name||''; document.getElementById('ispublic').checked=!!r.is_public; faceShow(r.image_url||null); chatVoice=r.voice_id||''; const __fv=document.getElementById('facevoice'); if(__fv) __fv.value=chatVoice;
   buildBoard(); render();
   // refit whenever a different persona is loaded, not just once per page load
@@ -1897,6 +1930,7 @@ function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facet
   updateShare(); loadClones(); }
 async function newClone(seed,label){ const uid=await ownerId();
   const copy=JSON.parse(JSON.stringify(seed));
+  try{ const {data:me}=await SB.from('twingrid_accounts').select('avatar_theme').eq('id',uid).maybeSingle(); if(me&&PK_THEME_RE.test(String(me.avatar_theme||''))) copy.theme=me.avatar_theme; }catch(_){}
   const {data,error}=await SB.from('twingrid_grids').insert({owner:uid,name:label,data:copy}).select().single();
   if(error){alert(error.message);return;} curId=data.id; selectClone(data); }
 document.getElementById('newblank').onclick=()=>newClone(BLANK,'My persona (from template)');
@@ -1914,6 +1948,12 @@ let speakOn=false;
     const v=sel.value; const {error}=await SB.from('twingrid_grids').update({voice_id:v||null}).eq('id',curId);
     if(error){ faceMsg('Could not save the voice: '+String(error.message||'').slice(0,100)); sel.value=chatVoice; return; }
     chatVoice=v; faceMsg(v? (v==='browser'?'Browser voice set. Free to hear.':'Voice set: '+v+'. Hearing a reply costs 2 to 6 messages.') : 'Voice removed.'); }; })();
+function pkRepaintThemePanel(){ pkThemePanel(document.getElementById('themebox'),{get:()=>GRID.theme,save:async(raw)=>{ if(!curId) return 'Save the persona first, then pick a colour.'; if(!PK_THEME_RE.test(raw)) return 'Bad colour.';
+    const {data:row,error:e1}=await SB.from('twingrid_grids').select('data').eq('id',curId).maybeSingle(); if(e1||!row) return 'Could not read the persona: '+String((e1&&e1.message)||'').slice(0,100);
+    const d=Object.assign({},(row.data&&row.data.facets)?row.data:{facets:[]}); d.theme=raw;
+    const {error}=await SB.from('twingrid_grids').update({data:d}).eq('id',curId); if(error) return 'Could not save the colour: '+String(error.message||'').slice(0,100);
+    GRID.theme=raw; loadClones(); return null; }}); }
+pkRepaintThemePanel();
 function voiceCostFor(text){ return Math.max(2, Math.min(6, Math.ceil(text.length/150))); }
 async function speakReply(text){ if(!speakOn||!chatVoice||!text) return;
   if(chatVoice==='browser'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text.slice(0,900)); window.speechSynthesis.speak(u); }catch(_){} return; }
@@ -2389,20 +2429,66 @@ const PK_THEMES=Object.assign(Object.create(null),{
 // The five legacy keys stay so stored values keep resolving; the picker shows the eight plus coral.
 const PK_PRESET_KEYS=['nebula','pulsar','aurora','ion','solstice','quasar','comet','magnetar','coral'];
 const PK_DEFAULT_THEME='nebula';
-const PK_ACCENTS=Object.assign(Object.create(null)); for(const k in PK_THEMES) PK_ACCENTS[k]=PK_THEMES[k].accent;
 const THEME_KEYS=Object.keys(PK_THEMES);
-function inkSafe(hex){ let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-  const ch=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);};
-  const lum=()=>0.2126*ch(r)+0.7152*ch(g)+0.0722*ch(b);
-  let guard=0; while(lum()>0.30 && guard++<30){ r=Math.round(r*0.92); g=Math.round(g*0.92); b=Math.round(b*0.92); }
-  return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
 
-// One resolver for a stored theme value: a preset key, or a bare 6-digit hex (darkened by inkSafe so white text holds).
-// The regex and the key table are the whole defence: nothing else can reach a CSS value from here.
-function pkResolveTheme(raw){ const t=(typeof raw==='string')?raw.trim():'';
-  if(THEME_KEYS.indexOf(t)>=0) return {accent:PK_THEMES[t].accent,text:PK_THEMES[t].text};
-  if(/^#[0-9a-fA-F]{6}$/.test(t)) return {accent:inkSafe(t),text:'#FFFFFF'};
-  return {accent:PK_THEMES[PK_DEFAULT_THEME].accent,text:PK_THEMES[PK_DEFAULT_THEME].text}; }
+// ---------- owner colour themes (2026-09-03): base + accent in, a WCAG-checked theme out ----------
+// A stored theme is a preset key, 'dark:#RRGGBB', 'light:#RRGGBB', or a legacy bare '#RRGGBB'. The two regexes
+// and the preset table are the whole defence: nothing else can reach a CSS value from here.
+const PK_THEME_RE=/^(dark|light):#([0-9a-fA-F]{6})$/, PK_HEX_RE=/^#[0-9a-fA-F]{6}$/;
+function pkLum(hex){ const h=hex.replace('#',''); const ch=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};
+  return 0.2126*ch(parseInt(h.slice(0,2),16))+0.7152*ch(parseInt(h.slice(2,4),16))+0.0722*ch(parseInt(h.slice(4,6),16)); }
+function pkContrast(a,b){ const x=pkLum(a),y=pkLum(b); return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05); }
+function pkHexRgb(hex){ const h=hex.replace('#',''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function pkRgbHex(r,g,b){ return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join(''); }
+function pkMix(a,b,t){ const x=pkHexRgb(a),y=pkHexRgb(b); return pkRgbHex(x[0]*t+y[0]*(1-t),x[1]*t+y[1]*(1-t),x[2]*t+y[2]*(1-t)); }
+function pkHsl(hex){ let [r,g,b]=pkHexRgb(hex); r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn; let h=0,s=0;
+  if(d){ s=d/(1-Math.abs(2*l-1)); h= mx===r ? ((g-b)/d)%6 : mx===g ? (b-r)/d+2 : (r-g)/d+4; h*=60; if(h<0)h+=360; } return [h,s,l]; }
+function pkHslHex(h,s,l){ l=Math.max(0,Math.min(1,l)); const c=(1-Math.abs(2*l-1))*s, hp=h/60, x=c*(1-Math.abs(hp%2-1)), m=l-c/2;
+  const [r,g,b]= hp<1?[c,x,0]: hp<2?[x,c,0]: hp<3?[0,c,x]: hp<4?[0,x,c]: hp<5?[x,0,c]:[c,0,x]; return pkRgbHex((r+m)*255,(g+m)*255,(b+m)*255); }
+function pkInkFor(hex){ return pkContrast(hex,'#FFFFFF')>=pkContrast(hex,'#111118')?'#FFFFFF':'#111118'; }
+// hue-preserving lightness search: step L until every predicate holds, else best effort with ok:false
+function pkSolve(hex,test){ const [h,s,l]=pkHsl(hex); let best=null;
+  for(let i=0;i<=40;i++){ for(const dir of (i?[1,-1]:[1])){ const cand=pkHslHex(h,s,l+dir*i*0.02); const sc=test(cand); if(sc>=1) return {hex:cand,ok:true}; if(!best||sc>best.sc) best={hex:cand,sc}; } }
+  return {hex:best.hex,ok:false}; }
+function deriveTheme(base,accent){ const dark=base!=='light';
+  const bg=dark?pkMix(accent,'#101014',0.08):pkMix(accent,'#F9F9FC',0.06); const [bh,bs,bl]=pkHsl(bg);
+  const surface=dark?pkHslHex(bh,bs,bl+0.035):'#FFFFFF'; const text=dark?'#EDEDF4':'#1B1B24';
+  const border=pkHslHex(bh,bs,dark?bl+0.12:bl-0.08);
+  // muted: text pulled toward the page until just above 4.5:1
+  const worst=(c)=>Math.min(pkContrast(c,bg),pkContrast(c,surface));                                 // cards sit on surface, copy sits on bg
+  let muted=text; for(let i=1;i<=60;i++){ const cand=pkMix(text,bg,1-i*0.012); if(worst(cand)<4.5) break; muted=cand; }
+  const acc=pkSolve(accent,c=>Math.min(worst(c)/3,pkContrast(c,pkInkFor(c))/4.5));                  // 3:1 on page and card, 4.5:1 under its own ink
+  const ink=pkSolve(accent,c=>worst(c)/4.5);                                                          // the accent as TEXT on page and card
+  return {bg,surface,text,muted,border,accent:acc.hex,accentText:pkInkFor(acc.hex),accentInk:ink.hex,ok:acc.ok&&ink.ok}; }
+// parse + derive in one place: preset keys are dark starting points, a legacy bare hex keeps its light page
+function pkThemeFor(raw){ const t=(typeof raw==='string')?raw.trim():''; let base='dark', accent=PK_THEMES[PK_DEFAULT_THEME].accent, m;
+  if(THEME_KEYS.indexOf(t)>=0){ accent=PK_THEMES[t].accent; }
+  else if((m=PK_THEME_RE.exec(t))){ base=m[1]; accent='#'+m[2]; }
+  else if(PK_HEX_RE.test(t)){ base='light'; accent=t; }
+  const th=deriveTheme(base,accent); th.base=base; th.pick=accent.toUpperCase(); th.raw=t; return th; }
+function pkApplyTheme(el,th){ if(!el) return; const m={'--pbg':th.bg,'--psurf':th.surface,'--ptext':th.text,'--pmuted':th.muted,'--pline':th.border,'--pacc':th.accent,'--pacc-text':th.accentText,'--pacc-ink':th.accentInk}; for(const k in m) el.style.setProperty(k,m[k]); }
+// the panel: an accent (wheel or preset) and a base; everything else is derived and checked before it is saved
+function pkThemePanel(host,opts){ if(!host) return; const label=host.querySelector('label'); host.textContent=''; if(label) host.appendChild(label);
+  const st=pkThemeFor(opts.get()); let base=st.base, accent=st.pick;
+  const row=document.createElement('div'); row.className='pk-themerow';
+  const inp=document.createElement('input'); inp.type='color'; inp.value=accent; inp.setAttribute('aria-label','Accent colour'); row.appendChild(inp);
+  const bases={}; ['dark','light'].forEach(b=>{ const bt=document.createElement('button'); bt.type='button'; bt.className='pk-base'; bt.textContent=b==='dark'?'Dark':'Light'; bt.onclick=()=>{ base=b; paint(); save(); }; bases[b]=bt; row.appendChild(bt); });
+  const sw=document.createElement('div'); sw.className='pk-swatches'; sw.setAttribute('aria-label','Presets');
+  PK_PRESET_KEYS.forEach(k=>{ const b=document.createElement('button'); b.type='button'; b.className='pk-swatch'; b.title=k; b.setAttribute('aria-label',k+' preset'); b.style.background=PK_THEMES[k].accent; b.dataset.acc=PK_THEMES[k].accent.toUpperCase(); b.onclick=()=>{ accent=b.dataset.acc; inp.value=accent; paint(); save(); }; sw.appendChild(b); });
+  const pv=document.createElement('div'); pv.className='pk-preview'; const p1=document.createElement('span'), p2=document.createElement('span'), b1=document.createElement('b'), b2=document.createElement('b');
+  p1.textContent='Aa text on page'; p2.textContent='Aa on accent'; p1.appendChild(b1); p2.appendChild(b2); pv.append(p1,p2);
+  const note=document.createElement('div'); note.className='note'; note.setAttribute('aria-live','polite');
+  host.append(row,sw,pv,note);
+  let cur=null;
+  function paint(){ cur=deriveTheme(base,accent); Object.keys(bases).forEach(b=>bases[b].setAttribute('aria-pressed',String(b===base)));
+    sw.querySelectorAll('.pk-swatch').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.acc===accent)));
+    p1.style.background=cur.bg; p1.style.color=cur.text; p1.style.borderColor=cur.border; b1.textContent=pkContrast(cur.text,cur.bg).toFixed(1)+':1';
+    p2.style.background=cur.accent; p2.style.color=cur.accentText; p2.style.borderColor=cur.accent; b2.textContent=pkContrast(cur.accentText,cur.accent).toFixed(1)+':1';
+    note.textContent=cur.ok?(cur.accent.toUpperCase()!==accent?'Accent nudged to '+cur.accent.toUpperCase()+' so it reads at 3:1.':''):'That colour cannot be made readable here. Pick another.'; }
+  async function save(){ if(!cur||!cur.ok) return; const raw=base+':'+accent; const err=await opts.save(raw); note.textContent=err?err:'Saved.'; }
+  inp.addEventListener('input',()=>{ accent=inp.value.toUpperCase(); paint(); });
+  inp.addEventListener('change',()=>{ accent=inp.value.toUpperCase(); paint(); save(); });
+  paint(); }
 function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
 // ---------- viewer-side hiding and reporting ----------
 // A label is necessary and not sufficient. Meta shipped "AI managed by Meta" on their
@@ -2511,7 +2597,7 @@ async function renderExplore(){
   rows.forEach(r=>{
     const g=(r.data&&r.data.facets)?r.data:{facets:[]};
     const nm=String(r.name||'Untitled persona');
-    const th=pkResolveTheme(g.theme); const acc=th.accent;
+    const th=pkThemeFor(g.theme); const acc=th.accent;
 
     const card=document.createElement('a');
     card.className='excard';
@@ -2521,7 +2607,7 @@ async function renderExplore(){
     const av=document.createElement('div'); av.className='exav';
     // 'The Coach' and 'The Creator' both start with T, so skip a leading article
     const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'') || nm.trim();
-    av.style.background=acc; av.style.color=th.text; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
+    av.style.background=acc; av.style.color=th.accentText; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
     const idb=document.createElement('div');
     const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
     const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
@@ -2569,7 +2655,7 @@ async function renderAccount(handle){
   const empty=(t,m)=>{ const d=document.createElement('div'); d.className='acempty'; const h=document.createElement('h3'); h.textContent=t; const p=document.createElement('p'); p.textContent=m; p.style.margin='0'; d.append(h,p); grid.appendChild(d); };
   const acc=HANDLE_RE.test(handle)?await accountByHandle(handle):null;
   if(!acc||acc.is_suspended){ nameEl.textContent='No page at @'+handle; hEl.textContent=''; av.textContent='?'; empty('Nothing here','There is no Personakind member with that handle, or their page is not public yet.'); return; }
-  { const tha=pkResolveTheme(acc.avatar_theme); av.style.background=tha.accent; av.style.color=tha.text; }
+  { const tha=pkThemeFor(acc.avatar_theme); av.style.background=tha.accent; av.style.color=tha.accentText; }
   const dn=(acc.display_name&&acc.display_name.trim())||('@'+acc.handle);
   nameEl.textContent=dn; hEl.textContent='@'+acc.handle+(acc.is_official?'  \u00b7 official':''); av.textContent=(dn.replace(/^@/,'')[0]||'P').toUpperCase();
   bioEl.textContent=acc.bio||'';
@@ -2579,6 +2665,7 @@ async function renderAccount(handle){
     if(mine){ editBtn.hidden=false;
       editBtn.onclick=()=>{ document.getElementById('acname_in').value=acc.display_name||''; document.getElementById('acbio_in').value=acc.bio||''; document.getElementById('acmsg').textContent=''; form.classList.add('open'); document.getElementById('acname_in').focus(); };
       document.getElementById('accancel').onclick=()=>form.classList.remove('open');
+      pkThemePanel(document.getElementById('acthemebox'),{get:()=>acc.avatar_theme,save:async(raw)=>{ if(!PK_THEME_RE.test(raw)) return 'Bad colour.'; const {error}=await SB.from('twingrid_accounts').update({avatar_theme:raw}).eq('id',acc.id); if(error) return 'Could not save: '+String(error.message||'').slice(0,100); acc.avatar_theme=raw; { const t2=pkThemeFor(raw); av.style.background=t2.accent; av.style.color=t2.accentText; } return null; }});
       form.onsubmit=async(e)=>{ e.preventDefault(); const msg=document.getElementById('acmsg'); msg.textContent='Saving...';
         const display_name=document.getElementById('acname_in').value.trim().slice(0,60)||null, bio=document.getElementById('acbio_in').value.trim().slice(0,300)||null;
         const {error}=await SB.from('twingrid_accounts').update({display_name,bio}).eq('id',acc.id);
@@ -2589,9 +2676,9 @@ async function renderAccount(handle){
   if(error){ empty('Could not load personas','Try again in a moment.'); return; }
   if(!rows||!rows.length){ empty('No public personas yet','When '+dn+' makes one public it lands here.'); return; }
   rows.forEach(r=>{ const g=(r.data&&r.data.facets)?r.data:{facets:[]}; const nm=String(r.name||'Untitled persona');
-    const thn=pkResolveTheme(g.theme); const accn=thn.accent;
+    const thn=pkThemeFor(g.theme); const accn=thn.accent;
     const card=document.createElement('a'); card.className='excard'; card.setAttribute('href',shareUrlFor(r.id,nm,acc.handle).replace(location.origin+location.pathname,''));
-    const top=document.createElement('div'); top.className='extop'; const avx=document.createElement('div'); avx.className='exav'; avx.style.background=accn; avx.style.color=thn.text;
+    const top=document.createElement('div'); top.className='extop'; const avx=document.createElement('div'); avx.className='exav'; avx.style.background=accn; avx.style.color=thn.accentText;
     const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'')||nm.trim(); avatarInto(avx,r.image_url,(initSrc[0]||'P').toUpperCase());
     const idb=document.createElement('div'); const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
     const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
@@ -2634,12 +2721,12 @@ async function renderProfile(id,opts){ opts=opts||{};
   document.getElementById('psummary').textContent=profileSummary(g);
   // A saved theme is either one of our keys or a literal 6-digit hex the editor wrote.
   // The hex regex is the whole defence: nothing but 0-9a-f can reach a CSS value from here.
-  const thp=pkResolveTheme(data.data&&data.data.theme); const acc=thp.accent, accText=thp.text;
+  const thp=pkThemeFor(data.data&&data.data.theme); const acc=thp.accent;
   document.getElementById('pavatar').style.background=acc;
   document.getElementById('pband').style.background='radial-gradient(80% 120% at 20% -20%,'+hexA(acc,.16)+',transparent 62%)';
-  const prof=document.getElementById('profile'); prof.style.setProperty('--pacc',acc); prof.style.setProperty('--pacc-text',accText);
-  // the per-persona theme tints the avatar and the hero band only. Text accents stay the fixed
-  // Personakind coral so a theme value can never drive a contrast failure on someone else's page.
+  // the owner's theme drives the whole page through eight variables; every value came out of deriveTheme,
+  // which checked 4.5:1 for text and 3:1 for the accent, so a stored value can never drive a contrast failure.
+  pkApplyTheme(document.getElementById('profile'),thp); pkApplyTheme(document.getElementById('chat'),thp);
   const order=["CONTEXT","DO","DONT","GATES","VOICE"];
   const bn=Object.fromEntries(g.facets.map(f=>[f.name,f]));
   const pick=["core"]; if(bn.vibe)pick.push("vibe");
