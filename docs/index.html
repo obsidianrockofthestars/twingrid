@@ -3,8 +3,8 @@
 <title>Personakind</title>
 <meta name="description" content="Personakind builds your AI persona as a grid of small, readable cells. See every rule, edit any of it, and publish a page the world can meet.">
 <link rel="canonical" href="https://personakind.com/">
-<meta name="theme-color" content="#FBF7EF">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FBF7EF'/%3E%3Ctext x='32' y='46' font-family='Georgia,serif' font-size='42' font-weight='600' text-anchor='middle' fill='%23C24B2A'%3EP%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#F7F7FA">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23F7F7FA'/%3E%3Ctext x='32' y='46' font-family='Georgia,serif' font-size='42' font-weight='600' text-anchor='middle' fill='%235B45E0'%3EP%3C/text%3E%3C/svg%3E">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta property="og:type" content="website">
@@ -25,12 +25,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 :root{
-  /* editor and gate chrome (warm charcoal + coral). One block: the late override that used to
+  /* editor and gate chrome (Deep Space Transmission: near-black + nebula violet). One block: the late override that used to
      shadow this one was folded in on 2026-09-03 so a palette change edits exactly one place. */
-  --ground:#17120D; --grid:#241C14; --surface:#211A13; --surface2:#2C231A; --line:#3B3025;
-  --text:#F3ECE1; --muted:#C4B7A4; --dim:#9C8E7B;
+  --ground:#15151C; --grid:#1B1B24; --surface:#1B1B24; --surface2:#23232E; --line:#2E2E3B;
+  --text:#EDEDF4; --muted:#B4B4C6; --dim:#8E8EA2;
   --do:#5FB3A1; --dont:#C4544A; --gates:#C9A227; --context:#7A8CC4; --voice:#B07AA8;
-  --accent:#D2542E; --wire:#E0653C; --ghost:#4A3D30;
+  --accent:#8C6CFF; --wire:#8C6CFF; --ghost:#2C2842;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -38,13 +38,13 @@ body{background:var(--ground);color:var(--text);font-family:Archivo,Arial,sans-s
 button{font-family:inherit}
 /* ---------- login ---------- */
 #gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:100;
-  background:radial-gradient(1200px 600px at 50% -10%, #16202b, var(--ground))}
+  background:radial-gradient(1200px 600px at 50% -10%, #1A1830, var(--ground))}
 .gatecard{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:34px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
-.gatecard h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:34px;letter-spacing:-.03em;margin:0}
+.gatecard h1{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:34px;letter-spacing:-.03em;margin:0}
 .gatecard h1 span{color:var(--accent)}
 .gatecard p{color:var(--muted);font-size:14.5px;margin:10px 0 22px}
 .field{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
-.primary{width:100%;font-weight:600;font-size:15px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:10px;padding:12px}
+.primary{width:100%;font-weight:600;font-size:15px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:12px}
 .gatemsg{font-size:13px;color:var(--muted);margin-top:14px;min-height:18px}
 .muted{color:var(--dim);font-size:12px}
 /* ---------- app shell ---------- */
@@ -52,22 +52,22 @@ button{font-family:inherit}
    so .axischips absorbed the 1fr and .body was left on an implicit auto row. */
 #app{display:none;height:100vh;grid-template-rows:auto auto auto 1fr}
 .top{display:flex;align-items:center;gap:14px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line);flex-wrap:wrap}
-.brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;letter-spacing:-.02em;margin:0}
+.brand{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:18px;letter-spacing:-.02em;margin:0}
 .brand span{color:var(--accent)}
 .modesw{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .modesw button{font-size:12px;font-weight:600;cursor:pointer;border:0;background:var(--surface2);color:var(--muted);padding:6px 12px;border-right:1px solid var(--line)}
 .modesw button:last-child{border-right:0}
-.modesw button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.modesw button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .sp{flex:1}
 .tbtn{font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--text);border-radius:8px;padding:7px 12px}
-.tbtn.acc{border-color:var(--accent);background:var(--accent);color:#fff}
+.tbtn.acc{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
 .who{font-size:12px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
 /* loadout strip */
 .loadout{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--surface2);border-bottom:1px solid var(--line);overflow-x:auto}
 .loadout .lab{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
 .pill{font-family:"IBM Plex Mono",monospace;font-size:11.5px;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:3px 10px;white-space:nowrap}
 .pill.core{border-color:var(--text);color:var(--text)}
-.pill.num{background:var(--accent);color:#fff;font-weight:700}
+.pill.num{background:var(--accent);color:var(--accent-ink);font-weight:700}
 .loadout .rt{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent);white-space:nowrap}
 /* body split */
 .body{display:grid;grid-template-columns:230px 1fr;min-height:0}
@@ -91,7 +91,7 @@ button{font-family:inherit}
 .nhead .k{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-left:auto}
 .nhead .pw{width:9px;height:9px;border-radius:50%;background:var(--ghost);flex:none}
 .node.on .nhead .pw{background:var(--accent)}
-.qbadge{font-size:9px;font-weight:700;background:var(--accent);color:#fff;border-radius:999px;padding:1px 6px;display:none}
+.qbadge{font-size:9px;font-weight:700;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:1px 6px;display:none}
 .node.queued .qbadge{display:inline-block}
 .crow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font:inherit;font-size:11px;cursor:pointer;background:none;border:0;color:var(--muted);padding:4px 11px}
 .crow:hover{background:var(--surface2);color:var(--text)}
@@ -110,9 +110,9 @@ button{font-family:inherit}
 .grp .lbl{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .chip{font-size:11.5px;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:999px;padding:3px 9px;white-space:nowrap}
 .chip:hover{color:var(--text)}
-.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
 .pbtn{font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:999px;padding:4px 11px;white-space:nowrap}
-.pbtn.solid{background:var(--accent);color:#fff}
+.pbtn.solid{background:var(--accent);color:var(--accent-ink)}
 /* drawers */
 .drawer{color:var(--text);position:fixed;top:0;right:0;height:100svh;width:min(560px,94vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:-20px 0 50px rgba(0,0,0,.5);transform:translateX(102%);visibility:hidden;pointer-events:none;transition:transform .22s,visibility 0s linear .22s;display:flex;flex-direction:column;z-index:60}
 .drawer.open{transform:none;visibility:visible;pointer-events:auto;transition:transform .22s}
@@ -122,11 +122,11 @@ button{font-family:inherit}
 .dbody{flex:1;padding:14px 18px;overflow:auto}
 .dbody textarea{width:100%;min-height:54vh;resize:none;font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.6;color:var(--text);background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:14px}
 .dfoot{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;font-size:12px;color:var(--dim)}
-.savebtn{margin-left:auto;font-weight:600;font-size:12.5px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;padding:7px 14px}
+.savebtn{margin-left:auto;font-weight:600;font-size:12.5px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);border-radius:7px;padding:7px 14px}
 /* chat */
 #chat .dbody{display:flex;flex-direction:column;gap:10px}
 .msg{max-width:88%;padding:10px 13px;border-radius:12px;font-size:14px;line-height:1.55;white-space:pre-wrap}
-.msg.u{align-self:flex-end;background:var(--accent);color:#fff}
+.msg.u{align-self:flex-end;background:var(--accent);color:var(--accent-ink)}
 .msg.a{align-self:flex-start;background:var(--surface2);border:1px solid var(--line)}
 .msg.sys{align-self:center;color:var(--dim);font-size:12px;font-family:"IBM Plex Mono",monospace;background:none}
 .chatin{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line)}
@@ -135,14 +135,14 @@ button{font-family:inherit}
 .setrow label{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .tabs{display:flex;gap:6px;margin-bottom:14px}
 .tabs button{font-size:12px;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:8px;padding:6px 12px}
-.tabs button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .note{font-size:12px;color:var(--muted);line-height:1.6}
 .note code{font-family:"IBM Plex Mono",monospace;color:var(--text);background:var(--surface2);padding:1px 5px;border-radius:4px}
 
 /* ============ Personakind v2: tokens, landing, auth, profile ============ */
 :root{
-  --accent-2:#83DcC0; --accent-ink:#06120F; --dont-text:#EC8A80;
-  --grad:linear-gradient(120deg,#5FB3A1,#83DcC0 60%,#8FD0F0);
+  --accent-2:#B39DFF; --accent-ink:#111118; --dont-text:#EC8A80;
+  --grad:linear-gradient(120deg,#8C6CFF,#B39DFF 60%,#7FC8FF);
   --radius:14px;
 }
 /* global focus visibility (was missing entirely) */
@@ -155,7 +155,7 @@ body.marketing{overflow:auto}
 /* ---------------- top marketing nav ---------------- */
 .mnav{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:16px;padding:14px 22px;
   background:rgba(11,14,18,.72);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-.mnav .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;margin:0;color:var(--text)}
+.mnav .brand{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;margin:0;color:var(--text)}
 .mnav .brand span{color:var(--accent)}
 .mnav .sp{flex:1}
 .mnav a.navlink{color:var(--muted);font-size:14px;font-weight:500}
@@ -177,12 +177,12 @@ body.route-landing #landing{display:block}
   background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
   background-size:34px 34px;mask-image:radial-gradient(900px 460px at 50% 8%,#000,transparent 78%)}
 .hero-glow{position:absolute;left:50%;top:-140px;transform:translateX(-50%);width:820px;height:520px;z-index:0;
-  background:radial-gradient(closed,#1c3a37,transparent);background:radial-gradient(50% 50% at 50% 50%,rgba(95,179,161,.22),transparent 70%);filter:blur(10px)}
+  background:radial-gradient(closed,#2A2350,transparent);background:radial-gradient(50% 50% at 50% 50%,rgba(140,108,255,.22),transparent 70%);filter:blur(10px)}
 .hero>.wrap{position:relative;z-index:1}
 .eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--accent);border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;margin-bottom:24px}
-.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(95,179,161,.18)}
-h1.big{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;letter-spacing:-.035em;line-height:1.02;
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(140,108,255,.18)}
+h1.big{font-family:Archivo,Arial,sans-serif;font-weight:800;letter-spacing:-.035em;line-height:1.02;
   font-size:clamp(38px,6.4vw,68px);margin:0 auto;max-width:14ch}
 h1.big .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sub{color:var(--muted);font-size:clamp(16px,2.2vw,20px);line-height:1.5;max-width:52ch;margin:22px auto 0}
@@ -190,7 +190,7 @@ h1.big .g{background:var(--grad);-webkit-background-clip:text;background-clip:te
 .reassure{margin-top:16px;font-size:13px;color:var(--dim)}
 
 .section{padding:60px 0;border-top:1px solid var(--line)}
-.section h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,4vw,38px);margin:0 0 10px;text-align:center}
+.section h2{font-family:Archivo,Arial,sans-serif;font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,4vw,38px);margin:0 0 10px;text-align:center}
 .section .lede{color:var(--muted);text-align:center;max-width:56ch;margin:0 auto 40px;font-size:17px;line-height:1.55}
 .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:26px}
@@ -199,7 +199,7 @@ h1.big .g{background:var(--grad);-webkit-background-clip:text;background-clip:te
 .card p{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:s}
 .step{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;position:relative}
-.step:before{counter-increment:s;content:counter(s);font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px;
+.step:before{counter-increment:s;content:counter(s);font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:15px;
   width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--grad);color:var(--accent-ink);margin-bottom:14px}
 .step h3{font-size:17px;margin:0 0 6px}.step p{color:var(--muted);font-size:14px;line-height:1.55;margin:0}
 .social{background:linear-gradient(180deg,var(--surface),rgba(22,28,36,.4));border:1px solid var(--line);border-radius:20px;padding:44px;text-align:center;margin-top:8px}
@@ -216,7 +216,7 @@ h1.big .g{background:var(--grad);-webkit-background-clip:text;background-clip:te
 #auth.open{display:flex}
 .authcard{width:100%;max-width:430px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:34px;box-shadow:0 40px 100px rgba(0,0,0,.6);position:relative}
 .authcard .x{position:absolute;top:14px;right:16px}
-.authcard h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:27px;letter-spacing:-.02em;margin:0 0 6px}
+.authcard h2{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:27px;letter-spacing:-.02em;margin:0 0 6px}
 .authcard .k{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
 .authcard p.lead{color:var(--muted);font-size:14.5px;line-height:1.55;margin:0 0 20px}
 .authcard label{display:block;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
@@ -241,15 +241,15 @@ h1.big .g{background:var(--grad);-webkit-background-clip:text;background-clip:te
 body.route-profile #profile{display:block}
 body.route-profile{overflow:auto}
 .phero{position:relative;overflow:hidden;padding:26px 0 30px;border-bottom:1px solid var(--line)}
-.phero .band{position:absolute;inset:0;z-index:0;opacity:.85;background:var(--pbg,radial-gradient(80% 120% at 20% -20%,rgba(95,179,161,.25),transparent 60%))}
+.phero .band{position:absolute;inset:0;z-index:0;opacity:.85;background:var(--pbg,radial-gradient(80% 120% at 20% -20%,rgba(140,108,255,.25),transparent 60%))}
 .phero .wrap{position:relative;z-index:1}
 .pnav{display:flex;align-items:center;gap:12px;margin-bottom:30px}
-.pnav .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;color:var(--text)}
+.pnav .brand{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:18px;color:var(--text)}
 .pnav .brand span{color:var(--accent)}
 .pid{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap}
-.pavatar{width:88px;height:88px;border-radius:22px;display:grid;place-items:center;font-family:"Bricolage Grotesque",sans-serif;
+.pavatar{width:88px;height:88px;border-radius:22px;display:grid;place-items:center;font-family:Archivo,Arial,sans-serif;
   font-weight:800;font-size:38px;color:var(--accent-ink);background:var(--pacc,var(--grad));box-shadow:0 16px 40px rgba(0,0,0,.4)}
-.pid h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(28px,5vw,44px);letter-spacing:-.03em;margin:0}
+.pid h1{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:clamp(28px,5vw,44px);letter-spacing:-.03em;margin:0}
 .pid .meta{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .pid .badge{border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--accent)}
 .pmain{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;padding:34px 0 60px;align-items:start}
@@ -260,7 +260,7 @@ body.route-profile{overflow:auto}
 .pcta{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
 .pcta h3{margin:0 0 8px;font-size:18px}.pcta p{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 14px}
 .facets{padding:0 0 66px}
-.facets h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;margin:0 0 18px;letter-spacing:-.02em}
+.facets h2{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:24px;margin:0 0 18px;letter-spacing:-.02em}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
 .fcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
 .fcard .fh{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -310,11 +310,11 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #profile .phero .band{opacity:.6}
 #profile .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
 #profile .pnav .brand span{color:var(--accent-w)}
-#profile .pavatar{border-radius:20px;color:var(--pacc-text,#fff);font-family:var(--serif);font-weight:600;background:var(--pacc,var(--accent-w));box-shadow:0 14px 34px rgba(40,28,18,.20)}
+#profile .pavatar{border-radius:20px;color:var(--pacc-text,#fff);font-family:var(--serif);font-weight:600;background:var(--pacc,var(--accent-w));box-shadow:0 14px 34px rgba(27,27,36,.20)}
 #profile .pid h1{font-family:var(--serif);font-weight:600;letter-spacing:-.02em;color:var(--ink)}
 #profile .pid .meta{color:var(--ink-dim)}
 #profile .pid .badge{border:1px solid var(--accent-soft);background:var(--accent-soft);color:var(--accent-w-deep)}
-#profile .persona,#profile .pcta,#profile .fcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;box-shadow:0 2px 12px rgba(40,28,18,.05)}
+#profile .persona,#profile .pcta,#profile .fcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;box-shadow:0 2px 12px rgba(27,27,36,.05)}
 #profile .persona h2,#profile .fcard .fh .kd{color:var(--ink-dim)}
 #profile .persona .body{color:var(--ink);max-height:none;overflow:visible}
 #profile .pcta h3,#profile .facets h2{font-family:var(--serif);font-weight:600;color:var(--ink)}
@@ -391,11 +391,11 @@ body.route-account{overflow:auto;background:var(--paper)}
 #explore .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
 #account .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
 #explore .excard{display:block;text-align:left;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:22px;
-  box-shadow:0 2px 12px rgba(40,28,18,.05);cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s,transform .15s}
+  box-shadow:0 2px 12px rgba(27,27,36,.05);cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s,transform .15s}
 #account .excard{display:block;text-align:left;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:22px;
-  box-shadow:0 2px 12px rgba(40,28,18,.05);cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s,transform .15s}
-#explore .excard:hover{border-color:var(--accent-w);box-shadow:0 10px 26px rgba(40,28,18,.10);transform:translateY(-2px)}
-#account .excard:hover{border-color:var(--accent-w);box-shadow:0 10px 26px rgba(40,28,18,.10);transform:translateY(-2px)}
+  box-shadow:0 2px 12px rgba(27,27,36,.05);cursor:pointer;font:inherit;color:inherit;transition:border-color .15s,box-shadow .15s,transform .15s}
+#explore .excard:hover{border-color:var(--accent-w);box-shadow:0 10px 26px rgba(27,27,36,.10);transform:translateY(-2px)}
+#account .excard:hover{border-color:var(--accent-w);box-shadow:0 10px 26px rgba(27,27,36,.10);transform:translateY(-2px)}
 #explore .excard .extop{display:flex;align-items:center;gap:13px;margin-bottom:13px}
 #account .excard .extop{display:flex;align-items:center;gap:13px;margin-bottom:13px}
 #explore .exav{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;color:#fff;
@@ -461,7 +461,7 @@ body.route-home{overflow:auto;background:var(--paper)}
 #home .hctl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
 #home select{font:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line-w);border-radius:10px;background:var(--card-w);color:var(--ink);min-height:44px}
 #home .hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;padding:6px 0 26px}
-#home .hcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(40,28,18,.05);display:flex;flex-direction:column;gap:10px}
+#home .hcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(27,27,36,.05);display:flex;flex-direction:column;gap:10px}
 #home .hav{width:56px;height:56px;border-radius:16px;overflow:hidden;background:var(--paper-2)}
 #home .hname{font-family:var(--serif);font-weight:600;font-size:20px;color:var(--ink);line-height:1.2;word-break:break-word}
 #home .hmeta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim)}
@@ -497,7 +497,7 @@ body.route-mod{overflow:auto;background:var(--paper)}
 #mod .mtab{font:inherit;font-size:13px;background:none;border:1px solid var(--line-w);color:var(--ink-dim);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:44px}
 #mod .mtab[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-w-deep);border-color:var(--accent-w)}
 #mod .mlist{display:grid;gap:14px;padding-bottom:60px}
-#mod .mcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(40,28,18,.05)}
+#mod .mcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(27,27,36,.05)}
 #mod .mrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-dim)}
 #mod .mreason{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;background:var(--accent-soft);color:var(--accent-w-deep);border-radius:999px;padding:3px 9px}
 #mod .mtarget{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:8px 0 4px}
@@ -636,20 +636,20 @@ body.route-mod{overflow:auto;background:var(--paper)}
 
 /* ============ Personakind, warm and human redesign (landing + auth) ============ */
 :root{
-  --paper:#FBF7EF; --paper-2:#F4ECDE; --ink:#211C17; --ink-soft:#5C5347; --ink-dim:#726858;
-  --line-w:#E7DCC9; --card-w:#FFFFFF;
-  --accent-w:#E0653C; --accent-w-deep:#BE4E2B; --accent-soft:#F7DDCF; --gold-w:#CE9A45;
-  --brand:#C24B2A; --brand-text:#A8431F; --brand-ink:#FFFFFF; --pacc-text:#FFFFFF;
+  --paper:#F7F7FA; --paper-2:#EFEFF5; --ink:#1B1B24; --ink-soft:#4B4B60; --ink-dim:#63637A;
+  --line-w:#DEDEE8; --card-w:#FFFFFF;
+  --accent-w:#5B45E0; --accent-w-deep:#4634B8; --accent-soft:#E9E4FB; --gold-w:#B8892F;
+  --brand:#5B45E0; --brand-text:#4A37C2; --brand-ink:#FFFFFF; --pacc-text:#111118;
   --do-w:#3F9E8B; --dont-w:#C4544A; --gates-w:#C79A2E; --context-w:#6E86D6; --voice-w:#A96FA6;
   --serif:"Fraunces",Georgia,serif;
 }
-/* the warm surfaces override the dark landing/auth only */
+/* the light public surfaces override the dark landing/auth only */
 body.marketing{background:var(--paper);color:var(--ink)}
 #landing{font-family:Archivo,system-ui,sans-serif;color:var(--ink);background:var(--paper)}
 #landing ::selection{background:var(--accent-soft)}
 
 .pk-nav{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:18px;padding:18px 26px;
-  background:rgba(251,247,239,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line-w)}
+  background:rgba(247,247,250,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line-w)}
 .pk-brand{font-family:var(--serif);font-weight:600;font-size:23px;letter-spacing:-.01em;color:var(--ink)}
 .pk-brand b{color:var(--accent-w);font-weight:600}
 .pk-nav .sp{flex:1}
@@ -658,7 +658,7 @@ body.marketing{background:var(--paper);color:var(--ink)}
 .pk-btn{display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-weight:600;font-size:15px;cursor:pointer;
   border-radius:999px;padding:11px 20px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);transition:transform .12s,background .12s,color .12s,box-shadow .12s;text-decoration:none}
 .pk-btn:hover{transform:translateY(-1px)}
-.pk-btn.solid{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);box-shadow:0 8px 22px rgba(194,75,42,.26)}
+.pk-btn.solid{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);box-shadow:0 8px 22px rgba(91,69,224,.26)}
 .pk-btn.solid:hover{background:var(--accent-w-deep);border-color:var(--accent-w-deep)}
 .pk-btn.ghost{border-color:var(--line-w);color:var(--ink-soft)}
 .pk-btn.ghost:hover{border-color:var(--ink);color:var(--ink)}
@@ -698,7 +698,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 .pk-lede{color:var(--ink-soft);text-align:center;max-width:58ch;margin:0 auto 42px;font-size:17px;line-height:1.55}
 .pk-ways{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .pk-way{position:relative;background:var(--card-w);border:1px solid var(--line-w);border-radius:18px;padding:28px;display:flex;flex-direction:column;box-shadow:0 8px 20px rgba(60,45,30,.05);transition:transform .14s,box-shadow .14s,border-color .14s}
-.pk-way.feat{border-color:var(--accent-soft);background:linear-gradient(180deg,#FFF6F0,var(--card-w));box-shadow:0 16px 38px rgba(194,75,42,.13)}
+.pk-way.feat{border-color:var(--accent-soft);background:linear-gradient(180deg,#F3F0FF,var(--card-w));box-shadow:0 16px 38px rgba(91,69,224,.13)}
 .pk-way .badge{position:absolute;top:-11px;left:24px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;background:var(--brand);color:var(--brand-ink);padding:4px 11px;border-radius:999px}
 .pk-way:hover{transform:translateY(-3px);box-shadow:0 20px 44px rgba(60,45,30,.1);border-color:var(--accent-soft)}
 .pk-way .num{font-family:var(--serif);font-size:15px;font-weight:600;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-w-deep);margin-bottom:16px}
@@ -724,7 +724,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 
 /* ---- warm auth modal (keeps the working JS ids/classes) ---- */
 #auth{background:rgba(33,28,23,.5)}
-#auth .authcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:22px;box-shadow:0 40px 100px rgba(40,28,18,.35);color:var(--ink)}
+#auth .authcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:22px;box-shadow:0 40px 100px rgba(27,27,36,.35);color:var(--ink)}
 #auth .authcard h2{font-family:var(--serif);font-weight:600;color:var(--ink)}
 #auth .authcard .k{color:var(--accent-w-deep)}
 #auth .authcard p.lead{color:var(--ink-soft)}
@@ -765,7 +765,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   background:rgba(33,28,23,.55);backdrop-filter:blur(6px);font-family:Archivo,system-ui,sans-serif}
 #newflow.open{display:flex}
 .nf-shell{width:100%;max-width:720px;max-height:92vh;overflow:auto;background:var(--card-w);border:1px solid var(--line-w);
-  border-radius:22px;box-shadow:0 40px 100px rgba(40,28,18,.4);padding:34px;position:relative;color:var(--ink)}
+  border-radius:22px;box-shadow:0 40px 100px rgba(27,27,36,.4);padding:34px;position:relative;color:var(--ink)}
 .nf-x{position:absolute;top:16px;right:18px;font-size:22px;line-height:1;background:none;border:0;color:var(--ink-dim);cursor:pointer}
 .nf-kick{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--brand-text)}
 .nf-shell h2{font-family:var(--serif);font-weight:600;font-size:28px;letter-spacing:-.02em;margin:8px 0 22px;color:var(--ink)}
@@ -2380,9 +2380,15 @@ let PROFILE_GRID=null;
 // The persona theme table. One place: the account avatar, the persona cards and the persona page
 // all read it. accent is the fill, text is what sits on the fill (kept 4.5:1 by the table, not by users).
 const PK_THEMES=Object.assign(Object.create(null),{
-  coral:{accent:'#C24B2A',text:'#FFFFFF'}, teal:{accent:'#2F7D6E',text:'#FFFFFF'}, violet:{accent:'#7D4A78',text:'#FFFFFF'},
-  blue:{accent:'#4A5C9E',text:'#FFFFFF'}, gold:{accent:'#8A6A16',text:'#FFFFFF'}, rose:{accent:'#A8392F',text:'#FFFFFF'} });
-const PK_DEFAULT_THEME='coral';
+  nebula:{accent:'#8C6CFF',text:'#111118'}, pulsar:{accent:'#FF4869',text:'#111118'}, aurora:{accent:'#1FA17A',text:'#111118'},
+  ion:{accent:'#1C8FFF',text:'#111118'}, solstice:{accent:'#CC7800',text:'#111118'}, quasar:{accent:'#FF4E08',text:'#111118'},
+  comet:{accent:'#009BC1',text:'#111118'}, magnetar:{accent:'#DA47FF',text:'#111118'}, coral:{accent:'#C24B2A',text:'#FFFFFF'},
+  teal:{accent:'#2F7D6E',text:'#FFFFFF'}, violet:{accent:'#7D4A78',text:'#FFFFFF'}, blue:{accent:'#4A5C9E',text:'#FFFFFF'},
+  gold:{accent:'#8A6A16',text:'#FFFFFF'}, rose:{accent:'#A8392F',text:'#FFFFFF'} });
+// Deep Space presets (2026-09-03): every accent measured >= 4.5:1 against its text, >= 3:1 against #12101C and #F7F7FA.
+// The five legacy keys stay so stored values keep resolving; the picker shows the eight plus coral.
+const PK_PRESET_KEYS=['nebula','pulsar','aurora','ion','solstice','quasar','comet','magnetar','coral'];
+const PK_DEFAULT_THEME='nebula';
 const PK_ACCENTS=Object.assign(Object.create(null)); for(const k in PK_THEMES) PK_ACCENTS[k]=PK_THEMES[k].accent;
 const THEME_KEYS=Object.keys(PK_THEMES);
 function inkSafe(hex){ let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
@@ -2391,6 +2397,12 @@ function inkSafe(hex){ let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,
   let guard=0; while(lum()>0.30 && guard++<30){ r=Math.round(r*0.92); g=Math.round(g*0.92); b=Math.round(b*0.92); }
   return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
 
+// One resolver for a stored theme value: a preset key, or a bare 6-digit hex (darkened by inkSafe so white text holds).
+// The regex and the key table are the whole defence: nothing else can reach a CSS value from here.
+function pkResolveTheme(raw){ const t=(typeof raw==='string')?raw.trim():'';
+  if(THEME_KEYS.indexOf(t)>=0) return {accent:PK_THEMES[t].accent,text:PK_THEMES[t].text};
+  if(/^#[0-9a-fA-F]{6}$/.test(t)) return {accent:inkSafe(t),text:'#FFFFFF'};
+  return {accent:PK_THEMES[PK_DEFAULT_THEME].accent,text:PK_THEMES[PK_DEFAULT_THEME].text}; }
 function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
 // ---------- viewer-side hiding and reporting ----------
 // A label is necessary and not sufficient. Meta shipped "AI managed by Meta" on their
@@ -2499,8 +2511,7 @@ async function renderExplore(){
   rows.forEach(r=>{
     const g=(r.data&&r.data.facets)?r.data:{facets:[]};
     const nm=String(r.name||'Untitled persona');
-    const rawTheme=(g.theme&&typeof g.theme==='string')?g.theme.trim():'';
-    const acc=/^#[0-9a-fA-F]{6}$/.test(rawTheme)?inkSafe(rawTheme):PK_ACCENTS[PK_DEFAULT_THEME];
+    const th=pkResolveTheme(g.theme); const acc=th.accent;
 
     const card=document.createElement('a');
     card.className='excard';
@@ -2510,7 +2521,7 @@ async function renderExplore(){
     const av=document.createElement('div'); av.className='exav';
     // 'The Coach' and 'The Creator' both start with T, so skip a leading article
     const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'') || nm.trim();
-    av.style.background=acc; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
+    av.style.background=acc; av.style.color=th.text; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
     const idb=document.createElement('div');
     const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
     const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
@@ -2558,7 +2569,7 @@ async function renderAccount(handle){
   const empty=(t,m)=>{ const d=document.createElement('div'); d.className='acempty'; const h=document.createElement('h3'); h.textContent=t; const p=document.createElement('p'); p.textContent=m; p.style.margin='0'; d.append(h,p); grid.appendChild(d); };
   const acc=HANDLE_RE.test(handle)?await accountByHandle(handle):null;
   if(!acc||acc.is_suspended){ nameEl.textContent='No page at @'+handle; hEl.textContent=''; av.textContent='?'; empty('Nothing here','There is no Personakind member with that handle, or their page is not public yet.'); return; }
-  av.style.background=PK_ACCENTS[acc.avatar_theme]||PK_ACCENTS[PK_DEFAULT_THEME];
+  { const tha=pkResolveTheme(acc.avatar_theme); av.style.background=tha.accent; av.style.color=tha.text; }
   const dn=(acc.display_name&&acc.display_name.trim())||('@'+acc.handle);
   nameEl.textContent=dn; hEl.textContent='@'+acc.handle+(acc.is_official?'  \u00b7 official':''); av.textContent=(dn.replace(/^@/,'')[0]||'P').toUpperCase();
   bioEl.textContent=acc.bio||'';
@@ -2578,9 +2589,9 @@ async function renderAccount(handle){
   if(error){ empty('Could not load personas','Try again in a moment.'); return; }
   if(!rows||!rows.length){ empty('No public personas yet','When '+dn+' makes one public it lands here.'); return; }
   rows.forEach(r=>{ const g=(r.data&&r.data.facets)?r.data:{facets:[]}; const nm=String(r.name||'Untitled persona');
-    const rawTheme=(g.theme&&typeof g.theme==='string')?g.theme.trim():''; const accn=/^#[0-9a-fA-F]{6}$/.test(rawTheme)?inkSafe(rawTheme):PK_ACCENTS[PK_DEFAULT_THEME];
+    const thn=pkResolveTheme(g.theme); const accn=thn.accent;
     const card=document.createElement('a'); card.className='excard'; card.setAttribute('href',shareUrlFor(r.id,nm,acc.handle).replace(location.origin+location.pathname,''));
-    const top=document.createElement('div'); top.className='extop'; const avx=document.createElement('div'); avx.className='exav'; avx.style.background=accn;
+    const top=document.createElement('div'); top.className='extop'; const avx=document.createElement('div'); avx.className='exav'; avx.style.background=accn; avx.style.color=thn.text;
     const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'')||nm.trim(); avatarInto(avx,r.image_url,(initSrc[0]||'P').toUpperCase());
     const idb=document.createElement('div'); const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
     const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
@@ -2623,10 +2634,7 @@ async function renderProfile(id,opts){ opts=opts||{};
   document.getElementById('psummary').textContent=profileSummary(g);
   // A saved theme is either one of our keys or a literal 6-digit hex the editor wrote.
   // The hex regex is the whole defence: nothing but 0-9a-f can reach a CSS value from here.
-  const rawTheme=(data.data&&typeof data.data.theme==='string')?data.data.theme.trim():'';
-  const acc=/^#[0-9a-fA-F]{6}$/.test(rawTheme) ? inkSafe(rawTheme)
-          : (THEME_KEYS.indexOf(rawTheme)>=0 ? PK_ACCENTS[rawTheme] : PK_ACCENTS[PK_DEFAULT_THEME]);
-  const accText=(THEME_KEYS.indexOf(rawTheme)>=0 ? PK_THEMES[rawTheme].text : PK_THEMES[PK_DEFAULT_THEME].text);
+  const thp=pkResolveTheme(data.data&&data.data.theme); const acc=thp.accent, accText=thp.text;
   document.getElementById('pavatar').style.background=acc;
   document.getElementById('pband').style.background='radial-gradient(80% 120% at 20% -20%,'+hexA(acc,.16)+',transparent 62%)';
   const prof=document.getElementById('profile'); prof.style.setProperty('--pacc',acc); prof.style.setProperty('--pacc-text',accText);
