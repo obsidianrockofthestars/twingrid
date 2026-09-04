@@ -321,6 +321,42 @@ await check("webhook CANCELLATION / EXPIRATION / BILLING_ISSUE / UNCANCELLATION 
   }
 });
 
+await check("webhook REFUND -> period closed, balance zeroed through the ledger (kind revoke, ref = event id)", async () => {
+  let sent = null;
+  balance = 437;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, init) => {
+    if (String(u).endsWith("/rpc/twingrid_grant_credits")) sent = JSON.parse(init.body);
+    return realFetch(u, init);
+  };
+  const before = Date.now();
+  const r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "REFUND", id: "evt-refund-1", app_user_id: USER_ID, product_id: "pk_hosted_500_month" } }),
+  }), ENV);
+  globalThis.fetch = realFetch;
+  eq(r.status, 200, "status");
+  const j = await r.json();
+  eq(j.revoked, true, "revoked flag");
+  eq(sent.p_kind, "revoke", "kind");
+  eq(sent.p_delta, -437, "delta is minus the whole balance");
+  eq(sent.p_ref, "evt-refund-1", "ref");
+  const pe = Date.parse(sent.p_period_end);
+  if (!(pe >= before && pe <= Date.now() + 1000)) throw new Error("period_end is not now: " + sent.p_period_end);
+  eq(balance, 0, "fake ledger balance after revoke");
+  eq(j.balance, 0, "returned balance");
+});
+
+await check("webhook REFUND without an event id -> 400, nothing touched", async () => {
+  calls.length = 0;
+  const r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "REFUND", app_user_id: USER_ID } }),
+  }), ENV);
+  eq(r.status, 400, "status");
+  if (calls.length !== 0) throw new Error("backend was called");
+});
+
 await check("webhook anonymous app_user_id -> 200 ignored", async () => {
   const r = await handleApi(req("/api/rc-webhook", {
     method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),

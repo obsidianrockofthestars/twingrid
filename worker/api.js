@@ -561,6 +561,13 @@ async function handleChat(request, env) {
 }
 
 const GRANT_EVENTS = new Set(["INITIAL_PURCHASE", "RENEWAL", "NON_RENEWING_PURCHASE"]);
+// REFUND (Dylan's ruling 2026-09-04, after the first live $5 sale): money back means
+// no access. The period is closed and the balance zeroed through the same ledger
+// function, kind "revoke", ref = the RevenueCat event id, so a retry is idempotent.
+// Before this a refund was a free month. REFUND_REVERSED stays a no-op on purpose:
+// re-granting on a reversal would need the original pack, and it is rare enough
+// to handle by hand from the ledger.
+const REVOKE_EVENTS = new Set(["REFUND"]);
 const NOOP_EVENTS = new Set([
   // UNCANCELLATION is deliberately a no-op: the reader re-enabled auto-renew on a
   // period that was already granted at INITIAL_PURCHASE or RENEWAL. Granting here
@@ -743,7 +750,7 @@ async function handleRcWebhook(request, env) {
     return json(request, 400, { error: "bad_event" });
   }
 
-  if (!GRANT_EVENTS.has(ev.type)) {
+  if (!GRANT_EVENTS.has(ev.type) && !REVOKE_EVENTS.has(ev.type)) {
     // Known lifecycle events we do not act on, and any future type we have not
     // seen: 200 so RevenueCat does not retry. Credits already granted keep
     // working until period_end regardless.
@@ -757,6 +764,17 @@ async function handleRcWebhook(request, env) {
     // Anonymous RC ids ($RCAnonymousID:...) or anything that is not a Supabase
     // user id cannot be credited. Accept so RC stops retrying.
     return json(request, 200, { ignored: true, reason: "app_user_id_not_uuid" });
+  }
+
+  if (REVOKE_EVENTS.has(ev.type)) {
+    const cur = await readCredits(env, userId);
+    if (!cur) return json(request, 503, { error: "revoke_failed" });
+    const r = await rpcService(env, "twingrid_grant_credits", {
+      p_user: userId, p_delta: -Math.max(0, cur.balance), p_kind: "revoke", p_ref: ev.id,
+      p_period_end: new Date().toISOString(),
+    });
+    if (!r.ok) return json(request, 503, { error: "revoke_failed" });
+    return json(request, 200, { ok: true, revoked: true, balance: Number(r.value), environment: ev.environment || null });
   }
 
   const packs = creditPacks(env);
