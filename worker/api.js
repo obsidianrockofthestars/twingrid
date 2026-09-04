@@ -56,6 +56,14 @@ async function reserveCapacity(env, provider, micro) {
   const r = await rpcService(env, "twingrid_capacity_spend", { p_provider: provider, p_micro: micro });
   return r.ok && r.value === true;
 }
+// 2026-09-04 (OWASP F2): a reservation the provider never honoured is given back, so a run
+// of upstream errors cannot walk the site to the capacity gate on spend that never happened.
+// Best effort: a failed release is logged as a code and the user's credit refund still stands.
+async function releaseCapacity(env, provider, micro) {
+  const r = await rpcService(env, "twingrid_capacity_unspend", { p_provider: provider, p_micro: micro });
+  if (!r.ok) console.log("capacity_release_failed");
+  return r.ok;
+}
 
 export function chatCost(systemChars) {
   const n = Math.ceil(Number(systemChars) / SYSTEM_CHARS_PER_CREDIT);
@@ -498,7 +506,8 @@ async function handleChat(request, env) {
 
   // Capacity first (nothing is charged when the site is paused), then spend BEFORE calling Anthropic.
   const msgChars = body.messages.reduce((a, m) => a + m.content.length, 0);
-  if (!(await reserveCapacity(env, "anthropic", chatMicro(system.length, msgChars)))) {
+  const reservedMicro = chatMicro(system.length, msgChars);
+  if (!(await reserveCapacity(env, "anthropic", reservedMicro))) {
     return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
   }
   const cost = chatCost(system.length);
@@ -545,6 +554,7 @@ async function handleChat(request, env) {
   }
 
   if (text === null) {
+    await releaseCapacity(env, "anthropic", reservedMicro);
     // Refund the credit we took. A failed refund is logged as a code only.
     const ref = "refund:" + crypto.randomUUID();
     const r = await rpcService(env, "twingrid_grant_credits", {
@@ -561,13 +571,16 @@ async function handleChat(request, env) {
 }
 
 const GRANT_EVENTS = new Set(["INITIAL_PURCHASE", "RENEWAL", "NON_RENEWING_PURCHASE"]);
-// REFUND (Dylan's ruling 2026-09-04, after the first live $5 sale): money back means
-// no access. The period is closed and the balance zeroed through the same ledger
-// function, kind "revoke", ref = the RevenueCat event id, so a retry is idempotent.
-// Before this a refund was a free month. REFUND_REVERSED stays a no-op on purpose:
-// re-granting on a reversal would need the original pack, and it is rare enough
-// to handle by hand from the ledger.
-const REVOKE_EVENTS = new Set(["REFUND"]);
+// Refunds (Dylan's ruling 2026-09-04, after the first live $5 sale): money back means
+// no access. RevenueCat has no REFUND event type; a refund arrives as CANCELLATION and
+// EXPIRATION with reason CUSTOMER_SUPPORT (read off the live webhook log the same day).
+// The EXPIRATION is the one acted on: the period is closed and the balance zeroed through
+// the same ledger function, kind "revoke", ref = the event id, so a retry is idempotent.
+// A natural EXPIRATION (UNSUBSCRIBE, BILLING_ERROR) stays a no-op: period_end already
+// ends access. Before this a refund was a free month. REFUND_REVERSED stays a no-op.
+function isRefundEvent(ev) {
+  return ev.type === "EXPIRATION" && ev.expiration_reason === "CUSTOMER_SUPPORT";
+}
 const NOOP_EVENTS = new Set([
   // UNCANCELLATION is deliberately a no-op: the reader re-enabled auto-renew on a
   // period that was already granted at INITIAL_PURCHASE or RENEWAL. Granting here
@@ -725,6 +738,7 @@ async function handleMediaImage(request, env) {
   }
 
   if (!b64) {
+    await releaseCapacity(env, "google", MICRO_PER_IMAGE);
     const back = await refund();
     // Give the daily slot back too: a rejected call is not one of the user's ten.
     const u = await rpcService(env, "twingrid_media_untick", { p_user: user.id, p_kind: "image" });
@@ -750,7 +764,7 @@ async function handleRcWebhook(request, env) {
     return json(request, 400, { error: "bad_event" });
   }
 
-  if (!GRANT_EVENTS.has(ev.type) && !REVOKE_EVENTS.has(ev.type)) {
+  if (!GRANT_EVENTS.has(ev.type) && !isRefundEvent(ev)) {
     // Known lifecycle events we do not act on, and any future type we have not
     // seen: 200 so RevenueCat does not retry. Credits already granted keep
     // working until period_end regardless.
@@ -766,7 +780,7 @@ async function handleRcWebhook(request, env) {
     return json(request, 200, { ignored: true, reason: "app_user_id_not_uuid" });
   }
 
-  if (REVOKE_EVENTS.has(ev.type)) {
+  if (isRefundEvent(ev)) {
     const cur = await readCredits(env, userId);
     if (!cur) return json(request, 503, { error: "revoke_failed" });
     const r = await rpcService(env, "twingrid_grant_credits", {
@@ -849,7 +863,8 @@ async function handleMediaVoice(request, env) {
   if (!GOOGLE_VOICES.has(voice)) return json(request, 409, { error: "no_voice" });
 
   const cost = voiceCost(text.length);
-  if (!(await reserveCapacity(env, "google", text.length * MICRO_PER_VOICE_CHAR))) {
+  const reservedMicro = text.length * MICRO_PER_VOICE_CHAR;
+  if (!(await reserveCapacity(env, "google", reservedMicro))) {
     return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
   }
   const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: cost, p_kind: "voice" });
@@ -908,6 +923,7 @@ async function handleMediaVoice(request, env) {
   }
 
   if (!audio) {
+    await releaseCapacity(env, "google", reservedMicro);
     const back = await refund();
     const u = await rpcService(env, "twingrid_media_untick", { p_user: user.id, p_kind: "voice" });
     if (!u.ok) console.log("untick_failed");
@@ -918,6 +934,7 @@ async function handleMediaVoice(request, env) {
   let bytes;
   try { bytes = b64ToBytes(audio.data); } catch (_) { bytes = null; }
   if (!bytes || bytes.length < 100) {
+    await releaseCapacity(env, "google", reservedMicro);
     const back = await refund();
     const u = await rpcService(env, "twingrid_media_untick", { p_user: user.id, p_kind: "voice" });
     if (!u.ok) console.log("untick_failed");

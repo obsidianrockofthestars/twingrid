@@ -35,6 +35,7 @@ let balance = 3;
 let anthropicMode = "ok"; // "ok" | "fail"
 let capacityOk = true;    // the capacity gate answer
 let capacityCalls = [];
+let capacityReleases = []; // twingrid_capacity_unspend calls (2026-09-04)
 
 globalThis.fetch = async (url, init) => {
   const u = String(url);
@@ -62,6 +63,10 @@ globalThis.fetch = async (url, init) => {
     if (balance <= 0) return respond(200, -1);
     balance -= 1;
     return respond(200, balance);
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_capacity_unspend")) {
+    capacityReleases.push(body);
+    return respond(200, null);
   }
   if (u.endsWith("/rest/v1/rpc/twingrid_capacity_spend")) {
     capacityCalls.push(body);
@@ -229,6 +234,29 @@ await check("Anthropic failure -> 502 and the credit is refunded", async () => {
   if (!calls.some((c) => c.url.endsWith("/rpc/twingrid_grant_credits"))) throw new Error("refund rpc not called");
 });
 
+await check("Anthropic failure -> the capacity reservation is released with the same micro it reserved", async () => {
+  balance = 3; anthropicMode = "fail"; capacityCalls.length = 0; capacityReleases.length = 0;
+  await handleApi(req("/api/chat", {
+    method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }),
+    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "hi" }] }),
+  }), ENV);
+  anthropicMode = "ok";
+  eq(capacityCalls.length, 1, "one reservation");
+  eq(capacityReleases.length, 1, "one release");
+  eq(capacityReleases[0].p_provider, "anthropic", "provider");
+  eq(capacityReleases[0].p_micro, capacityCalls[0].p_micro, "released exactly what was reserved");
+});
+
+await check("Anthropic success -> no capacity release", async () => {
+  balance = 3; capacityReleases.length = 0;
+  const r = await handleApi(req("/api/chat", {
+    method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }),
+    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "hi" }] }),
+  }), ENV);
+  eq(r.status, 200, "status");
+  eq(capacityReleases.length, 0, "no release on success");
+});
+
 await check("GET /api/credits -> balance and period_end", async () => {
   balance = 7;
   const r = await handleApi(req("/api/credits", { headers: { Authorization: "Bearer " + GOOD_TOKEN } }), ENV);
@@ -321,7 +349,7 @@ await check("webhook CANCELLATION / EXPIRATION / BILLING_ISSUE / UNCANCELLATION 
   }
 });
 
-await check("webhook REFUND -> period closed, balance zeroed through the ledger (kind revoke, ref = event id)", async () => {
+await check("webhook EXPIRATION with CUSTOMER_SUPPORT (a refund) -> period closed, balance zeroed through the ledger (kind revoke, ref = event id)", async () => {
   let sent = null;
   balance = 437;
   const realFetch = globalThis.fetch;
@@ -332,7 +360,7 @@ await check("webhook REFUND -> period closed, balance zeroed through the ledger 
   const before = Date.now();
   const r = await handleApi(req("/api/rc-webhook", {
     method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
-    body: JSON.stringify({ api_version: "1.0", event: { type: "REFUND", id: "evt-refund-1", app_user_id: USER_ID, product_id: "pk_hosted_500_month" } }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "EXPIRATION", expiration_reason: "CUSTOMER_SUPPORT", id: "evt-refund-1", app_user_id: USER_ID, product_id: "pk_hosted_500_month" } }),
   }), ENV);
   globalThis.fetch = realFetch;
   eq(r.status, 200, "status");
@@ -347,14 +375,27 @@ await check("webhook REFUND -> period closed, balance zeroed through the ledger 
   eq(j.balance, 0, "returned balance");
 });
 
-await check("webhook REFUND without an event id -> 400, nothing touched", async () => {
+await check("webhook refund EXPIRATION without an event id -> 400, nothing touched", async () => {
   calls.length = 0;
   const r = await handleApi(req("/api/rc-webhook", {
     method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
-    body: JSON.stringify({ api_version: "1.0", event: { type: "REFUND", app_user_id: USER_ID } }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "EXPIRATION", expiration_reason: "CUSTOMER_SUPPORT", app_user_id: USER_ID } }),
   }), ENV);
   eq(r.status, 400, "status");
   if (calls.length !== 0) throw new Error("backend was called");
+});
+
+await check("webhook EXPIRATION with UNSUBSCRIBE or BILLING_ERROR -> 200 no-op, balance untouched", async () => {
+  for (const reason of ["UNSUBSCRIBE", "BILLING_ERROR", undefined]) {
+    calls.length = 0; balance = 41;
+    const r = await handleApi(req("/api/rc-webhook", {
+      method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+      body: JSON.stringify({ api_version: "1.0", event: { type: "EXPIRATION", expiration_reason: reason, id: "evt-exp-" + reason, app_user_id: USER_ID, product_id: "pk_hosted_500_month" } }),
+    }), ENV);
+    eq(r.status, 200, "status " + reason);
+    if (calls.length !== 0) throw new Error("backend was called for " + reason);
+    eq(balance, 41, "balance untouched " + reason);
+  }
 });
 
 await check("webhook anonymous app_user_id -> 200 ignored", async () => {
