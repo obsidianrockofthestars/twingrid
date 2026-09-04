@@ -2384,7 +2384,7 @@ async function sendChat(){const inp=document.getElementById('chatinput');const t
 // Dylan: paste the Web Billing PUBLIC key from RevenueCat (Project > Web Billing app > API keys).
 // A sandbox key starts with rcb_sb_ (Stripe test mode, card 4242 4242 4242 4242). Production starts with rcb_.
 // Public keys are safe in the page. The product id must match the Worker's CREDIT_PACKS var.
-const RC_WEB_BILLING_KEY='rcb_sb_LgHnwdFYgqYrQcAQDuBVoXPER';
+const RC_WEB_BILLING_KEY='rcb_XrbGXpOOiTwMNbmlTcWlFJMkzoSn'; // production (Stripe Live) since 2026-09-04; sandbox was rcb_sb_LgHnwdFYgqYrQcAQDuBVoXPER
 const RC_PRODUCTS={month:{id:'pk_hosted_500_month',label:'a month',price:'$5'},year:{id:'pk_hosted_6000_year',label:'a year',price:'$48'}};
 const procard=document.getElementById('procard'), procardStatus=document.getElementById('procard-status'), procardBuy=document.getElementById('procard-buy'), procardBuyYear=document.getElementById('procard-buy-year'), procardSub=document.getElementById('procard-sub');
 function setProStatus(t){ procardStatus.textContent=t||''; }
