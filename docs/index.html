@@ -345,6 +345,17 @@ body.route-profile #chat .savebtn{background:var(--pacc);border-color:var(--pacc
 #profile .pctrl-msg,#profile .rptcard .k{color:var(--pmuted)}
 #profile .psum,#profile .linkbtn{color:var(--ptext)}
 #profile .pcopytext{background:var(--pbg);color:var(--ptext);border-color:var(--pline)}
+/* mouth flaps (2026-09-03, spec 3.6 fallback tier): an overlay mouth and a subtle bob while a reply is spoken.
+   --mouth runs 0 to 1, set by pkMouth from audio loudness (Gemini) or word boundaries (browser voice). */
+.pavatar,#chatface{position:relative;overflow:hidden}
+.pavatar .mouth,#chatface .mouth{position:absolute;left:50%;top:64%;width:30%;height:calc(2px + var(--mouth,0) * 14%);transform:translateX(-50%);
+  border-radius:999px;background:rgba(20,14,24,.78);box-shadow:inset 0 2px 0 rgba(255,255,255,.18);pointer-events:none;opacity:0;transition:height .06s linear,opacity .2s}
+.speaking .mouth{opacity:1}
+.speaking .pkimg{transform:translateY(calc(var(--mouth,0) * -1.5px));transition:transform .06s linear}
+#chatface{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;font-family:var(--serif);font-weight:600;font-size:16px;
+  background:var(--pacc,var(--accent));color:var(--pacc-text,var(--accent-ink));margin-right:10px}
+#chatface:empty{display:none}
+#chat .dhead .t{flex:1}
 /* owner colour panel (editor Face box and the account page) */
 .pk-themebox{margin-top:10px;display:flex;flex-direction:column;gap:8px}
 .pk-themerow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -1464,7 +1475,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 </style>
 
 <div class="drawer" id="chat">
-  <div class="dhead"><div class="t" id="chattitle">Chat</div><button class="x" id="chatspk" type="button" title="Hear replies" aria-pressed="false" style="margin-right:6px;font-size:16px">&#128264;</button><button class="x" id="chatx">&times;</button></div>
+  <div class="dhead"><div id="chatface" aria-hidden="true"></div><div class="t" id="chattitle">Chat</div><button class="x" id="chatspk" type="button" title="Hear replies" aria-pressed="false" style="margin-right:6px;font-size:16px">&#128264;</button><button class="x" id="chatx">&times;</button></div>
   <div class="msg sys" id="creditsline" hidden style="margin:8px 12px 0"></div>
   <div class="dbody" id="chatbody"></div>
   <div class="chatin"><textarea id="chatinput" placeholder="Talk to the composed persona..."></textarea><button class="savebtn" id="chatsend">Send</button></div>
@@ -1954,8 +1965,27 @@ function pkRepaintThemePanel(){ pkThemePanel(document.getElementById('themebox')
     const {error}=await SB.from('twingrid_grids').update({data:d}).eq('id',curId); if(error) return 'Could not save the colour: '+String(error.message||'').slice(0,100);
     GRID.theme=raw; loadClones(); return null; }}); }
 function voiceCostFor(text){ return Math.max(2, Math.min(6, Math.ceil(text.length/150))); }
+// ---------- mouth flaps (2026-09-03): client only, no API, no cost ----------
+let chatFaceUrl=null, chatFaceInit='P';
+function pkSpeakTargets(){ const t=[]; const f=document.getElementById('chatface'); if(f&&f.childNodes.length) t.push(f);
+  if(/route-profile/.test(document.body.className)){ const p=document.getElementById('pavatar'); if(p) t.push(p); } return t; }
+function pkMouthEnsure(el){ let m=el.querySelector(':scope > .mouth'); if(!m){ m=document.createElement('span'); m.className='mouth'; el.appendChild(m); } return m; }
+function pkMouth(v){ const q=v<=0.08?0:v<0.3?0.33:v<0.6?0.66:1; pkSpeakTargets().forEach(el=>{ pkMouthEnsure(el); el.classList.add('speaking'); el.style.setProperty('--mouth',String(q)); }); }
+function pkMouthStop(){ document.querySelectorAll('.speaking').forEach(el=>{ el.classList.remove('speaking'); el.style.setProperty('--mouth','0'); }); }
+let __pkAC=null;
+function pkFlapAudio(a){ try{ if(!__pkAC) __pkAC=new (window.AudioContext||window.webkitAudioContext)(); const ac=__pkAC; if(ac.state==='suspended') ac.resume().catch(()=>{});
+    const srcNode=ac.createMediaElementSource(a); const an=ac.createAnalyser(); an.fftSize=512; srcNode.connect(an); an.connect(ac.destination);
+    const buf=new Uint8Array(an.fftSize); let last=0, lastAt=0, live=true;
+    const tick=(ts)=>{ if(!live) return; an.getByteTimeDomainData(buf); let sum=0; for(let i=0;i<buf.length;i++){ const d=(buf[i]-128)/128; sum+=d*d; }
+      const rms=Math.sqrt(sum/buf.length); const v=Math.min(1, rms*4.2); if(ts-lastAt>60||v<last){ last=v; lastAt=ts; pkMouth(v); } requestAnimationFrame(tick); };
+    requestAnimationFrame(tick); const stop=()=>{ live=false; pkMouthStop(); }; a.addEventListener('ended',stop); a.addEventListener('pause',stop); a.addEventListener('error',stop);
+  }catch(_){ /* no analyser (old browser): the reply still plays, the mouth just stays closed */ } }
+function pkFlapUtterance(u){ let t=null; const close=()=>{ pkMouth(0.2); };
+  u.onstart=()=>pkMouth(0.66); u.onboundary=()=>{ pkMouth(0.5+Math.random()*0.5); clearTimeout(t); t=setTimeout(close,90); };
+  const done=()=>{ clearTimeout(t); pkMouthStop(); }; u.onend=done; u.onerror=done; }
+function pkChatFace(){ const f=document.getElementById('chatface'); if(!f) return; avatarInto(f,chatFaceUrl,chatFaceInit); }
 async function speakReply(text){ if(!speakOn||!chatVoice||!text) return;
-  if(chatVoice==='browser'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text.slice(0,900)); window.speechSynthesis.speak(u); }catch(_){} return; }
+  if(chatVoice==='browser'){ try{ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text.slice(0,900)); pkFlapUtterance(u); window.speechSynthesis.speak(u); }catch(_){} return; }
   const token=await hostedToken(); const gridId=currentGridId(); if(!token||!gridId) return;
   const cost=voiceCostFor(text.slice(0,900));
   try{ const res=await fetch(HOSTED_API+'/media/voice',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({grid_id:gridId,text:text.slice(0,900)})});
@@ -1965,14 +1995,14 @@ async function speakReply(text){ if(!speakOn||!chatVoice||!text) return;
     if(res.status===409){ setCreditsLine('This persona has no voice yet. Its owner can pick one in the editor.'); return; }
     if(!res.ok){ setCreditsLine('The voice did not answer. Your messages were returned.'); return; }
     const rem=Number(res.headers.get('X-Remaining')); if(Number.isFinite(rem)){ hostedRemaining=rem; setCreditsLine('Hosted chat: '+rem+' message'+(rem===1?'':'s')+' left (that reply cost '+(res.headers.get('X-Cost')||cost)+' to hear)'); }
-    const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=new Audio(url); a.onended=()=>URL.revokeObjectURL(url); window.__pkLastAudio=a; await a.play().catch(()=>{});
+    const blob=await res.blob(); const url=URL.createObjectURL(blob); const a=new Audio(url); a.onended=()=>URL.revokeObjectURL(url); window.__pkLastAudio=a; pkFlapAudio(a); await a.play().catch(()=>{});
   }catch(_){ setCreditsLine('The voice did not answer. Your messages were returned.'); } }
 // ---------- persona image, upload half (2026-09-02) ----------
 // Everything happens in the browser: crop to a square, shrink to 512, encode as webp, put it in the uploader's own
 // folder of the twingrid-media bucket (storage RLS), then point the grid's image_url at it (a trigger refuses any
 // url outside that folder). No server, no per-upload cost. Moderation is the existing report path.
 let __faceUrl=null;
-function faceShow(url){ __faceUrl=url||null; const av=document.getElementById('faceav'); const nm=(document.getElementById('gridname').value||'P').trim();
+function faceShow(url){ __faceUrl=url||null; chatFaceUrl=__faceUrl; chatFaceInit=((document.getElementById('gridname').value||'P').trim()[0]||'P').toUpperCase(); const av=document.getElementById('faceav'); const nm=(document.getElementById('gridname').value||'P').trim();
   avatarInto(av,__faceUrl,(nm[0]||'P').toUpperCase()); document.getElementById('faceclear').hidden=!__faceUrl; document.getElementById('facemsg').textContent=''; }
 function faceMsg(t){ document.getElementById('facemsg').textContent=t||''; }
 async function faceEncode(file){ const bmp=await createImageBitmap(file); const side=Math.min(bmp.width,bmp.height); const sx=(bmp.width-side)/2, sy=(bmp.height-side)/2;
@@ -2311,7 +2341,7 @@ async function refreshCredits(){ const token=await hostedToken(); if(!token){ ho
     const until=j.period_end&&!ended?' until '+new Date(j.period_end).toLocaleDateString():'';
     setCreditsLine(ended ? 'Hosted chat: your plan ended. Renew, or add your own key.' : hostedRemaining>0 ? 'Hosted chat: '+hostedRemaining+' message'+(hostedRemaining===1?'':'s')+' left'+until : 'Hosted chat: no messages left. Add your own key, or buy more.');
     return hostedRemaining; }catch(_){ setCreditsLine(''); return null; } }
-async function openChat(){ if(localStorage.getItem('tg_key')){ setCreditsLine(''); chat.classList.add('open'); renderChat(); return; }
+async function openChat(){ pkChatFace(); if(localStorage.getItem('tg_key')){ setCreditsLine(''); chat.classList.add('open'); renderChat(); return; }
   const token=await hostedToken(); if(!token){ settings.classList.add('open'); return; }
   chat.classList.add('open'); renderChat(); const n=await refreshCredits(); if(n===0) showProCard(); }
 function currentGridId(){ return curId||PK_CUR_ID||null; }
@@ -2714,7 +2744,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; return; }
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
-  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); chatVoice=data.voice_id||'';
+  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
   handleFor(data.owner).then(h=>{ if(!h) return; pby.hidden=false; pby.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; pby.append('by ',a);
     try{ const q=new URLSearchParams(location.search); if(q.get('t')&&!q.get('u')){ q.delete('t'); q.set('u',h); q.set('p',nm); window.history.replaceState(null,'','?'+q.toString()); } }catch(_){} });
   document.getElementById('pcells').textContent='';
