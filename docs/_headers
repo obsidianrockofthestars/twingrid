@@ -4,13 +4,15 @@
 # the single page (hence 'unsafe-inline'), esm.sh for the two pinned libraries, Supabase REST,
 # auth and storage, RevenueCat Web Billing (api.revenuecat.com, checkout iframe on rev.cat),
 # Anthropic direct for bring-your-own-key chat, Google Fonts, blob: audio for Gemini voice.
+# SAMEORIGIN, not DENY: the phone-width QA method renders the site in same-origin iframes inside the
+# page (DENY blocked those on the first live read, 2026-09-04); no third party may frame it either way.
 /*
-  X-Frame-Options: DENY
+  X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self "https://pay.rev.cat")
   Strict-Transport-Security: max-age=15552000
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://jpepcqazscmhakxvutpg.supabase.co; media-src 'self' blob: data:; connect-src 'self' https://jpepcqazscmhakxvutpg.supabase.co wss://jpepcqazscmhakxvutpg.supabase.co https://esm.sh https://api.revenuecat.com https://api.anthropic.com; frame-src https://pay.rev.cat https://*.rev.cat https://api.revenuecat.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://jpepcqazscmhakxvutpg.supabase.co; media-src 'self' blob: data:; connect-src 'self' https://jpepcqazscmhakxvutpg.supabase.co wss://jpepcqazscmhakxvutpg.supabase.co https://esm.sh https://api.revenuecat.com https://api.anthropic.com; frame-src https://pay.rev.cat https://*.rev.cat https://api.revenuecat.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'
 
 /personakind-mcp.mcpb
   Content-Type: application/octet-stream
