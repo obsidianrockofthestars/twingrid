@@ -12,6 +12,7 @@ const ENV = {
   RC_WEBHOOK_AUTH: "rc-secret-123",
   HOSTED_MODEL: "claude-haiku-4-5-20251001",
   CREDIT_PACKS: JSON.stringify({ pk_hosted_500_month: 500, pk_hosted_1500_month: 1500, pk_hosted_3500_month: 3500, pk_hosted_6000_year: 6000 }),
+  RC_SANDBOX_USERS: "33333333-3333-4333-8333-333333333333, 44444444-4444-4444-8444-444444444444",
 };
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -308,7 +309,7 @@ await check("webhook INITIAL_PURCHASE known product -> grants 500 with ref = eve
     method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
     body: JSON.stringify({ api_version: "1.0", event: {
       type: "INITIAL_PURCHASE", id: "evt-abc", app_user_id: USER_ID, product_id: "pk_hosted_500_month",
-      expiration_at_ms: 1790000000000, environment: "SANDBOX", store: "RC_BILLING",
+      expiration_at_ms: 1790000000000, environment: "PRODUCTION", store: "RC_BILLING",
     } }),
   }), ENV);
   globalThis.fetch = realFetch;
@@ -427,6 +428,60 @@ await check("webhook RENEWAL on the Heavy pack -> grants 3500 (the new packs are
   eq(r.status, 200, "status");
   eq(sent.p_delta, 3500, "delta");
   eq(sent.p_kind, "renewal", "kind");
+});
+
+await check("webhook SANDBOX purchase for a user not in RC_SANDBOX_USERS -> 200 no grant (F7)", async () => {
+  for (const env of ["SANDBOX", "sandbox", "STAGING"]) {
+    balance = 0; calls.length = 0;
+    const r = await handleApi(req("/api/rc-webhook", {
+      method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+      body: JSON.stringify({ api_version: "1.0", event: { type: "INITIAL_PURCHASE", id: "evt-sb-" + env, app_user_id: USER_ID, product_id: "pk_hosted_500_month", expiration_at_ms: 1790000000000, environment: env } }),
+    }), ENV);
+    eq(r.status, 200, "status " + env);
+    eq((await r.json()).reason, "sandbox_user_not_allowed", "reason " + env);
+    if (calls.length !== 0) throw new Error("backend was called for " + env);
+    eq(balance, 0, "balance untouched " + env);
+  }
+});
+
+await check("webhook SANDBOX purchase for a listed test user -> grants normally; PRODUCTION for anyone -> grants", async () => {
+  const TEST_USER = "33333333-3333-4333-8333-333333333333";
+  balance = 0; let sent = null;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, init) => { if (String(u).endsWith("/rpc/twingrid_grant_credits")) sent = JSON.parse(init.body); return realFetch(u, init); };
+  let r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "INITIAL_PURCHASE", id: "evt-sb-ok", app_user_id: TEST_USER.toUpperCase(), product_id: "pk_hosted_1500_month", expiration_at_ms: 1790000000000, environment: "SANDBOX" } }),
+  }), ENV);
+  eq(r.status, 200, "status sandbox listed");
+  eq(sent && sent.p_delta, 1500, "sandbox listed user granted 1500");
+  sent = null; balance = 0;
+  r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "INITIAL_PURCHASE", id: "evt-prod-any", app_user_id: USER_ID, product_id: "pk_hosted_500_month", expiration_at_ms: 1790000000000, environment: "PRODUCTION" } }),
+  }), ENV);
+  globalThis.fetch = realFetch;
+  eq(r.status, 200, "status production");
+  eq(sent && sent.p_delta, 500, "production user granted 500");
+});
+
+await check("webhook SANDBOX refund for a listed test user -> revokes; for anyone else -> no-op", async () => {
+  const TEST_USER = "33333333-3333-4333-8333-333333333333";
+  balance = 200; calls.length = 0;
+  let r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "EXPIRATION", expiration_reason: "CUSTOMER_SUPPORT", id: "evt-sb-rf-no", app_user_id: USER_ID, environment: "SANDBOX" } }),
+  }), ENV);
+  eq(r.status, 200, "status stranger");
+  if (calls.length !== 0) throw new Error("backend was called for a stranger's sandbox refund");
+  balance = 200;
+  r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "EXPIRATION", expiration_reason: "CUSTOMER_SUPPORT", id: "evt-sb-rf-ok", app_user_id: TEST_USER, environment: "SANDBOX" } }),
+  }), ENV);
+  eq(r.status, 200, "status listed");
+  eq((await r.json()).revoked, true, "listed user revoked");
+  eq(balance, 0, "balance zeroed");
 });
 
 await check("webhook refund EXPIRATION without an event id -> 400, nothing touched", async () => {

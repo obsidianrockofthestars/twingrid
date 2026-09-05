@@ -2399,7 +2399,10 @@ async function sendChat(){const inp=document.getElementById('chatinput');const t
 // Dylan: paste the Web Billing PUBLIC key from RevenueCat (Project > Web Billing app > API keys).
 // A sandbox key starts with rcb_sb_ (Stripe test mode, card 4242 4242 4242 4242). Production starts with rcb_.
 // Public keys are safe in the page. The product id must match the Worker's CREDIT_PACKS var.
-const RC_WEB_BILLING_KEY='rcb_XrbGXpOOiTwMNbmlTcWlFJMkzoSn'; // production (Stripe Live) since 2026-09-04; sandbox was rcb_sb_LgHnwdFYgqYrQcAQDuBVoXPER
+const RC_KEY_PRODUCTION='rcb_XrbGXpOOiTwMNbmlTcWlFJMkzoSn'; // production (Stripe Live) since 2026-09-04
+const RC_KEY_SANDBOX='rcb_sb_LgHnwdFYgqYrQcAQDuBVoXPER'; // test cards only; the Worker grants SANDBOX events to listed test accounts alone (F7, 2026-09-05)
+let rcSandbox=false; try{ rcSandbox=localStorage.getItem('pk_rc_sandbox')==='1'; }catch(_){}
+const RC_WEB_BILLING_KEY=rcSandbox?RC_KEY_SANDBOX:RC_KEY_PRODUCTION;
 const RC_PRODUCTS={month:{id:'pk_hosted_500_month',label:'a month (500)',price:'$5'},regular:{id:'pk_hosted_1500_month',label:'a month (1,500)',price:'$12'},heavy:{id:'pk_hosted_3500_month',label:'a month (3,500)',price:'$25'},year:{id:'pk_hosted_6000_year',label:'a year (6,000)',price:'$48'}}; // tier ladder, Dylan's ruling 2026-09-04; identifiers match the RevenueCat Web Billing products and CREDIT_PACKS in wrangler.jsonc
 const procardBuyAll=()=>[...document.querySelectorAll('#procard .procard-btns button')];
 function setBuyDisabled(v){ procardBuyAll().forEach(b=>{ b.disabled=v; }); }
@@ -2409,6 +2412,7 @@ const procardManage=document.getElementById('procard-manage'), procardManageLink
 async function fillManageLink(){ try{ const p=await rcInstance(); const info=await p.getCustomerInfo(); const u=info&&info.managementURL; if(u&&/^https:\/\//.test(u)){ procardManageLink.href=u; procardManage.hidden=false; } }catch(_){} }
 function showProCard(reason){ const active=hostedPlanActive(); setBuyDisabled(active); procardManage.hidden=true; procardManageLink.href='#';
   if(active){ const until=new Date(hostedPeriodEnd).toLocaleDateString(); procardSub.textContent='Your plan is active until '+until+' with '+(typeof hostedRemaining==='number'?hostedRemaining:0)+' messages left, and it renews itself. Buying again mid-period is not possible; change or cancel it from Manage subscription.'; setProStatus(''); procard.hidden=false; fillManageLink(); return; }
+  if(rcSandbox) setProStatus('Sandbox mode: test card 4242 4242 4242 4242, nothing real is charged.');
   procardSub.textContent=reason||'Hosted chat from 500 messages a month for $5 up to 3,500 for $25, or 6,000 a year for $48. No key, no setup, cancel any time.'; setProStatus(''); procard.hidden=false; setBuyDisabled(false); procardBuy.focus(); }
 function hideProCard(){ procard.hidden=true; }
 document.getElementById('procard-x').onclick=hideProCard;

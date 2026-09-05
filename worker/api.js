@@ -609,6 +609,17 @@ const NOOP_EVENTS = new Set([
   "VIRTUAL_CURRENCY_TRANSACTION",
 ]);
 
+// F7 (2026-09-05): the sandbox Web Billing key is public, so anyone could pay with a test card
+// and get real credits. SANDBOX events grant only to the user ids in RC_SANDBOX_USERS (a comma
+// list; Dylan's own account for zero-dollar proofs). Anything else non-PRODUCTION is a 200 no-op.
+function sandboxUsers(env) {
+  return new Set(String(env.RC_SANDBOX_USERS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean));
+}
+function isSandboxEvent(ev) {
+  const e = String(ev.environment || "PRODUCTION").toUpperCase();
+  return e !== "PRODUCTION";
+}
+
 function creditPacks(env) {
   try {
     const p = JSON.parse(env.CREDIT_PACKS || "{}");
@@ -795,6 +806,10 @@ async function handleRcWebhook(request, env) {
     // Anonymous RC ids ($RCAnonymousID:...) or anything that is not a Supabase
     // user id cannot be credited. Accept so RC stops retrying.
     return json(request, 200, { ignored: true, reason: "app_user_id_not_uuid" });
+  }
+
+  if (isSandboxEvent(ev) && !sandboxUsers(env).has(userId.toLowerCase())) {
+    return json(request, 200, { ignored: true, reason: "sandbox_user_not_allowed", environment: ev.environment });
   }
 
   if (isRefundEvent(ev)) {
