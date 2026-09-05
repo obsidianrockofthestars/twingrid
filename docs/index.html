@@ -869,6 +869,10 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   border:1px solid var(--line-w);background:var(--paper);color:var(--ink);font:600 15px/1 Archivo,system-ui,sans-serif;
   box-shadow:0 6px 20px rgba(0,0,0,.16);cursor:pointer}
 #tutbtn:hover{background:var(--accent-soft)}
+/* pills on persona pages (Dylan ruling 2026-09-04, measured): the Tutorial pill folds into the Help panel (its row is #helptut)
+   and the Help pill moves to the left corner, where it floats over scrolling prose instead of the sticky sidebar CTA. */
+body.route-profile #tutbtn{display:none}
+body.route-profile #helpbtn{left:16px;right:auto}
 #tut{position:fixed;inset:0;z-index:150;display:none;background:rgba(20,14,10,.62);align-items:center;justify-content:center;padding:12px}
 #tut.open{display:flex}
 #tutbox{background:var(--card-w);color:var(--ink);border-radius:18px;width:min(860px,100%);max-height:min(92vh,760px);display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.4);overflow:hidden;font-size:15px;line-height:1.55}
@@ -1448,17 +1452,18 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
   <div class="procard-box">
     <button type="button" id="procard-x" class="procard-x" aria-label="Close">&times;</button>
     <div class="pk-kicker">Hosted chat</div>
-    <h2 id="procard-title">Hosted chat: $5 a month, or $48 a year</h2>
+    <h2 id="procard-title">Hosted chat: from $5 a month</h2>
     <p id="procard-sub" class="procard-sub"></p>
     <ul class="procard-list">
       <li>No API key, nothing to set up. Talk to any public persona, or your own.</li>
       <li>Runs on Claude Haiku: fast, and cheap on purpose.</li>
-      <li>Hard cap: 500 messages a month, or 6,000 a year to use whenever you like. Unused messages stay until the period ends. Cancel any time.</li>
+      <li>Pick a pack: Starter 500 messages a month for $5, Regular 1,500 for $12, Heavy 3,500 for $25, or a year of 6,000 for $48 to use whenever you like. A hard cap, not a meter: unused messages stay until the period ends. Cancel any time; switch packs from Manage subscription, never by buying twice.</li>
       <li>The limits, so nobody is surprised: a reply is 1 message (a very large persona is 2 or 3, the drawer says so); a persona image is 15 messages, up to 10 a day; hearing a reply costs 2 to 6, up to 200 a day. When the site is near its monthly capacity, hosted chat pauses and your messages stay yours.</li>
       <li>Rather use your own key? That stays free, always.</li>
     </ul>
-    <div class="procard-btns"><button type="button" id="procard-buy" class="pk-btn solid">Buy for $5 a month</button><button type="button" id="procard-buy-year" class="pk-btn">Buy for $48 a year</button></div>
+    <div class="procard-btns"><button type="button" id="procard-buy" class="pk-btn solid">Starter: $5 a month, 500</button><button type="button" id="procard-buy-regular" class="pk-btn">Regular: $12 a month, 1,500</button><button type="button" id="procard-buy-heavy" class="pk-btn">Heavy: $25 a month, 3,500</button><button type="button" id="procard-buy-year" class="pk-btn">Year: $48, 6,000</button></div>
     <p id="procard-status" class="procard-status" aria-live="polite"></p>
+    <p id="procard-manage" class="procard-status" hidden><a id="procard-manage-link" href="#" target="_blank" rel="noopener noreferrer">Manage subscription</a> (change or cancel it; changes to another plan happen there, never by buying twice)</p>
   </div>
 </div>
 <style>
@@ -1488,6 +1493,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
     <div class="tabs"><button data-t="api" aria-pressed="true">Bring your own key</button><button data-t="local">Run it locally</button></div>
     <div id="tab-api">
       <p class="note">No key? Signed-in readers can use <b>hosted chat</b>: 500 messages a month for $5, nothing to set up. <button class="newbtn" type="button" id="hostedbuy" style="margin-left:6px">See hosted chat</button></p>
+      <div class="setrow"><label>Plan</label><span class="note" id="planline" style="margin:0">Sign in to see your hosted plan.</span> <button class="newbtn" type="button" id="planbtn" style="margin-left:6px">Renew or change</button></div>
       <p class="note">Or bring your own key. It stays in this browser only (localStorage) and is sent straight to Anthropic, never to us. The current composition becomes the clone's system prompt.</p>
       <div class="setrow"><label>Anthropic API key</label><input class="field" id="apikey" type="password" placeholder="sk-ant-..."></div>
       <div class="setrow"><label>Model</label><input class="field" id="model" type="text" value="claude-sonnet-4-5"></div>
@@ -2335,15 +2341,21 @@ function renderChat(){const b=document.getElementById('chatbody');b.innerHTML=''
 // Credits come from RevenueCat Web Billing (500 a month for $5). Every string lands through textContent.
 const HOSTED_API='/api';
 let hostedRemaining=null;
-function setCreditsLine(text){ const el=document.getElementById('creditsline'); if(!el) return; el.textContent=text; el.hidden=!text; }
+let hostedPeriodEnd=null;
+function hostedPlanActive(){ return !!(hostedPeriodEnd && new Date(hostedPeriodEnd).getTime()>Date.now()); }
+function setCreditsLine(text){ const el=document.getElementById('creditsline'); if(!el) return; el.textContent=text;
+  if(text){ const b=document.createElement('button'); b.type='button'; b.className='newbtn'; b.style.marginLeft='6px'; b.textContent=hostedPlanActive()?'Plan':'Renew'; b.onclick=()=>showProCard(); el.appendChild(b); }
+  el.hidden=!text; }
+function setPlanLine(text){ const el=document.getElementById('planline'); if(el) el.textContent=text; }
 async function hostedToken(){ try{ const {data}=await SB.auth.getSession(); return data&&data.session?data.session.access_token:null; }catch(_){ return null; } }
-async function refreshCredits(){ const token=await hostedToken(); if(!token){ hostedRemaining=null; setCreditsLine(''); return null; }
-  try{ const r=await fetch(HOSTED_API+'/credits',{headers:{Authorization:'Bearer '+token}}); if(!r.ok){ setCreditsLine(''); return null; }
-    const j=await r.json(); hostedRemaining=Number(j.balance)||0;
+async function refreshCredits(){ const token=await hostedToken(); if(!token){ hostedRemaining=null; hostedPeriodEnd=null; setCreditsLine(''); setPlanLine('Sign in to see your hosted plan.'); return null; }
+  try{ const r=await fetch(HOSTED_API+'/credits',{headers:{Authorization:'Bearer '+token}}); if(!r.ok){ hostedPeriodEnd=null; setCreditsLine(''); setPlanLine('No hosted plan yet.'); return null; }
+    const j=await r.json(); hostedRemaining=Number(j.balance)||0; hostedPeriodEnd=j.period_end||null;
     const ended=j.period_end && new Date(j.period_end).getTime()<Date.now(); if(ended) hostedRemaining=0;
     const until=j.period_end&&!ended?' until '+new Date(j.period_end).toLocaleDateString():'';
     setCreditsLine(ended ? 'Hosted chat: your plan ended. Renew, or add your own key.' : hostedRemaining>0 ? 'Hosted chat: '+hostedRemaining+' message'+(hostedRemaining===1?'':'s')+' left'+until : 'Hosted chat: no messages left. Add your own key, or buy more.');
-    return hostedRemaining; }catch(_){ setCreditsLine(''); return null; } }
+    setPlanLine(ended ? 'Hosted plan ended.' : hostedPlanActive() ? 'Hosted: '+hostedRemaining+' message'+(hostedRemaining===1?'':'s')+' left'+until+'. Renews itself.' : 'No hosted plan yet.');
+    return hostedRemaining; }catch(_){ hostedPeriodEnd=null; setCreditsLine(''); setPlanLine('Could not read your plan right now.'); return null; } }
 async function openChat(){ pkChatFace(); if(localStorage.getItem('tg_key')){ setCreditsLine(''); chat.classList.add('open'); renderChat(); return; }
   const token=await hostedToken(); if(!token){ settings.classList.add('open'); return; }
   chat.classList.add('open'); renderChat(); const n=await refreshCredits(); if(n===0) showProCard(); }
@@ -2388,15 +2400,22 @@ async function sendChat(){const inp=document.getElementById('chatinput');const t
 // A sandbox key starts with rcb_sb_ (Stripe test mode, card 4242 4242 4242 4242). Production starts with rcb_.
 // Public keys are safe in the page. The product id must match the Worker's CREDIT_PACKS var.
 const RC_WEB_BILLING_KEY='rcb_XrbGXpOOiTwMNbmlTcWlFJMkzoSn'; // production (Stripe Live) since 2026-09-04; sandbox was rcb_sb_LgHnwdFYgqYrQcAQDuBVoXPER
-const RC_PRODUCTS={month:{id:'pk_hosted_500_month',label:'a month',price:'$5'},year:{id:'pk_hosted_6000_year',label:'a year',price:'$48'}};
+const RC_PRODUCTS={month:{id:'pk_hosted_500_month',label:'a month (500)',price:'$5'},regular:{id:'pk_hosted_1500_month',label:'a month (1,500)',price:'$12'},heavy:{id:'pk_hosted_3500_month',label:'a month (3,500)',price:'$25'},year:{id:'pk_hosted_6000_year',label:'a year (6,000)',price:'$48'}}; // tier ladder, Dylan's ruling 2026-09-04; identifiers match the RevenueCat Web Billing products and CREDIT_PACKS in wrangler.jsonc
+const procardBuyAll=()=>[...document.querySelectorAll('#procard .procard-btns button')];
+function setBuyDisabled(v){ procardBuyAll().forEach(b=>{ b.disabled=v; }); }
 const procard=document.getElementById('procard'), procardStatus=document.getElementById('procard-status'), procardBuy=document.getElementById('procard-buy'), procardBuyYear=document.getElementById('procard-buy-year'), procardSub=document.getElementById('procard-sub');
 function setProStatus(t){ procardStatus.textContent=t||''; }
-function showProCard(reason){ procardSub.textContent=reason||'Hosted chat is 500 messages a month for $5, or 6,000 a year for $48. No key, no setup, cancel any time.'; setProStatus(''); procard.hidden=false; procardBuy.disabled=false; procardBuyYear.disabled=false; procardBuy.focus(); }
+const procardManage=document.getElementById('procard-manage'), procardManageLink=document.getElementById('procard-manage-link');
+async function fillManageLink(){ try{ const p=await rcInstance(); const info=await p.getCustomerInfo(); const u=info&&info.managementURL; if(u&&/^https:\/\//.test(u)){ procardManageLink.href=u; procardManage.hidden=false; } }catch(_){} }
+function showProCard(reason){ const active=hostedPlanActive(); setBuyDisabled(active); procardManage.hidden=true; procardManageLink.href='#';
+  if(active){ const until=new Date(hostedPeriodEnd).toLocaleDateString(); procardSub.textContent='Your plan is active until '+until+' with '+(typeof hostedRemaining==='number'?hostedRemaining:0)+' messages left, and it renews itself. Buying again mid-period is not possible; change or cancel it from Manage subscription.'; setProStatus(''); procard.hidden=false; fillManageLink(); return; }
+  procardSub.textContent=reason||'Hosted chat from 500 messages a month for $5 up to 3,500 for $25, or 6,000 a year for $48. No key, no setup, cancel any time.'; setProStatus(''); procard.hidden=false; setBuyDisabled(false); procardBuy.focus(); }
 function hideProCard(){ procard.hidden=true; }
 document.getElementById('procard-x').onclick=hideProCard;
 procard.addEventListener('click',e=>{ if(e.target===procard) hideProCard(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!procard.hidden) hideProCard(); });
 document.getElementById('hostedbuy').onclick=()=>{ settings.classList.remove('open'); showProCard(); };
+document.getElementById('planbtn').onclick=async()=>{ settings.classList.remove('open'); await refreshCredits(); showProCard(); };
 let rcConfigured=false;
 async function rcInstance(){ const {data}=await SB.auth.getSession(); const uid=data&&data.session&&data.session.user?data.session.user.id:null;
   if(!uid) throw new Error('not_signed_in');
@@ -2409,9 +2428,9 @@ async function findPackage(p, productId){ const offerings=await p.getOfferings()
 async function waitForCredits(before){ for(let i=0;i<20;i++){ await new Promise(r=>setTimeout(r,2000)); const n=await refreshCredits(); if(typeof n==='number'&&n>(before||0)) return n; setProStatus('Payment done. Waiting for your messages to land... ('+((i+1)*2)+'s)'); } return null; }
 async function buyPlan(plan){
   if(RC_WEB_BILLING_KEY.indexOf('REPLACE_ME')>=0){ setProStatus('Checkout is not switched on yet. Check back soon.'); return; }
-  procardBuy.disabled=true; procardBuyYear.disabled=true; setProStatus('Opening checkout...');
+  setBuyDisabled(true); setProStatus('Opening checkout...');
   try{ const p=await rcInstance(); const pkg=await findPackage(p, plan.id);
-    if(!pkg){ setProStatus('The plan is not available right now. Try again in a minute.'); procardBuy.disabled=false; procardBuyYear.disabled=false; return; }
+    if(!pkg){ setProStatus('The plan is not available right now. Try again in a minute.'); setBuyDisabled(false); return; }
     const price=pkg.webBillingProduct&&pkg.webBillingProduct.currentPrice?pkg.webBillingProduct.currentPrice.formattedPrice:plan.price;
     setProStatus('Checkout: '+price+' '+plan.label+'. Finish it in the window that opens.');
     const before=typeof hostedRemaining==='number'?hostedRemaining:0;
@@ -2423,11 +2442,14 @@ async function buyPlan(plan){
     else{ setProStatus('Paid, but the credits have not arrived yet. Close this and check again in a minute. If they are still missing, use Report on any page with the time of purchase and we will fix it by hand.'); }
   }catch(e){
     if(e instanceof PurchasesError&&e.errorCode===ErrorCode.UserCancelledError){ setProStatus('Checkout closed. Nothing was charged.'); }
+    else if(e instanceof PurchasesError&&e.errorCode===ErrorCode.ProductAlreadyPurchasedError){ setProStatus('This plan is already active on your account and renews itself. Nothing was charged. To change it, use Manage subscription.'); fillManageLink(); }
     else if(e&&e.message==='not_signed_in'){ setProStatus('Sign in first, then buy.'); }
     else{ setProStatus('Checkout failed: '+((e&&e.message)||'unknown error')); }
-  }finally{ procardBuy.disabled=false; procardBuyYear.disabled=false; }
+  }finally{ setBuyDisabled(hostedPlanActive()); }
 }
 procardBuy.onclick=()=>buyPlan(RC_PRODUCTS.month);
+document.getElementById('procard-buy-regular').onclick=()=>buyPlan(RC_PRODUCTS.regular);
+document.getElementById('procard-buy-heavy').onclick=()=>buyPlan(RC_PRODUCTS.heavy);
 procardBuyYear.onclick=()=>buyPlan(RC_PRODUCTS.year);
 document.getElementById('chatsend').onclick=sendChat;
 document.getElementById('chatinput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}});

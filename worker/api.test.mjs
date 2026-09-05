@@ -11,7 +11,7 @@ const ENV = {
   ANTHROPIC_API_KEY: "sk-ant-test",
   RC_WEBHOOK_AUTH: "rc-secret-123",
   HOSTED_MODEL: "claude-haiku-4-5-20251001",
-  CREDIT_PACKS: JSON.stringify({ pk_hosted_500_month: 500 }),
+  CREDIT_PACKS: JSON.stringify({ pk_hosted_500_month: 500, pk_hosted_1500_month: 1500, pk_hosted_3500_month: 3500, pk_hosted_6000_year: 6000 }),
 };
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -373,6 +373,60 @@ await check("webhook EXPIRATION with CUSTOMER_SUPPORT (a refund) -> period close
   if (!(pe >= before && pe <= Date.now() + 1000)) throw new Error("period_end is not now: " + sent.p_period_end);
   eq(balance, 0, "fake ledger balance after revoke");
   eq(j.balance, 0, "returned balance");
+});
+
+await check("webhook PRODUCT_CHANGE upgrade 500 -> 1500 -> grants 1500 now, kind purchase, ref = event id, period from expiration_at_ms", async () => {
+  balance = 120; calls.length = 0; let sent = null;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, init) => { if (String(u).endsWith("/rpc/twingrid_grant_credits")) sent = JSON.parse(init.body); return realFetch(u, init); };
+  const r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "PRODUCT_CHANGE", id: "evt-up-1", app_user_id: USER_ID, product_id: "pk_hosted_500_month", new_product_id: "pk_hosted_1500_month", expiration_at_ms: 1790000000000, store: "RC_BILLING" } }),
+  }), ENV);
+  globalThis.fetch = realFetch;
+  eq(r.status, 200, "status");
+  eq(sent.p_kind, "purchase", "kind");
+  eq(sent.p_delta, 1500, "delta is the new pack");
+  eq(sent.p_ref, "evt-up-1", "ref");
+  eq(sent.p_period_end, new Date(1790000000000).toISOString(), "period end");
+});
+
+await check("webhook PRODUCT_CHANGE downgrade 3500 -> 500 -> 200 no-op (the RENEWAL carries the smaller pack)", async () => {
+  balance = 900; calls.length = 0;
+  const r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "PRODUCT_CHANGE", id: "evt-down-1", app_user_id: USER_ID, product_id: "pk_hosted_3500_month", new_product_id: "pk_hosted_500_month", expiration_at_ms: 1790000000000 } }),
+  }), ENV);
+  eq(r.status, 200, "status");
+  eq((await r.json()).reason, "downgrade_at_renewal", "reason");
+  if (calls.length !== 0) throw new Error("backend was called on a downgrade");
+  eq(balance, 900, "balance untouched");
+});
+
+await check("webhook PRODUCT_CHANGE to an unknown product, or same-size change -> 200 no grant", async () => {
+  for (const [from, to] of [["pk_hosted_500_month", "pk_something_else"], ["pk_hosted_1500_month", "pk_hosted_1500_month"], ["pk_hosted_500_month", undefined]]) {
+    balance = 77; calls.length = 0;
+    const r = await handleApi(req("/api/rc-webhook", {
+      method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+      body: JSON.stringify({ api_version: "1.0", event: { type: "PRODUCT_CHANGE", id: "evt-pc-" + to, app_user_id: USER_ID, product_id: from, new_product_id: to } }),
+    }), ENV);
+    eq(r.status, 200, "status " + to);
+    if (calls.length !== 0) throw new Error("backend was called for " + to);
+  }
+});
+
+await check("webhook RENEWAL on the Heavy pack -> grants 3500 (the new packs are in CREDIT_PACKS)", async () => {
+  balance = 5; let sent = null;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, init) => { if (String(u).endsWith("/rpc/twingrid_grant_credits")) sent = JSON.parse(init.body); return realFetch(u, init); };
+  const r = await handleApi(req("/api/rc-webhook", {
+    method: "POST", headers: H({ Authorization: ENV.RC_WEBHOOK_AUTH }),
+    body: JSON.stringify({ api_version: "1.0", event: { type: "RENEWAL", id: "evt-heavy-1", app_user_id: USER_ID, product_id: "pk_hosted_3500_month", expiration_at_ms: 1790000000000 } }),
+  }), ENV);
+  globalThis.fetch = realFetch;
+  eq(r.status, 200, "status");
+  eq(sent.p_delta, 3500, "delta");
+  eq(sent.p_kind, "renewal", "kind");
 });
 
 await check("webhook refund EXPIRATION without an event id -> 400, nothing touched", async () => {

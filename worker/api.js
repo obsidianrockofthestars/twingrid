@@ -581,12 +581,29 @@ const GRANT_EVENTS = new Set(["INITIAL_PURCHASE", "RENEWAL", "NON_RENEWING_PURCH
 function isRefundEvent(ev) {
   return ev.type === "EXPIRATION" && ev.expiration_reason === "CUSTOMER_SUPPORT";
 }
+// Plan changes (tier ladder, Dylan's ruling 2026-09-04). RevenueCat's webhook doc: PRODUCT_CHANGE
+// "doesn't mean the new subscription is in effect immediately"; new_product_id is sent for
+// RevenueCat Billing. The Web Billing lifecycle doc: an upgrade takes effect at once with a
+// prorated refund, a downgrade is scheduled for the end of the cycle. So an UPGRADE (the new
+// pack is larger, or the old product is not one of ours) grants the new pack now as a purchase
+// on the event id; a DOWNGRADE stays a no-op, and the next RENEWAL, which already carries the
+// new product_id, grants the smaller pack through the normal path. A grant is a reset to the
+// pack, never an add, so a duplicate event cannot mint credits. Live event shape still to be
+// read off the log on the first real portal switch.
+function upgradePack(ev, packs) {
+  if (ev.type !== "PRODUCT_CHANGE") return null;
+  const to = Number(packs[String(ev.new_product_id || "")]);
+  if (!Number.isInteger(to) || to <= 0) return { amount: 0, reason: "unknown_product" };
+  const from = Number(packs[String(ev.product_id || "")]);
+  if (Number.isInteger(from) && from > 0 && to <= from) return { amount: 0, reason: "downgrade_at_renewal" };
+  return { amount: to, reason: null };
+}
 const NOOP_EVENTS = new Set([
   // UNCANCELLATION is deliberately a no-op: the reader re-enabled auto-renew on a
   // period that was already granted at INITIAL_PURCHASE or RENEWAL. Granting here
   // would let cancel/uncancel loops mint credits, each with a fresh event id.
   "UNCANCELLATION", "CANCELLATION", "EXPIRATION", "BILLING_ISSUE", "SUBSCRIPTION_PAUSED",
-  "PRODUCT_CHANGE", "SUBSCRIPTION_EXTENDED", "TRANSFER", "SUBSCRIBER_ALIAS", "TEST",
+  "SUBSCRIPTION_EXTENDED", "TRANSFER", "SUBSCRIBER_ALIAS", "TEST",
   "TEMPORARY_ENTITLEMENT_GRANT", "INVOICE_ISSUANCE", "REFUND_REVERSED", "EXPERIMENT_ENROLLMENT",
   "PURCHASE_REDEEMED", "PRICE_INCREASE_CONSENT_REQUIRED", "PRICE_INCREASE_CONSENT_APPROVED",
   "VIRTUAL_CURRENCY_TRANSACTION",
@@ -764,7 +781,7 @@ async function handleRcWebhook(request, env) {
     return json(request, 400, { error: "bad_event" });
   }
 
-  if (!GRANT_EVENTS.has(ev.type) && !isRefundEvent(ev)) {
+  if (!GRANT_EVENTS.has(ev.type) && !isRefundEvent(ev) && ev.type !== "PRODUCT_CHANGE") {
     // Known lifecycle events we do not act on, and any future type we have not
     // seen: 200 so RevenueCat does not retry. Credits already granted keep
     // working until period_end regardless.
@@ -792,7 +809,9 @@ async function handleRcWebhook(request, env) {
   }
 
   const packs = creditPacks(env);
-  const amount = Number(packs[String(ev.product_id || "")]);
+  const change = upgradePack(ev, packs);
+  if (change && change.reason) return json(request, 200, { ignored: true, reason: change.reason });
+  const amount = change ? change.amount : Number(packs[String(ev.product_id || "")]);
   if (!Number.isInteger(amount) || amount <= 0) {
     return json(request, 200, { ignored: true, reason: "unknown_product" });
   }
