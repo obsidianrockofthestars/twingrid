@@ -389,6 +389,9 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .acedit input,#account .acedit textarea{font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line-w);border-radius:10px;background:var(--card-w);color:var(--ink)}
 #account .acedit textarea{min-height:90px;resize:vertical}
 #account .acrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#account .acplan{margin:6px 0 22px;padding:14px 16px;border:1px solid var(--line-w);border-radius:14px;background:var(--paper-2)}
+#account .acplan .acrow{margin-top:8px}
+#account .acplan .note{margin:0}
 #account .acmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em}
 #account .acempty{grid-column:1/-1;background:var(--paper-2);border:1px dashed var(--line-w);border-radius:16px;padding:44px 28px;text-align:center;color:var(--ink-soft)}
 #home .hclaim{background:var(--card-w);border:1px solid var(--accent-w);border-radius:16px;padding:18px 20px;margin:18px 0 6px;display:none}
@@ -1288,6 +1291,13 @@ body.route-profile #helpbtn{left:16px;right:auto}
         </form>
       </div>
     </div>
+    <section class="acplan" id="acplan" hidden aria-label="Your account">
+      <div class="pk-kicker" style="text-align:left">Your account</div>
+      <div class="acrow"><span class="note" id="acemail"></span></div>
+      <div class="acrow"><span class="note" id="acplanline">Reading your plan...</span></div>
+      <div class="acrow"><button class="btn solid" type="button" id="acplanbtn">Plan and renew</button><a class="btn" id="acmanage" href="#" target="_blank" rel="noopener noreferrer" hidden>Manage subscription</a><button class="btn" type="button" id="acsignout">Sign out</button></div>
+      <p class="note" style="margin-top:10px">Only you see this box. Your public page starts below it.</p>
+    </section>
     <div class="exgrid" id="acgrid"></div>
     <p class="exfoot" id="acfoot"></p>
   </div>
@@ -1814,7 +1824,7 @@ const __handleCache={};
 // where the claim card lives, when there is no handle yet); [data-home] shows when signed in; [data-anon] hides then.
 async function syncAcctNav(){ let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session?session.user.id:null; }catch(_){}
   const h=uid?await handleFor(uid):null;
-  document.querySelectorAll('[data-acct]').forEach(a=>{ a.hidden=!uid; a.textContent=h?('@'+h):'Account'; a.href=h?('?u='+encodeURIComponent(h)):'?'; a.title=h?'Your page: name, bio, public personas':'Claim your handle on Home'; });
+  document.querySelectorAll('[data-acct]').forEach(a=>{ a.hidden=!uid; a.textContent='Account'; a.href=h?('?u='+encodeURIComponent(h)):'?'; a.title=h?'Your page: name, bio, public personas':'Claim your handle on Home'; });
   document.querySelectorAll('[data-home]').forEach(a=>{ a.hidden=!uid; });
   document.querySelectorAll('[data-anon]').forEach(b=>{ b.hidden=!!uid; }); }
 async function handleFor(uid){ if(!uid) return null; if(uid in __handleCache) return __handleCache[uid];
@@ -2412,8 +2422,7 @@ const procardManage=document.getElementById('procard-manage'), procardManageLink
 async function fillManageLink(){ try{ const p=await rcInstance(); const info=await p.getCustomerInfo(); const u=info&&info.managementURL; if(u&&/^https:\/\//.test(u)){ procardManageLink.href=u; procardManage.hidden=false; } }catch(_){} }
 function showProCard(reason){ const active=hostedPlanActive(); setBuyDisabled(active); procardManage.hidden=true; procardManageLink.href='#';
   if(active){ const until=new Date(hostedPeriodEnd).toLocaleDateString(); procardSub.textContent='Your plan is active until '+until+' with '+(typeof hostedRemaining==='number'?hostedRemaining:0)+' messages left, and it renews itself. Buying again mid-period is not possible; change or cancel it from Manage subscription.'; setProStatus(''); procard.hidden=false; fillManageLink(); return; }
-  if(rcSandbox) setProStatus('Sandbox mode: test card 4242 4242 4242 4242, nothing real is charged.');
-  procardSub.textContent=reason||'Hosted chat from 500 messages a month for $5 up to 3,500 for $25, or 6,000 a year for $48. No key, no setup, cancel any time.'; setProStatus(''); procard.hidden=false; setBuyDisabled(false); procardBuy.focus(); }
+  procardSub.textContent=reason||'Hosted chat from 500 messages a month for $5 up to 3,500 for $25, or 6,000 a year for $48. No key, no setup, cancel any time.'; setProStatus(''); procard.hidden=false; setBuyDisabled(false); if(rcSandbox) setProStatus('Sandbox mode: test card 4242 4242 4242 4242, nothing real is charged.'); procardBuy.focus(); }
 function hideProCard(){ procard.hidden=true; }
 document.getElementById('procard-x').onclick=hideProCard;
 procard.addEventListener('click',e=>{ if(e.target===procard) hideProCard(); });
@@ -2707,11 +2716,19 @@ async function renderExplore(){
 const CELL_LABEL={CONTEXT:'Who it is',DO:'What it helps with',DONT:'What it will not do',GATES:'Its hard rules',VOICE:'How it sounds'};
 function cellLabel(c){ return CELL_LABEL[c]||c; }
 // A stranger arriving from a shared link needs a sentence about the persona, not a count of internal objects.
+// Account home (Dylan, 2026-09-06): on your own @handle page, signed in, one box with email, plan, renew, manage, sign out.
+function accountPanel(session){ const box=document.getElementById('acplan'); box.hidden=false;
+  const email=session&&session.user&&session.user.email; document.getElementById('acemail').textContent=email?('Signed in as '+email):'Signed in';
+  const line=document.getElementById('acplanline'); const manage=document.getElementById('acmanage'); manage.hidden=true; manage.href='#';
+  refreshCredits().then(()=>{ line.textContent=document.getElementById('planline').textContent||'No hosted plan yet.'; }).catch(()=>{ line.textContent='Could not read your plan right now.'; });
+  document.getElementById('acplanbtn').onclick=async()=>{ await refreshCredits(); showProCard(); };
+  document.getElementById('acsignout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
+  (async()=>{ try{ const p=await rcInstance(); const info=await p.getCustomerInfo(); const u=info&&info.managementURL; if(u&&/^https:\/\//.test(u)){ manage.href=u; manage.hidden=false; } }catch(_){} })(); }
 async function renderAccount(handle){
   const nameEl=document.getElementById('acname'), hEl=document.getElementById('achandle'), bioEl=document.getElementById('acbio'), av=document.getElementById('acav'),
         grid=document.getElementById('acgrid'), foot=document.getElementById('acfoot'), editBtn=document.getElementById('aceditbtn'), form=document.getElementById('acedit');
   document.title='@'+handle+' \u00b7 Personakind';
-  grid.innerHTML=''; foot.textContent=''; editBtn.hidden=true; form.classList.remove('open'); bioEl.textContent='';
+  grid.innerHTML=''; foot.textContent=''; editBtn.hidden=true; form.classList.remove('open'); bioEl.textContent=''; document.getElementById('acplan').hidden=true;
   const empty=(t,m)=>{ const d=document.createElement('div'); d.className='acempty'; const h=document.createElement('h3'); h.textContent=t; const p=document.createElement('p'); p.textContent=m; p.style.margin='0'; d.append(h,p); grid.appendChild(d); };
   const acc=HANDLE_RE.test(handle)?await accountByHandle(handle):null;
   if(!acc||acc.is_suspended){ nameEl.textContent='No page at @'+handle; hEl.textContent=''; av.textContent='?'; empty('Nothing here','There is no Personakind member with that handle, or their page is not public yet.'); return; }
@@ -2722,7 +2739,7 @@ async function renderAccount(handle){
   document.getElementById('acsharebtn').onclick=()=>{ const b=document.getElementById('acsharebtn'); navigator.clipboard.writeText(location.origin+location.pathname+'?u='+encodeURIComponent(acc.handle)).then(()=>{ b.textContent='Copied'; setTimeout(()=>b.textContent='Copy page link',1400); }); };
   // own page: edit name and bio (RLS: twingrid_operates(id) on UPDATE)
   try{ const {data:{session}}=await SB.auth.getSession(); const me=session?session.user.id:null; const mine=!!me&&(me===acc.id||(await ownerId())===acc.id);
-    if(mine){ editBtn.hidden=false;
+    if(mine){ editBtn.hidden=false; accountPanel(session);
       editBtn.onclick=()=>{ document.getElementById('acname_in').value=acc.display_name||''; document.getElementById('acbio_in').value=acc.bio||''; document.getElementById('acmsg').textContent=''; form.classList.add('open'); document.getElementById('acname_in').focus(); };
       document.getElementById('accancel').onclick=()=>form.classList.remove('open');
       pkThemePanel(document.getElementById('acthemebox'),{get:()=>acc.avatar_theme,save:async(raw)=>{ if(!PK_THEME_RE.test(raw)) return 'Bad colour.'; const {error}=await SB.from('twingrid_accounts').update({avatar_theme:raw}).eq('id',acc.id); if(error) return 'Could not save: '+String(error.message||'').slice(0,100); acc.avatar_theme=raw; { const t2=pkThemeFor(raw); av.style.background=t2.accent; av.style.color=t2.accentText; } return null; }});
