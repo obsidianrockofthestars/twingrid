@@ -2,7 +2,8 @@
 // with a fake that answers the Supabase and Anthropic shapes the handler uses.
 // Run: node worker/api.test.mjs
 
-import { handleApi, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES } from "./api.js";
+import { handleApi, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap } from "./api.js";
+import { isHandlePath } from "./index.js";
 
 const ENV = {
   SUPABASE_URL: "https://example.supabase.co",
@@ -614,6 +615,24 @@ await check("voice: no token -> 401, GET -> 405, persona without a voice -> 409 
   const r3 = await handleApi(req("/api/media/voice", { method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }), body: JSON.stringify({ grid_id: GRID_ID, text: "hi" }) }), Object.assign({ GOOGLE_API_KEY: "g" }, ENV));
   eq(r3.status, 409, "no voice");
   eq(balance, 5, "nothing spent");
+});
+
+await check("sitemap: static pages, public accounts by handle, public grids by id with lastmod; bad rows and XML specials handled", async () => {
+  const xml = buildSitemap(
+    [{ id: "22222222-2222-4222-8222-222222222222", updated_at: "2026-09-05T12:34:56Z" }, { id: "not-a-uuid" }, null, { id: "33333333-3333-4333-8333-333333333333", updated_at: "garbage" }],
+    [{ handle: "clonedylan" }, { handle: "bad handle<script>" }, { handle: "x" }, {}],
+  );
+  if (!xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')) throw new Error("xml header");
+  for (const s of ["https://personakind.com/</loc>", "https://personakind.com/pricing</loc>", "https://personakind.com/terms</loc>", "https://personakind.com/?u=clonedylan</loc>", "https://personakind.com/?t=22222222-2222-4222-8222-222222222222</loc><lastmod>2026-09-05</lastmod>", "https://personakind.com/?t=33333333-3333-4333-8333-333333333333</loc><changefreq>"]) {
+    if (!xml.includes(s)) throw new Error("missing " + s);
+  }
+  if (xml.includes("not-a-uuid") || xml.includes("<script") || xml.includes("?u=x<")) throw new Error("bad row leaked");
+  eq((xml.match(/<url>/g) || []).length, 9, "url count: 6 static + 1 account + 2 grids");
+});
+
+await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {
+  for (const p of ["/@clonedylan", "/@clonedylan/My%20Coach", "/%40clonedylan", "/%40Clonedylan/x"]) if (!isHandlePath(p)) throw new Error("should be handle path: " + p);
+  for (const p of ["/", "/terms", "/pricing", "/api/chat", "/mcp", "/nope", "/at@sign"]) if (isHandlePath(p)) throw new Error("should not be handle path: " + p);
 });
 
 console.log("\n" + pass + " passed, " + fail + " failed");

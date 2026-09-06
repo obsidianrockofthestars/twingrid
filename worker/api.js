@@ -989,6 +989,56 @@ async function handleMediaVoice(request, env) {
   });
 }
 
+// Sitemap (2026-09-06, market research G6): the static sitemap listed one URL. This lists the
+// public pages plus every public persona and every public account, read with the anon key so
+// RLS decides what is public (suspended grids and owners fall out of the SELECT policy).
+const SITE = "https://personakind.com";
+function xmlEscape(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
+}
+export function buildSitemap(grids, accounts) {
+  const urls = [
+    { loc: SITE + "/", priority: "1.0", changefreq: "weekly" },
+    { loc: SITE + "/pricing", priority: "0.8", changefreq: "monthly" },
+    { loc: SITE + "/about", priority: "0.5", changefreq: "monthly" },
+    { loc: SITE + "/support", priority: "0.4", changefreq: "monthly" },
+    { loc: SITE + "/changelog", priority: "0.4", changefreq: "weekly" },
+    { loc: SITE + "/terms", priority: "0.3", changefreq: "yearly" },
+  ];
+  for (const acc of Array.isArray(accounts) ? accounts : []) {
+    if (!acc || typeof acc.handle !== "string" || !/^[a-z0-9_]{3,30}$/i.test(acc.handle)) continue;
+    urls.push({ loc: SITE + "/?u=" + encodeURIComponent(acc.handle), priority: "0.6", changefreq: "weekly" });
+  }
+  for (const g of Array.isArray(grids) ? grids : []) {
+    if (!g || !UUID_RE.test(String(g.id || ""))) continue;
+    const lastmod = g.updated_at && !Number.isNaN(Date.parse(g.updated_at)) ? new Date(g.updated_at).toISOString().slice(0, 10) : null;
+    urls.push({ loc: SITE + "/?t=" + g.id, priority: "0.7", changefreq: "weekly", lastmod });
+  }
+  const body = urls.map((u) =>
+    "  <url><loc>" + xmlEscape(u.loc) + "</loc>" +
+    (u.lastmod ? "<lastmod>" + u.lastmod + "</lastmod>" : "") +
+    "<changefreq>" + u.changefreq + "</changefreq><priority>" + u.priority + "</priority></url>").join("\n");
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + body + "\n</urlset>\n";
+}
+async function anonRows(env, path) {
+  try {
+    const res = await fetch(sbUrl(env, path), { headers: { apikey: env.SUPABASE_ANON_KEY, Accept: "application/json" } });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows : [];
+  } catch (_) {
+    return [];
+  }
+}
+export async function handleSitemap(env) {
+  const grids = await anonRows(env, "/rest/v1/twingrid_grids?select=id,updated_at&is_public=eq.true&order=updated_at.desc&limit=5000");
+  const accounts = await anonRows(env, "/rest/v1/twingrid_accounts?select=handle&is_suspended=eq.false&order=handle.asc&limit=5000");
+  return new Response(buildSitemap(grids, accounts), {
+    status: 200,
+    headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" },
+  });
+}
+
 export async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, "") || "/";

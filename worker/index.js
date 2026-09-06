@@ -9,7 +9,7 @@
 // falls through to env.ASSETS.fetch here when no asset matched (same 404 as before).
 
 import { handleMcp } from "./mcp.js";
-import { handleApi } from "./api.js";
+import { handleApi, handleSitemap } from "./api.js";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -36,6 +36,10 @@ function isMcpPath(pathname) {
 
 function isApiPath(pathname) {
   return pathname === "/api" || pathname.startsWith("/api/");
+}
+
+export function isHandlePath(pathname) {
+  return pathname.startsWith("/@") || pathname.toLowerCase().startsWith("/%40");
 }
 
 export default {
@@ -66,7 +70,19 @@ export default {
       }
     }
 
-    // Static site. Unmatched paths get the 404 the assets layer already produced before this Worker existed.
+    // Sitemap from the database (2026-09-06); the static docs/sitemap.xml is gone.
+    if (path === "/sitemap.xml") {
+      if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { allow: "GET, HEAD" } });
+      return handleSitemap(env);
+    }
+
+    // /@handle and /@handle/persona are page routes: serve the shell with a 200 and let the page fold the
+    // path into ?u=handle&p=persona. Everything else is asset-first; an unknown path now gets docs/404.html
+    // with a real 404 (wrangler not_found_handling "404-page", 2026-09-06) instead of the shell with a 200.
+    if (isHandlePath(path)) {
+      const shell = await env.ASSETS.fetch(new Request(url.origin + "/", { method: "GET", headers: request.headers }));
+      return new Response(shell.body, { status: 200, statusText: "OK", headers: shell.headers });
+    }
     return env.ASSETS.fetch(request);
   },
 };

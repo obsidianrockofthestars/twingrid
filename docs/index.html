@@ -391,7 +391,9 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .acrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #account .acplan{margin:6px 0 22px;padding:14px 16px;border:1px solid var(--line-w);border-radius:14px;background:var(--paper-2)}
 #account .acplan .acrow{margin-top:8px}
-#account .acplan .note{margin:0}
+#account .acplan .note{margin:0;color:var(--ink-soft)}
+.skiplink{position:absolute;left:-9999px;top:8px;z-index:500;background:var(--accent);color:#fff;padding:10px 14px;border-radius:999px;font:600 14px Archivo,system-ui,sans-serif;text-decoration:none}
+.skiplink:focus{left:8px;outline:2px solid #fff;outline-offset:2px}
 #account .acmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em}
 #account .acempty{grid-column:1/-1;background:var(--paper-2);border:1px dashed var(--line-w);border-radius:16px;padding:44px 28px;text-align:center;color:var(--ink-soft)}
 #home .hclaim{background:var(--card-w);border:1px solid var(--accent-w);border-radius:16px;padding:18px 20px;margin:18px 0 6px;display:none}
@@ -797,7 +799,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 
 .drawer:not(.open){box-shadow:none}
 @media(max-width:860px){
-  .pk-nav{padding:14px 16px;gap:10px} .pk-nav .pk-btn{padding:11px 16px;font-size:14px} .pk-nav .pk-btn.ghost{display:inline-flex} .pk-nav .pk-btn{padding:10px 12px;font-size:13px} .pk-nav a.lk[href="#ways"],.pk-nav a.lk[href="#share"]{display:none}
+  .pk-nav{padding:14px 16px;gap:10px} .pk-nav .pk-btn{padding:11px 16px;font-size:14px} .pk-nav .pk-btn.ghost{display:inline-flex} .pk-nav .pk-btn{padding:10px 12px;font-size:13px} .pk-nav a.lk[href="#ways"],.pk-nav a.lk[href="#share"],.pk-nav a.lk[href="/pricing"]{display:none}
   .pk-hero .pk-wrap{grid-template-columns:1fr;gap:30px}
   .pk-ways{grid-template-columns:1fr}
   .pk-explain{grid-template-columns:1fr;gap:26px}
@@ -935,6 +937,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
 @media (max-width:420px){ #helppanel{max-height:min(62vh,62svh)} }
 </style>
 </head><body>
+<a class="skiplink" id="skiplink" href="#">Skip to content</a>
 
 <!-- ============ LANDING (signed-out marketing) ============ -->
 <div id="landing">
@@ -943,6 +946,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
     <span class="sp"></span>
     <a class="lk" href="#ways">How it works</a>
     <a class="lk" href="#share">Share</a>
+    <a class="lk" href="/pricing">Pricing</a>
     <a class="lk" href="?explore">Explore</a>
     <button class="pk-btn ghost" data-auth>Sign in</button>
     <button class="pk-btn solid" data-auth>Start free</button>
@@ -1058,7 +1062,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
   <footer class="pk-foot">
     <div class="pk-wrap">
       <span class="pk-brand">Persona<b>kind</b></span>
-      <span class="discl">Personas are AI, not real people, and every published page says so. Chat runs on your own API key, with you in the loop. Built in the open. <a href="terms.html" style="color:inherit">Terms and Privacy</a>.</span>
+      <span class="discl">Personas are AI, not real people, and every published page says so. Hosted chat runs on Claude Haiku; your own key runs on whatever you bring, with you in the loop. Built in the open. <a href="/pricing" style="color:inherit">Pricing</a> · <a href="/support" style="color:inherit">Support</a> · <a href="/about" style="color:inherit">About</a> · <a href="/changelog" style="color:inherit">Changelog</a> · <a href="/terms" style="color:inherit">Terms</a> · <a href="/terms#privacy" style="color:inherit">Privacy</a> · <a href="https://github.com/obsidianrockofthestars/twingrid" style="color:inherit">GitHub</a>.</span>
     </div>
   </footer>
 </div>
@@ -2716,6 +2720,8 @@ async function renderExplore(){
 const CELL_LABEL={CONTEXT:'Who it is',DO:'What it helps with',DONT:'What it will not do',GATES:'Its hard rules',VOICE:'How it sounds'};
 function cellLabel(c){ return CELL_LABEL[c]||c; }
 // A stranger arriving from a shared link needs a sentence about the persona, not a count of internal objects.
+// Skip link (2026-09-06): focus the first visible heading of whichever view is painted.
+document.getElementById('skiplink').onclick=e=>{ e.preventDefault(); const t=[...document.querySelectorAll('h1,h2')].find(x=>x.getBoundingClientRect().height>0); if(t){ t.tabIndex=-1; t.focus(); t.scrollIntoView({block:'start'}); } };
 // Account home (Dylan, 2026-09-06): on your own @handle page, signed in, one box with email, plan, renew, manage, sign out.
 function accountPanel(session){ const box=document.getElementById('acplan'); box.hidden=false;
   const email=session&&session.user&&session.user.email; document.getElementById('acemail').textContent=email?('Signed in as '+email):'Signed in';

@@ -31,9 +31,10 @@
     // /@handle and /@handle/persona-name are page routes (2026-09-02): any path with no matching asset serves
     // index.html with a 200 and the page folds the path into ?u=handle&p=persona. The GitHub Pages mirror
     // has no such fallback, so the query form is the canonical share link and the pretty path is Worker-only.
-    "not_found_handling": "single-page-application",
+    // 2026-09-06: an unknown path serves docs/404.html with a 404; /@handle routes reach the Worker first and get the shell.
+    "not_found_handling": "404-page",
     // Only these routes reach the Worker script first; everything else is asset-first, no Worker
     // invocation, same cost profile as the assets-only setup. Requires Wrangler 4.20 or newer.
-    "run_worker_first": ["/mcp", "/api/*"]
+    "run_worker_first": ["/mcp", "/api/*", "/sitemap.xml", "/@*", "/%40*"]
   }
 }

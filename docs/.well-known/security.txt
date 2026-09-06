@@ -1,0 +1,5 @@
+Contact: mailto:dylanleeson@potionsandfamiliars.com
+Expires: 2027-09-06T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://personakind.com/.well-known/security.txt
+Policy: https://personakind.com/terms#breach

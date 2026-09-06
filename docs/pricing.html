@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#F7F7FA">
+<title>Pricing · Personakind</title>
+<meta name="description" content="Personakind pricing: reading is free, bring your own key is free, hosted chat packs from $5 a month for 500 messages.">
+<link rel="icon" href="/favicon.svg">
+<link rel="canonical" href="https://personakind.com/pricing">
+<style>
+:root{--paper:#F7F7FA;--paper-2:#EFEFF5;--ink:#1B1B24;--ink-soft:#4B4B60;--ink-dim:#63637A;--line:#DEDEE8;--accent:#4A37C2}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Archivo,Arial,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+a{color:var(--accent)}
+h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:36px;letter-spacing:-.02em;margin:0 0 6px}
+h2{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:24px;margin:36px 0 10px;padding-top:24px;border-top:1px solid var(--line)}
+h3{font-size:17px;margin:22px 0 6px}
+p,li{font-size:16px}
+.k{color:var(--ink-dim);font-size:14px;margin-bottom:22px}
+.box{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:16px 0}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:12px 0}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--ink-soft);font-weight:600}
+nav a{margin-right:14px;font-size:14px}
+.brand{font-family:Fraunces,Georgia,serif;font-weight:600;text-decoration:none;color:var(--ink);font-size:18px}
+.brand b{color:var(--accent);font-weight:600}
+@media (max-width:640px){h1{font-size:30px} table{display:block;overflow-x:auto}}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin:18px 0}
+.tier{background:var(--paper-2);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px}
+.tier .p{font-family:Fraunces,Georgia,serif;font-size:28px;font-weight:600;margin:4px 0 2px}
+.tier .m{color:var(--ink-dim);font-size:14px}
+.tier h3{margin:0;font-size:16px}
+.cta{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:600;margin-top:8px}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Archivo:wght@400;500;600&display=swap">
+</head>
+<body>
+<div class="wrap">
+<nav><a class="brand" href="/">Persona<b>kind</b></a> <a href="/pricing">Pricing</a> <a href="/support">Support</a> <a href="/about">About</a> <a href="/changelog">Changelog</a> <a href="/terms">Terms and Privacy</a></nav>
+
+<h1>Pricing</h1>
+<div class="k">Reading any public persona is free, always. Talking to one costs messages, and there are two ways to pay for them: bring your own API key (free from us, you pay your provider directly), or buy a hosted pack and we run the chat for you.</div>
+
+<div class="box"><strong>Free, always.</strong> Read every cell of every public persona. Build and edit your own. Export your grid as a file and run it on your own computer with the runner in the repo. Bring your own Anthropic key and chat with no limit from us; the key stays in your browser and goes straight to Anthropic.</div>
+
+<h2 id="hosted">Hosted chat packs</h2>
+<p>No key, nothing to set up. Hosted chat runs on Claude Haiku. Buy from the chat drawer on any persona page after you sign in. A pack is a hard cap, not a meter: unused messages stay until the period ends, and a new purchase starts a fresh period at the pack size.</p>
+<div class="tiers">
+  <div class="tier"><h3>Starter</h3><div class="p">$5</div><div class="m">a month</div><p>500 messages</p></div>
+  <div class="tier"><h3>Regular</h3><div class="p">$12</div><div class="m">a month</div><p>1,500 messages</p></div>
+  <div class="tier"><h3>Heavy</h3><div class="p">$25</div><div class="m">a month</div><p>3,500 messages</p></div>
+  <div class="tier"><h3>Year</h3><div class="p">$48</div><div class="m">a year</div><p>6,000 messages to use whenever you like</p></div>
+</div>
+<a class="cta" href="/?explore">Pick a persona and talk to it</a>
+
+<h2 id="costs">What a message buys</h2>
+<table>
+<tr><th>Action</th><th>Cost in messages</th><th>Limit</th></tr>
+<tr><td>A reply from a persona</td><td>1 (a very large persona is 2 or 3; the drawer says so before you send)</td><td>none beyond your pack</td></tr>
+<tr><td>Hearing a reply read aloud</td><td>2 to 6, by length</td><td>200 a day</td></tr>
+<tr><td>A persona portrait</td><td>15</td><td>10 a day</td></tr>
+<tr><td>A failed call</td><td>0, refunded automatically</td><td></td></tr>
+</table>
+<p>When the whole site is near its monthly capacity, hosted chat pauses and your messages stay yours; the meter on Explore shows where it stands. Your own key never pauses.</p>
+
+<h2 id="billing">Billing, cancelling, refunds</h2>
+<p>Payments are handled by Stripe under RevenueCat's checkout; we never see or store your card number. Plans renew until cancelled. Cancel, change plan, update your card or download receipts and invoices from <strong>Manage subscription</strong> on your Account page or in the receipt email. Changing to another plan happens there, never by buying twice. Refunds for time already used are at our discretion, and refunds required by law are always given; email <a href="mailto:dylanleeson@potionsandfamiliars.com?subject=Personakind%20billing">dylanleeson@potionsandfamiliars.com</a>. The full wording is in the <a href="/terms#terms">Terms</a>, section 1.5.</p>
+
+<p class="k" style="margin-top:44px;border-top:1px solid var(--line);padding-top:18px">Personas are AI, not real people, and every published page says so. Hosted chat runs on Claude Haiku; your own key runs on whatever you bring. Built in the open by Potions and Familiars LLC, St. Joseph, Missouri. <a href="https://github.com/obsidianrockofthestars/twingrid">Source on GitHub</a>.</p>
+</div>
+</body>
+</html>
