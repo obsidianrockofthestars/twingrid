@@ -1,2 +1,9 @@
 /privacy /terms#privacy 301
 /privacy.html /terms#privacy 301
+# Obviously named doors (Dylan, 2026-09-07). The words on screen stay Jennifer's; these paths just get people there.
+/lobby /?explore 302
+/explore /?explore 302
+/home / 302
+/personalhome / 302
+/visitingroom /spaces 302
+/world /spaces 302
