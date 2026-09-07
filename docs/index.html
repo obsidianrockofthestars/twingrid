@@ -500,6 +500,13 @@ body.route-places{overflow:auto;background:var(--paper)}
 .plstaffpick input{width:16px;height:16px;margin:0}
 #life .plstatus{font-size:13.5px;color:var(--ink-soft);margin:8px 0 0}
 #life .plstatus b{color:var(--accent-w)}
+/* learning proposals (M8, 2026-09-07) */
+.lfdiff{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+@media (max-width:640px){.lfdiff{grid-template-columns:1fr}}
+.lfdiff .lftrans{margin:0;max-height:260px}
+.lfdiff .lfstamp{margin-bottom:4px}
+#chatlearnrow{padding:0 12px 10px;font-size:12.5px;color:var(--muted)}
+body.route-profile #chatlearnrow{color:var(--pmuted)}
 body.route-profile #chat .dhead,body.route-profile #chat .chatin{border-color:var(--pline)}
 body.route-profile #chat .msg.a{background:var(--pbg);border-color:var(--pline);color:var(--ptext)}
 body.route-profile #chat .msg.u{background:var(--pacc);color:var(--pacc-text)}
@@ -1531,6 +1538,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div>
         <section class="lfbox" aria-labelledby="lfqh"><h2 id="lfqh">Waiting for you</h2><div id="lfqueue"></div></section>
         <section class="lfbox" aria-labelledby="lfsh"><h2 id="lfsh">Step in</h2><div id="lfstep"></div></section>
+        <section class="lfbox" aria-labelledby="lflearnh"><h2 id="lflearnh">Learned</h2><p class="note">What your persona proposes to change about its own mind after talking with you. Nothing changes until you keep it; keeping applies the edit as your own save, so you are the author of record. Ask for a proposal from the chat drawer ("What did you learn?", 1 hosted message).</p><div id="lflearned"></div></section>
         <section class="lfbox" id="lfplacesbox" hidden aria-labelledby="lfplh"><h2 id="lfplh">Places</h2><p class="note">A Place is your storefront in Personakind: a name, a room, approved knowledge the staff persona may answer from, verified links (https only), and the personas on staff. It is invisible to strangers until a person verifies it. Editing the name or the knowledge asks for verification again.</p><div id="lfplaces"></div></section>
         <section class="lfbox lfkin" aria-labelledby="lfkh"><h2 id="lfkh">Kindred</h2><p class="note">Kindred is mutual. A request goes from one of your personas to another owner's public persona; they accept, decline or block. Only Kindred personas can see each other's Kindred facets or talk, and a talk costs 2 hosted messages and lands here for both owners to approve.</p><div id="lfkindred"></div></section>
         <section class="lfbox" aria-labelledby="lfsph"><h2 id="lfsph">Sparks</h2><p class="note">What visitors left. Reactions and notes are public on the persona page; a conversation is only ever visible here, and only because the visitor chose to leave it. Delete anything, block anyone.</p><div id="lfsparks"></div><div id="lfblocks"></div></section>
@@ -1767,6 +1775,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
   <div class="dbody" id="chatbody"></div>
   <div class="chatin"><textarea id="chatinput" placeholder="Talk to the composed persona..."></textarea><button class="savebtn" id="chatsend">Send</button></div>
   <div id="chatsparkrow" hidden><button class="tbtn" id="chatspark" type="button">Leave this conversation as a Spark the owner can read</button> <span id="chatsparkmsg" role="status"></span></div>
+  <div id="chatlearnrow" hidden><button class="tbtn" id="chatlearn" type="button" title="Costs 1 hosted message">What did you learn? (1 message)</button> <span id="chatlearnmsg" role="status"></span></div>
 </div>
 
 <!-- settings / how to run -->
@@ -2111,7 +2120,7 @@ async function resolveHandlePersona(h,name){ const a=await accountByHandle(h); i
   const {data}=await SB.from('twingrid_grids_public').select('id,name').eq('owner',a.id).eq('is_public',true).ilike('name',ilikeEscape(name)).limit(1);
   return {acc:a,id:(data&&data[0])?data[0].id:null}; }
 function onExploreRoute(){ return new URLSearchParams(location.search).has('explore'); }
-function onLifeRoute(){ const q=new URLSearchParams(location.search); return q.has('life')||q.has('kindred'); }
+function onLifeRoute(){ const q=new URLSearchParams(location.search); return q.has('life')||q.has('kindred')||q.has('learned'); }
 function onPlacesRoute(){ const q=new URLSearchParams(location.search); return q.has('places')||!!q.get('place'); }
 function route(){ const twin=onProfileRoute();
   if(twin){ document.body.className='marketing route-profile'; app.style.display='none'; renderProfile(twin); return; }
@@ -2704,7 +2713,7 @@ document.querySelectorAll('#settings .tabs button').forEach(b=>b.onclick=()=>{do
 document.getElementById('apikey').value=localStorage.getItem('tg_key')||''; document.getElementById('model').value=localStorage.getItem('tg_model')||'claude-sonnet-4-5';
 document.getElementById('savekey').onclick=()=>{localStorage.setItem('tg_key',document.getElementById('apikey').value.trim());localStorage.setItem('tg_model',document.getElementById('model').value.trim());settings.classList.remove('open');chat.classList.add('open');renderChat();};
 document.getElementById('exportgrid').onclick=()=>{const blob=new Blob([JSON.stringify(GRID,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(document.getElementById('gridname').value||'my-grid')+'.json';a.click();};
-function renderChat(){try{ pkChatSparkSync(); }catch(_){} const b=document.getElementById('chatbody');b.innerHTML='';
+function renderChat(){try{ pkChatSparkSync(); pkLearnSync(); }catch(_){} const b=document.getElementById('chatbody');b.innerHTML='';
   const sys=document.createElement('div');sys.className='msg sys';const fc=activeFacets().length;sys.textContent=`system prompt = current composition (${fc} facets, ${activeFacets().reduce((a,n)=>a+ncells(n),0)} cells)`;b.appendChild(sys);
   history.forEach(m=>{const d=document.createElement('div');d.className='msg '+(m.role==='user'?'u':'a');d.textContent=m.content;b.appendChild(d);});
   b.scrollTop=b.scrollHeight;}
@@ -3269,7 +3278,7 @@ function lfLocalFromUtc(hUtc){ const d=new Date(); d.setUTCHours(Number(hUtc)||0
 function lfEmpty(host,text){ const p=document.createElement('p'); p.className='lfempty'; p.textContent=text; host.appendChild(p); }
 function lfBtn(label,on,solid){ const b=document.createElement('button'); b.type='button'; b.className='btn'+(solid?' solid':''); b.textContent=label; if(on) b.onclick=on; return b; }
 async function renderLife(){ document.title='Life log \u00b7 Personakind'; const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'), pick=document.getElementById('lfpick'), rules=document.getElementById('lfrules'), step=document.getElementById('lfstep');
-  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg(''); ['lfsparks','lfblocks','lfkindred','lfplaces'].forEach(i=>{ const e=document.getElementById(i); if(e) e.innerHTML=''; });
+  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg(''); ['lfsparks','lfblocks','lfkindred','lfplaces','lflearned'].forEach(i=>{ const e=document.getElementById(i); if(e) e.innerHTML=''; });
   const {data:{session}}=await SB.auth.getSession();
   if(!session){ lfEmpty(q,'Sign in to see what your persona has been doing.'); openAuth(); return; }
   const uid=await ownerId();
@@ -3280,7 +3289,7 @@ async function renderLife(){ document.title='Life log \u00b7 Personakind'; const
   const want=new URLSearchParams(location.search).get('g'); LF_GRID=grids.find(g=>g.id===want)||grids[0]; pick.value=LF_GRID.id;
   pick.onchange=()=>{ LF_GRID=grids.find(g=>g.id===pick.value)||grids[0]; lfLoad(); };
   await lfLoad(); }
-async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); lfLoadSparks(); lfLoadKindred(); lfLoadPlaces(); }
+async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); lfLoadSparks(); lfLoadKindred(); lfLoadPlaces(); lfLoadLearned(); }
 async function lfLoadActions(){ const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'); q.innerHTML=''; lg.innerHTML='';
   const {data,error}=await SB.from('twingrid_actions').select('id,kind,authorship,status,audience,body,rule_ref,refusal,created_at,decided_at,published_at').eq('grid_id',LF_GRID.id).order('created_at',{ascending:false}).limit(100);
   if(error){ lfEmpty(q,'Could not load the life log.'); return; }
@@ -3389,6 +3398,42 @@ async function lfLoadKindred(){ const host=document.getElementById('lfkindred');
     else if(k.status==='accepted'){ acts.append(lfBtn('Have them talk (2 messages)',async()=>{ lfMsg('Talking...'); const r=await pkApiPost('/p2p',{grid_id:LF_GRID.id,other_grid_id:other}); lfMsg(r.error?pkKinErr(r.error):'They talked. The exchange is waiting for you above, and for them on their Life log.'); lfLoadActions(); },true), lfBtn('Unfriend',()=>act('unfriend',other)), lfBtn('Block',()=>act('block',other))); }
     else if(k.status==='declined'&&mineAsked){ const w=new Date(new Date(k.decided_at||k.created_at).getTime()+7*86400000); acts.appendChild(lfBtn(Date.now()<w.getTime()?('Ask again after '+w.toLocaleDateString()):'Ask again',()=>act('request',other))); }
     it.appendChild(acts); host.appendChild(it); }); }
+// ---------- learning proposals (M8, 2026-09-07). The owner asks from the drawer; the Worker writes a WAITING row; the owner keeps,
+// corrects or removes it here. Keep applies the change as a normal owner save of the grid (twingrid_grids.data), never the Worker. ----------
+let PK_LEARN_OWNER=false; // whether the persona in the drawer is one the viewer operates (the editor, or the owner on their own page)
+async function pkLearnSync(){ const row=document.getElementById('chatlearnrow'); if(!row) return; const gid=currentGridId(); if(!gid||!Array.isArray(history)||history.length<2){ row.hidden=true; return; }
+  try{ const {data:{session}}=await SB.auth.getSession(); if(!session){ row.hidden=true; return; } if(curId&&curId===gid){ PK_LEARN_OWNER=true; row.hidden=false; return; }
+    const {data}=await SB.from('twingrid_grids').select('id').eq('id',gid).maybeSingle(); PK_LEARN_OWNER=!!data; row.hidden=!PK_LEARN_OWNER; }catch(_){ row.hidden=true; } }
+{ const b=document.getElementById('chatlearn'), m=document.getElementById('chatlearnmsg'); if(b) b.onclick=async()=>{ const gid=currentGridId(); if(!gid) return; const token=await hostedToken(); if(!token){ openAuth(); return; } m.textContent='Asking...'; b.disabled=true;
+    const msgs=(history||[]).filter(x=>x&&(x.role==='user'||x.role==='assistant')&&typeof x.content==='string').slice(-12).map(x=>({role:x.role,content:String(x.content).slice(0,2000)}));
+    try{ const r=await fetch(HOSTED_API+'/learn',{method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({grid_id:gid,messages:msgs})}); const j=await r.json().catch(()=>({}));
+      if(!r.ok){ m.textContent=j.error==='learning_off'?'Learning is off in its rules.':j.error==='no_credits'?'Not enough hosted messages.':j.error==='forbidden'?'Only its owner can ask.':j.error==='bad_proposal'?'It could not put a clear proposal together. Nothing charged.':'Could not ask ('+String(j.error||r.status)+').'; }
+      else if(j.none){ m.textContent='Nothing it would change from this chat.'; }
+      else { const a=document.createElement('a'); a.href='?learned&g='+encodeURIComponent(gid); a.textContent='Review it on your Life log'; m.textContent='It proposes a change to '+String(j.proposal.facet)+' / '+String(j.proposal.cell)+'. '; m.appendChild(a); }
+    }catch(_){ m.textContent='Could not reach the server.'; } b.disabled=false; }; }
+async function lfLoadLearned(){ const host=document.getElementById('lflearned'); if(!host) return; host.innerHTML='';
+  const {data,error}=await SB.from('twingrid_proposals').select('id,facet,cell,source,evidence,before_text,after_text,reason,confidence,status,created_at,decided_at').eq('grid_id',LF_GRID.id).order('created_at',{ascending:false}).limit(50);
+  if(error){ lfEmpty(host,'Could not load proposals.'); return; }
+  const rows=data||[]; const waiting=rows.filter(r=>r.status==='waiting'), done=rows.filter(r=>r.status!=='waiting');
+  if(!waiting.length) lfEmpty(host,'Nothing waiting. After a chat with your persona, press "What did you learn?" in the drawer.');
+  waiting.forEach(r=>host.appendChild(lfProposal(r,true))); done.slice(0,10).forEach(r=>host.appendChild(lfProposal(r,false))); }
+function lfProposal(r,open){ const it=document.createElement('div'); it.className='lfitem';
+  const st=document.createElement('div'); st.className='lfstamp'; const b=document.createElement('b'); b.textContent=String(r.facet)+' / '+String(r.cell); st.appendChild(b);
+  [String(r.status), String(r.confidence)+' confidence', String(r.source).replace('_',' '), new Date(r.created_at).toLocaleString()].forEach(x=>{ const sp=document.createElement('span'); sp.textContent=x; st.appendChild(sp); }); it.appendChild(st);
+  if(r.reason){ const p=document.createElement('p'); p.className='lftext'; p.textContent='Why: '+String(r.reason); it.appendChild(p); }
+  const diff=document.createElement('div'); diff.className='lfdiff';
+  const mk=(label,text)=>{ const w=document.createElement('div'); const l=document.createElement('div'); l.className='lfstamp'; l.textContent=label; const t=document.createElement('div'); t.className='lftrans'; t.textContent=String(text||'(empty)'); w.append(l,t); return w; };
+  diff.append(mk('Now',r.before_text), mk('Proposed',r.after_text)); it.appendChild(diff);
+  if(open){ const acts=document.createElement('div'); acts.className='lfacts';
+    const keep=async(text,status)=>{ lfMsg('Applying...'); const {data:row,error:e1}=await SB.from('twingrid_grids').select('data').eq('id',LF_GRID.id).maybeSingle(); if(e1||!row){ lfMsg('Could not read the persona.'); return; }
+      const d=row.data&&row.data.facets?row.data:{facets:[]}; const f=d.facets.find(x=>x&&x.name===r.facet); if(!f){ lfMsg('That facet is no longer in the persona.'); return; } f.cells=f.cells||{}; f.cells[r.cell]=text;
+      const {error:e2}=await SB.from('twingrid_grids').update({data:d}).eq('id',LF_GRID.id); if(e2){ lfMsg('Could not save: '+String(e2.message||'').slice(0,100)); return; }
+      await SB.from('twingrid_proposals').update({status,decided_at:new Date().toISOString(),after_text:text}).eq('id',r.id); lfMsg(status==='kept'?'Kept and saved to the persona.':'Saved with your wording.'); lfLoadLearned(); };
+    acts.appendChild(lfBtn('Keep and lock',()=>keep(String(r.after_text),'kept'),true));
+    acts.appendChild(lfBtn('Correct wording',()=>{ const ta=document.createElement('textarea'); ta.className='lfta'; ta.maxLength=8000; ta.value=String(r.after_text); ta.setAttribute('aria-label','Your wording'); it.insertBefore(ta,acts); acts.innerHTML=''; acts.append(lfBtn('Save my wording',()=>{ const v=ta.value.trim(); if(v) keep(v,'edited'); },true), lfBtn('Cancel',()=>lfLoadLearned())); ta.focus(); }));
+    acts.appendChild(lfBtn('Remove',async()=>{ await SB.from('twingrid_proposals').update({status:'removed',decided_at:new Date().toISOString()}).eq('id',r.id); lfMsg('Removed. The persona is unchanged.'); lfLoadLearned(); }));
+    it.appendChild(acts); }
+  return it; }
 // Lately (M4): the last three published actions on the persona page, from the public feed view, with their authorship stamps.
 async function pkRenderLately(id){ const sec=document.getElementById('plately'), list=document.getElementById('platelylist'); if(!sec||!list) return; const gen=(sec.__gen=(sec.__gen||0)+1);
   sec.hidden=true; list.innerHTML=''; if(!id) return;
