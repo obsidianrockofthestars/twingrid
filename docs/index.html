@@ -423,6 +423,32 @@ body.route-life{overflow:auto;background:var(--paper)}
 #profile .plstamp b{color:var(--pacc-ink);font-weight:600}
 #profile .pltext{margin:0;font-size:15px;line-height:1.55;color:var(--ptext);white-space:pre-wrap;overflow-wrap:anywhere}
 #profile .plately .pdisc{margin:8px 0 0;font-size:13px}
+/* Sparks (M5, 2026-09-07): leave one in the Social panel, read them under Lately */
+.phreact{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 8px}
+#profile .phrbtn{min-height:32px;min-width:44px;padding:4px 10px;border-radius:999px;border:1px solid var(--pline);background:transparent;color:var(--ptext);font:inherit;font-size:13.5px;cursor:pointer}
+#profile .phrbtn:hover,#profile .phrbtn:focus-visible{border-color:var(--pacc)}
+#profile .phrbtn:focus-visible,#profile .phnote:focus-visible,#profile .phnotebtn:focus-visible{outline:2px solid var(--pacc-ink);outline-offset:2px}
+#profile .phnote{width:100%;min-height:64px;resize:vertical;font:inherit;font-size:14px;line-height:1.4;padding:8px 10px;border-radius:12px;border:1px solid var(--pline);background:transparent;color:var(--ptext);margin:4px 0 6px}
+#profile .phnote::placeholder{color:var(--pmuted)}
+#profile .phnotebtn{min-height:32px;padding:5px 12px;border-radius:999px;border:1px solid var(--pacc);background:transparent;color:var(--ptext);font:inherit;font-size:13.5px;cursor:pointer}
+#profile .phnotebtn:hover{background:var(--pacc);color:var(--pacc-text)}
+#profile .phsparkmsg{margin:6px 0 0;font-size:13px;color:var(--pmuted);min-height:18px}
+.psparks{padding:0 0 34px}
+#profile .psparks h2{font-family:var(--serif);font-weight:600;font-size:24px;margin:0 0 4px;letter-spacing:-.02em;color:var(--ptext)}
+#profile .pspcount{margin:0 0 12px;font-size:14px;color:var(--pmuted)}
+.psplist{display:flex;flex-wrap:wrap;gap:8px}
+#profile .spitem{display:inline-flex;align-items:baseline;gap:7px;max-width:100%;padding:7px 12px;border-radius:14px;background:var(--psurf);border:1px solid var(--pline);color:var(--ptext);font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+#profile .spitem .spwho{color:var(--pacc-ink);font-size:12.5px;white-space:nowrap;flex:none}
+#profile .spitem .sb{min-width:0}
+#profile .spitem .spwho a{color:inherit}
+#chatsparkrow{padding:6px 12px 10px;font-size:12.5px;color:var(--muted)}
+body.route-profile #chatsparkrow{color:var(--pmuted)}
+/* the owner's Sparks box on ?life and the 18-plus row in the editor */
+.lfsp{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.lfsp .lftext{flex:1 1 240px}
+.lftrans{margin:6px 0 0;padding:8px 10px;border-radius:10px;background:var(--paper-2);font-size:13.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);max-height:220px;overflow:auto}
+#adultrow{display:flex;align-items:flex-start;gap:8px;margin-top:8px;font-size:12.5px;color:var(--text);cursor:pointer;line-height:1.4}
+#adultrow input{width:16px;height:16px;margin:2px 0 0;flex:none}
 body.route-profile #chat .dhead,body.route-profile #chat .chatin{border-color:var(--pline)}
 body.route-profile #chat .msg.a{background:var(--pbg);border-color:var(--pline);color:var(--ptext)}
 body.route-profile #chat .msg.u{background:var(--pacc);color:var(--pacc-text)}
@@ -1240,6 +1266,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <h4 style="margin-top:20px">Grid</h4>
       <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="persona name">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
+      <label id="adultrow" hidden><input type="checkbox" id="adultok"> I confirm I am 18 or older. Publishing a persona requires it, once per account. Building in private does not.</label>
       <details class="pk-rooms" id="roomsbox"><summary>Who sees what <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Public facets are the persona strangers, Explore and hosted chat by anyone but you can read. Private stays yours. Kindred is saved now and opens to mutual relationships when they ship. Save to apply.</p><div id="roomlist"></div></details>
       <details class="pk-rooms" id="homebox"><summary>Home <span class="note" id="homesum"></span></summary><p class="note" style="margin:6px 0 4px">The room your persona lives in. Everyone who opens its page sees it. An object can open one of your facets; if that facet is Private or Kindred, strangers see the object and no door. Save to apply.</p><div id="homefields"></div></details>
       <a class="newbtn" href="?life" style="display:block;text-align:center;text-decoration:none;margin-top:8px">Life log and rules</a>
@@ -1431,6 +1458,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div>
         <section class="lfbox" aria-labelledby="lfqh"><h2 id="lfqh">Waiting for you</h2><div id="lfqueue"></div></section>
         <section class="lfbox" aria-labelledby="lfsh"><h2 id="lfsh">Step in</h2><div id="lfstep"></div></section>
+        <section class="lfbox" aria-labelledby="lfsph"><h2 id="lfsph">Sparks</h2><p class="note">What visitors left. Reactions and notes are public on the persona page; a conversation is only ever visible here, and only because the visitor chose to leave it. Delete anything, block anyone.</p><div id="lfsparks"></div><div id="lfblocks"></div></section>
         <section class="lfbox" aria-labelledby="lflh"><h2 id="lflh">Life log</h2><div id="lflog"></div></section>
       </div>
       <aside>
@@ -1506,6 +1534,11 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <h2 id="platelyh">Lately</h2>
       <div id="platelylist"></div>
       <p class="pdisc">Each post says who wrote it: the persona on its own, its owner, or the two together. The persona is an AI, not a person.</p>
+    </section>
+    <section class="psparks" id="psparks" hidden aria-labelledby="psparksh">
+      <h2 id="psparksh">Sparks</h2>
+      <p class="pspcount" id="pspcount"></p>
+      <div class="psplist" id="psplist"></div>
     </section>
     <div class="facets">
       <h2>Everything its owner wrote</h2>
@@ -1655,6 +1688,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
   <div class="msg sys" id="creditsline" hidden style="margin:8px 12px 0"></div>
   <div class="dbody" id="chatbody"></div>
   <div class="chatin"><textarea id="chatinput" placeholder="Talk to the composed persona..."></textarea><button class="savebtn" id="chatsend">Send</button></div>
+  <div id="chatsparkrow" hidden><button class="tbtn" id="chatspark" type="button">Leave this conversation as a Spark the owner can read</button> <span id="chatsparkmsg" role="status"></span></div>
 </div>
 
 <!-- settings / how to run -->
@@ -2042,7 +2076,7 @@ document.querySelectorAll('[data-path]').forEach(b=>b.addEventListener('click',(
 document.getElementById('authx').onclick=closeAuth;
 authEl.addEventListener('click',e=>{ if(e.target===authEl) closeAuth(); });
 window.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAuth(); });
-const TERMS_VERSION='2026-09-02';
+const TERMS_VERSION='2026-09-07';
 function termsAgreed(){ const c=document.getElementById('termsok'); const err=document.getElementById('autherr'); if(c&&!c.checked){ err.textContent='Please tick the box to agree to the Terms and Privacy Notice first.'; c.focus(); return false; } try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} return true; }
 async function sendMagic(){ if(!termsAgreed()) return; const email=document.getElementById('email').value.trim();
   const err=document.getElementById('autherr'), btn=document.getElementById('sendlink');
@@ -2185,7 +2219,7 @@ async function loadClones(){ const gen=++__clonesGen;
   if(!curId && data.length){ selectClone(data[0]); }
 }
 function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facets:[]}; reindex(); rebuildKinds(); try{ pkRepaintThemePanel(); }catch(_){} try{ pkRepaintHome(); }catch(_){}
-  document.getElementById('gridname').value=r.name||''; document.getElementById('ispublic').checked=!!r.is_public; faceShow(r.image_url||null); chatVoice=r.voice_id||''; const __fv=document.getElementById('facevoice'); if(__fv) __fv.value=chatVoice;
+  document.getElementById('gridname').value=r.name||''; document.getElementById('ispublic').checked=!!r.is_public; try{ pkAdultRowSync(); }catch(_){} faceShow(r.image_url||null); chatVoice=r.voice_id||''; const __fv=document.getElementById('facevoice'); if(__fv) __fv.value=chatVoice;
   buildBoard(); render();
   // refit whenever a different persona is loaded, not just once per page load
   if(__isPhone()) requestAnimationFrame(autoView);
@@ -2200,8 +2234,24 @@ document.getElementById('newblank').onclick=()=>newClone(BLANK,'My persona (from
 document.getElementById('newshow').onclick=()=>newClone(SHOW,'My persona (from showcase)');
 document.getElementById('savebtn').onclick=async()=>{ if(!curId)return;
   const b=document.getElementById('savebtn'); b.textContent='Saving...';
+  const gate=await pkPublishGate(); if(gate){ b.textContent='Confirm 18+ first'; const fm=document.getElementById('facemsg'); if(fm) fm.textContent=gate; setTimeout(()=>b.textContent='Save',2200); return; }
   const {error}=await SB.from('twingrid_grids').update({name:document.getElementById('gridname').value,is_public:document.getElementById('ispublic').checked,data:GRID}).eq('id',curId);
+  if(error&&/adult_confirmation_required/.test(String(error.message||''))){ PK_ADULT=false; await pkAdultRowSync(); const fm=document.getElementById('facemsg'); if(fm) fm.textContent='Publishing needs the 18 or older confirmation. Tick the box and save again.'; }
   b.textContent=error?'Error':'Saved'; setTimeout(()=>b.textContent='Save',1400); updateShare(); loadClones(); };
+
+// ---------- the 18-plus publish gate (M5, Ruled 2026-09-07 C11). Private building is not gated. twingrid_publish_gate() in SQL refuses
+// a flip to public for an account with no adult_confirmed_at; this box asks once and records it on the account before Save. ----------
+let PK_ADULT=null; // null unknown, true confirmed, false not yet
+async function pkAdultKnown(){ if(PK_ADULT!==null) return PK_ADULT; try{ const {data}=await SB.from('twingrid_accounts').select('adult_confirmed_at').eq('id',await ownerId()).maybeSingle(); PK_ADULT=!!(data&&data.adult_confirmed_at); }catch(_){ PK_ADULT=false; } return PK_ADULT; }
+async function pkAdultRowSync(){ const row=document.getElementById('adultrow'), pub=document.getElementById('ispublic'); if(!row||!pub) return; if(!pub.checked){ row.hidden=true; return; } row.hidden=await pkAdultKnown(); }
+// returns null when publishing may proceed, else the message to show
+async function pkPublishGate(){ const pub=document.getElementById('ispublic'), ok=document.getElementById('adultok'); if(!pub||!pub.checked) return null; if(await pkAdultKnown()) return null;
+  if(!ok||!ok.checked){ await pkAdultRowSync(); return 'Tick the 18 or older box to publish.'; }
+  const {error}=await SB.from('twingrid_accounts').update({adult_confirmed_at:new Date().toISOString()}).eq('id',await ownerId());
+  if(error) return 'Could not record the confirmation: '+String(error.message||'').slice(0,80);
+  PK_ADULT=true; await pkAdultRowSync(); return null; }
+{ const pub=document.getElementById('ispublic'); if(pub) pub.addEventListener('change',()=>{ pkAdultRowSync(); }); }
+
 // ---------- persona voice (2026-09-02): pick a Google voice or the free browser voice; hear replies in the drawer ----------
 const GOOGLE_VOICES=('Zephyr Puck Charon Kore Fenrir Leda Orus Aoede Callirrhoe Autonoe Enceladus Iapetus Umbriel Algieba Despina Erinome Algenib Rasalgethi Laomedeia Achernar Alnilam Schedar Gacrux Pulcherrima Achird Zubenelgenubi Vindemiatrix Sadachbia Sadaltager Sulafat').split(' ');
 let chatVoice='';   // voice_id of the persona in the drawer: '', 'browser', or a Google voice name
@@ -2573,7 +2623,7 @@ document.querySelectorAll('#settings .tabs button').forEach(b=>b.onclick=()=>{do
 document.getElementById('apikey').value=localStorage.getItem('tg_key')||''; document.getElementById('model').value=localStorage.getItem('tg_model')||'claude-sonnet-4-5';
 document.getElementById('savekey').onclick=()=>{localStorage.setItem('tg_key',document.getElementById('apikey').value.trim());localStorage.setItem('tg_model',document.getElementById('model').value.trim());settings.classList.remove('open');chat.classList.add('open');renderChat();};
 document.getElementById('exportgrid').onclick=()=>{const blob=new Blob([JSON.stringify(GRID,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(document.getElementById('gridname').value||'my-grid')+'.json';a.click();};
-function renderChat(){const b=document.getElementById('chatbody');b.innerHTML='';
+function renderChat(){try{ pkChatSparkSync(); }catch(_){} const b=document.getElementById('chatbody');b.innerHTML='';
   const sys=document.createElement('div');sys.className='msg sys';const fc=activeFacets().length;sys.textContent=`system prompt = current composition (${fc} facets, ${activeFacets().reduce((a,n)=>a+ncells(n),0)} cells)`;b.appendChild(sys);
   history.forEach(m=>{const d=document.createElement('div');d.className='msg '+(m.role==='user'?'u':'a');d.textContent=m.content;b.appendChild(d);});
   b.scrollTop=b.scrollHeight;}
@@ -3028,7 +3078,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     document.getElementById('pfacets').innerHTML=''; document.getElementById('pcells').textContent='';
     document.getElementById('pfacetcount').textContent=''; document.getElementById('pkind').textContent='not found';
     const __ct=document.getElementById('pctatalk'); if(__ct)__ct.style.display='none';
-    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); pkRenderLately(null); return; }
+    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); pkRenderLately(null); pkRenderSparks(null); return; }
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
   nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
@@ -3066,7 +3116,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; syncHideBtn();
-  pkRenderHome(g); pkRenderLately(id);
+  pkRenderHome(g); pkRenderLately(id); pkRenderSparks(id); pkCountVisit(id,data.owner);
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
   // Same guarded text the editor's Copy prompt hands out. No key, no account, no money: this is the door most readers take.
@@ -3117,7 +3167,8 @@ async function pkRenderHome(g){ const sec=document.getElementById('phouse'), roo
     else { const starters=(Array.isArray(so.starters)?so.starters:[]).map(x=>String(x||'').trim()).filter(Boolean).slice(0,3);
       const b=document.createElement('p'); b.className='phzb'; b.textContent=starters.length?'Open to visitors. Start here:':((cat&&cat.zones.social&&cat.zones.social.blurb)||'Open to visitors.'); panel.appendChild(b);
       starters.forEach(t=>{ const bt=document.createElement('button'); bt.type='button'; bt.className='phstart'; bt.textContent=t.slice(0,120); bt.onclick=()=>pkPrefillChat(t); panel.appendChild(bt); any=true; });
-      if(!starters.length) any=true; }
+      if(!starters.length) any=true;
+      if(PK_CUR_ID) panel.appendChild(pkSparkBox(PK_CUR_ID)); }
     zones.appendChild(panel); }
   sec.hidden=!(any||bits.length); }
 
@@ -3134,7 +3185,7 @@ function lfLocalFromUtc(hUtc){ const d=new Date(); d.setUTCHours(Number(hUtc)||0
 function lfEmpty(host,text){ const p=document.createElement('p'); p.className='lfempty'; p.textContent=text; host.appendChild(p); }
 function lfBtn(label,on,solid){ const b=document.createElement('button'); b.type='button'; b.className='btn'+(solid?' solid':''); b.textContent=label; if(on) b.onclick=on; return b; }
 async function renderLife(){ document.title='Life log \u00b7 Personakind'; const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'), pick=document.getElementById('lfpick'), rules=document.getElementById('lfrules'), step=document.getElementById('lfstep');
-  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg('');
+  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg(''); ['lfsparks','lfblocks'].forEach(i=>{ const e=document.getElementById(i); if(e) e.innerHTML=''; });
   const {data:{session}}=await SB.auth.getSession();
   if(!session){ lfEmpty(q,'Sign in to see what your persona has been doing.'); openAuth(); return; }
   const uid=await ownerId();
@@ -3145,7 +3196,7 @@ async function renderLife(){ document.title='Life log \u00b7 Personakind'; const
   const want=new URLSearchParams(location.search).get('g'); LF_GRID=grids.find(g=>g.id===want)||grids[0]; pick.value=LF_GRID.id;
   pick.onchange=()=>{ LF_GRID=grids.find(g=>g.id===pick.value)||grids[0]; lfLoad(); };
   await lfLoad(); }
-async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); }
+async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); lfLoadSparks(); }
 async function lfLoadActions(){ const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'); q.innerHTML=''; lg.innerHTML='';
   const {data,error}=await SB.from('twingrid_actions').select('id,kind,authorship,status,audience,body,rule_ref,refusal,created_at,decided_at,published_at').eq('grid_id',LF_GRID.id).order('created_at',{ascending:false}).limit(100);
   if(error){ lfEmpty(q,'Could not load the life log.'); return; }
@@ -3213,6 +3264,27 @@ async function lfOwnerPost(ta){ const text=ta.value.trim(); if(!text){ lfMsg('Wr
     const j=await r.json().catch(()=>({})); if(!r.ok){ lfMsg(j.error==='boundary'?('Not posted: it trips a boundary ('+String(j.reason||'')+').'):('Could not post ('+String(j.error||r.status)+').')); return; }
     ta.value=''; lfMsg('Posted as owner.'); }catch(_){ lfMsg('Could not reach the server.'); }
   await lfLoadActions(); }
+// Sparks on ?life (M5): every Spark the persona received, read as the operator; delete, block the visitor, report.
+async function lfLoadSparks(){ const host=document.getElementById('lfsparks'), bl=document.getElementById('lfblocks'); if(!host||!bl) return; host.innerHTML=''; bl.innerHTML='';
+  const {data,error}=await SB.from('twingrid_sparks').select('id,from_account,kind,reaction,note,transcript,is_public,day,count,created_at').eq('grid_id',LF_GRID.id).neq('kind','visit').order('created_at',{ascending:false}).limit(100);
+  if(error){ lfEmpty(host,'Could not load Sparks.'); return; }
+  const rows=data||[]; let byId={}; try{ const ids=[...new Set(rows.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); } }catch(_){}
+  const visits=await SB.rpc('twingrid_visit_count',{p_grid:LF_GRID.id}).then(r=>Number(r.data)||0).catch(()=>0);
+  const head=document.createElement('p'); head.className='note'; head.textContent=visits+(visits===1?' visit':' visits')+' counted without identity. '+rows.length+(rows.length===1?' Spark':' Sparks')+' left by signed-in visitors.'; host.appendChild(head);
+  if(!rows.length) lfEmpty(host,'No Sparks yet.');
+  rows.forEach(r=>{ const it=document.createElement('div'); it.className='lfitem'; const st=document.createElement('div'); st.className='lfstamp'; const b=document.createElement('b'); b.textContent=String(r.kind); st.appendChild(b);
+    const h=byId[r.from_account]; [h?('@'+h):'a visitor', new Date(r.created_at).toLocaleString(), r.is_public?'public':'only you'].forEach(x=>{ const sp=document.createElement('span'); sp.textContent=x; st.appendChild(sp); }); it.appendChild(st);
+    const p=document.createElement('p'); p.className='lftext'; p.textContent=r.kind==='reaction'?((SPARK_EMOJI[r.reaction]||'')+' '+String(r.reaction||'')):r.kind==='note'?String(r.note||''):'A conversation the visitor chose to leave you:'; it.appendChild(p);
+    if(r.kind==='conversation'&&Array.isArray(r.transcript)){ const pre=document.createElement('div'); pre.className='lftrans'; pre.textContent=r.transcript.map(m=>(m&&m.role==='assistant'?'Persona: ':'Visitor: ')+String((m&&m.content)||'')).join('\n\n'); it.appendChild(pre); }
+    const acts=document.createElement('div'); acts.className='lfacts';
+    acts.appendChild(lfBtn('Delete',async()=>{ const {error}=await SB.from('twingrid_sparks').delete().eq('id',r.id); lfMsg(error?'Could not delete.':'Deleted.'); lfLoadSparks(); }));
+    if(r.from_account) acts.appendChild(lfBtn('Block '+(h?('@'+h):'this visitor'),async()=>{ const {error}=await SB.from('twingrid_blocks').insert({owner:LF_GRID.owner,blocked_account:r.from_account}); lfMsg(error?'Could not block.':'Blocked. They can no longer spark or chat with your personas.'); lfLoadSparks(); }));
+    acts.appendChild(lfBtn('Report',async()=>{ const {data:{session}}=await SB.auth.getSession(); if(!session) return; const {error}=await SB.from('twingrid_reports').insert({reporter:session.user.id,grid_id:LF_GRID.id,reason:'harassment',note:('Spark '+r.id+' from '+(h?('@'+h):'a visitor')+': '+(r.note||r.reaction||'conversation')).slice(0,600),target_kind:'spark',target_label:String(r.id)}); lfMsg(error?'Could not send the report.':'Reported. A person will read it.'); }));
+    it.appendChild(acts); host.appendChild(it); });
+  const {data:blocks}=await SB.from('twingrid_blocks').select('blocked_account,created_at').eq('owner',LF_GRID.owner).order('created_at',{ascending:false});
+  const bs=blocks||[]; if(bs.length){ let names={}; try{ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',bs.map(x=>x.blocked_account)); names=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); }catch(_){}
+    const t=document.createElement('p'); t.className='note'; t.style.marginTop='14px'; t.textContent='Blocked visitors'; bl.appendChild(t);
+    bs.forEach(x=>{ const row=document.createElement('div'); row.className='lfacts'; const nm=document.createElement('span'); nm.className='lftext'; nm.textContent=names[x.blocked_account]?('@'+names[x.blocked_account]):'a member'; row.append(nm, lfBtn('Unblock',async()=>{ const {error}=await SB.from('twingrid_blocks').delete().eq('owner',LF_GRID.owner).eq('blocked_account',x.blocked_account); lfMsg(error?'Could not unblock.':'Unblocked.'); lfLoadSparks(); })); bl.appendChild(row); }); } }
 // Lately (M4): the last three published actions on the persona page, from the public feed view, with their authorship stamps.
 async function pkRenderLately(id){ const sec=document.getElementById('plately'), list=document.getElementById('platelylist'); if(!sec||!list) return; const gen=(sec.__gen=(sec.__gen||0)+1);
   sec.hidden=true; list.innerHTML=''; if(!id) return;
@@ -3221,6 +3293,42 @@ async function pkRenderLately(id){ const sec=document.getElementById('plately'),
   rows.forEach(r=>{ const it=document.createElement('div'); it.className='plitem'; const st=document.createElement('div'); st.className='plstamp'; const b=document.createElement('b'); b.textContent=LF_AUTH[r.authorship]||String(r.authorship||'');
     st.append(b,document.createTextNode(' \u00b7 '+(r.published_at?new Date(r.published_at).toLocaleDateString():''))); const p=document.createElement('p'); p.className='pltext'; p.textContent=(r.body&&typeof r.body.text==='string')?r.body.text:''; it.append(st,p); list.appendChild(it); });
   sec.hidden=false; }
+
+// ---------- Sparks (M5, 2026-09-07). Visitors leave a reaction, a note, or (only by choice) a conversation through /api/spark;
+// the page reads the public ones off twingrid_sparks_public and the visit total off twingrid_visit_count(). Owner text: textContent. ----------
+const SPARK_KINDS=[['wave','\ud83d\udc4b','Wave'],['spark','\u2728','Spark'],['laugh','\ud83d\ude04','Laugh'],['think','\ud83e\udd14','Think'],['heart','\u2764\ufe0f','Heart'],['clap','\ud83d\udc4f','Clap']];
+const SPARK_EMOJI=Object.fromEntries(SPARK_KINDS.map(k=>[k[0],k[1]]));
+async function pkSendSpark(body){ const token=await hostedToken(); if(!token){ openAuth(); return {error:'signin'}; }
+  try{ const r=await fetch(HOSTED_API+'/spark',{method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(body)}); const j=await r.json().catch(()=>({})); return r.ok?j:{error:j.error||String(r.status)}; }catch(_){ return {error:'network'}; } }
+function pkSparkError(e){ return e==='signin'?'Sign in to leave a Spark.':e==='blocked'?'This owner is not taking Sparks from you.':e==='own_persona'?'That is your own persona.':e==='rate_limited'?'That is enough Sparks for today.':e==='grid_not_found'?'This persona is not public.':'Could not leave it right now.'; }
+function pkSparkBox(gridId){ const wrap=document.createElement('div'); const msg=document.createElement('p'); msg.className='phsparkmsg'; msg.setAttribute('role','status');
+  const lab=document.createElement('p'); lab.className='phzb'; lab.textContent='Leave a Spark:'; wrap.appendChild(lab);
+  const row=document.createElement('div'); row.className='phreact'; row.setAttribute('role','group'); row.setAttribute('aria-label','Leave a reaction');
+  SPARK_KINDS.forEach(([k,e,l])=>{ const b=document.createElement('button'); b.type='button'; b.className='phrbtn'; b.textContent=e+' '+l; b.setAttribute('aria-label',l);
+    b.onclick=async()=>{ msg.textContent='Sending...'; const r=await pkSendSpark({grid_id:gridId,kind:'reaction',reaction:k}); msg.textContent=r.error?pkSparkError(r.error):'Left a '+l.toLowerCase()+'.'; if(!r.error) pkRenderSparks(gridId); }; row.appendChild(b); });
+  wrap.appendChild(row);
+  const ta=document.createElement('textarea'); ta.className='phnote'; ta.maxLength=280; ta.placeholder='Or a short note, up to 280 characters. It shows on this page with your @handle.'; ta.setAttribute('aria-label','A note for the owner'); wrap.appendChild(ta);
+  const nb=document.createElement('button'); nb.type='button'; nb.className='phnotebtn'; nb.textContent='Leave the note';
+  nb.onclick=async()=>{ const t=ta.value.trim(); if(!t){ msg.textContent='Write the note first.'; ta.focus(); return; } msg.textContent='Sending...'; const r=await pkSendSpark({grid_id:gridId,kind:'note',note:t}); msg.textContent=r.error?pkSparkError(r.error):'Left.'; if(!r.error){ ta.value=''; pkRenderSparks(gridId); } };
+  wrap.append(nb,msg); return wrap; }
+async function pkRenderSparks(id){ const sec=document.getElementById('psparks'), list=document.getElementById('psplist'), cnt=document.getElementById('pspcount'); if(!sec||!list||!cnt) return; const gen=(sec.__gen=(sec.__gen||0)+1);
+  sec.hidden=true; list.innerHTML=''; cnt.textContent=''; if(!id) return;
+  const [{data:rows},{data:visits}]=await Promise.all([SB.from('twingrid_sparks_public').select('id,from_account,kind,reaction,note,created_at').eq('grid_id',id).order('created_at',{ascending:false}).limit(24), SB.rpc('twingrid_visit_count',{p_grid:id})]);
+  if(gen!==sec.__gen) return; const items=rows||[]; const v=Number(visits)||0; if(!items.length&&!v) return;
+  let byId={}; try{ const ids=[...new Set(items.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); } }catch(_){}
+  if(gen!==sec.__gen) return;
+  cnt.textContent=(v?(v+(v===1?' visit':' visits')):'')+(v&&items.length?' \u00b7 ':'')+(items.length?(items.length+(items.length===1?' Spark left in public':' Sparks left in public')):'');
+  items.forEach(r=>{ const it=document.createElement('span'); it.className='spitem'; const who=document.createElement('span'); who.className='spwho'; const h=byId[r.from_account];
+    if(h){ const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; who.appendChild(a); } else who.textContent='a visitor';
+    const body=document.createElement('span'); body.className='sb'; body.textContent=r.kind==='reaction'?((SPARK_EMOJI[r.reaction]||'')+' '+String(r.reaction||'')):String(r.note||''); it.append(who,body); list.appendChild(it); });
+  sec.hidden=false; }
+// one anonymous visit per page open, never for the owner; the Worker counts per persona per day and stores no identity
+async function pkCountVisit(id,owner){ try{ const {data:{session}}=await SB.auth.getSession(); if(session&&session.user&&session.user.id===owner) return; fetch(HOSTED_API+'/spark',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({grid_id:id,kind:'visit'})}).catch(()=>{}); }catch(_){} }
+// the chat drawer: leave the conversation as a Spark, by choice, at any point after the first exchange
+function pkChatSparkSync(){ const row=document.getElementById('chatsparkrow'); if(!row) return; const onPage=onProfileRoute()||(onAccountRoute()&&accountPersonaParam()); row.hidden=!(onPage&&Array.isArray(history)&&history.length>=2&&PK_CUR_ID); }
+{ const b=document.getElementById('chatspark'), m=document.getElementById('chatsparkmsg'); if(b) b.onclick=async()=>{ if(!PK_CUR_ID){ return; } m.textContent='Sending...';
+    const t=(history||[]).filter(x=>x&&(x.role==='user'||x.role==='assistant')&&typeof x.content==='string').slice(-40).map(x=>({role:x.role,content:String(x.content).slice(0,2000)}));
+    const r=await pkSendSpark({grid_id:PK_CUR_ID,kind:'conversation',transcript:t}); m.textContent=r.error?pkSparkError(r.error):'Left for the owner. Only they can read it.'; }; }
 
 
 // ---------- new-persona flow (chooser + questionnaire) ----------

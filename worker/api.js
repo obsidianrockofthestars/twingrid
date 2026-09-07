@@ -317,7 +317,7 @@ async function fetchPublicGrid(env, gridId, select) {
 // Fetch the grid AS THE CALLER: the full grid when the caller operates it (RLS decides), else the
 // Lobby projection from the public view. A stranger chats with the lobby persona, never the house.
 async function fetchGridAsUser(env, token, gridId) {
-  const q = "/rest/v1/twingrid_grids?select=id,data&id=eq." + encodeURIComponent(gridId);
+  const q = "/rest/v1/twingrid_grids?select=id,owner,data&id=eq." + encodeURIComponent(gridId);
   let res;
   try {
     res = await fetch(sbUrl(env, q), {
@@ -337,7 +337,7 @@ async function fetchGridAsUser(env, token, gridId) {
   } catch (_) {
     return { error: 502 };
   }
-  if (!Array.isArray(rows) || rows.length === 0) return fetchPublicGrid(env, gridId, "id,data");
+  if (!Array.isArray(rows) || rows.length === 0) return fetchPublicGrid(env, gridId, "id,owner,data");
   return { grid: rows[0] };
 }
 
@@ -519,6 +519,7 @@ async function handleChat(request, env) {
   if (g.error === 401) return json(request, 401, { error: "unauthorized" });
   if (g.error) return json(request, 502, { error: "grid_unavailable" });
 
+  if (g.grid.owner && g.grid.owner !== user.id && (await isBlocked(env, g.grid.owner, user.id))) return json(request, 403, { error: "blocked" });
   const system = guardedPrompt(g.grid.data, body.compose);
   if (system.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
   if (system === GUARD) return json(request, 400, { error: "persona_empty" });
@@ -1091,6 +1092,11 @@ async function serviceGet(env, path) {
   if (!res.ok) return null;
   try { const rows = await res.json(); return Array.isArray(rows) ? rows : null; } catch (_) { return null; }
 }
+async function serviceDelete(env, path) {
+  let res;
+  try { res = await fetch(sbUrl(env, path), { method: "DELETE", headers: serviceHeaders(env, { Prefer: "return=minimal" }) }); } catch (_) { return false; }
+  return res.ok;
+}
 async function servicePost(env, path, body) {
   let res;
   try {
@@ -1165,6 +1171,9 @@ export async function runAutopilotTick(env, now) {
       if (!ok) err("write_failed"); else if (!reason) receipt.proposed++;
     } catch (_) { err("tick_error"); }
   }
+  // Sparks retention (M5): a conversation a visitor chose to leave is kept 90 days, then deleted. Reactions and notes stay until the owner deletes them.
+  const cutoff = new Date(t.getTime() - SPARK_CONVERSATION_DAYS * 86400000).toISOString();
+  if (!(await serviceDelete(env, "/rest/v1/twingrid_sparks?kind=eq.conversation&created_at=lt." + encodeURIComponent(cutoff)))) err("spark_sweep_failed");
   if (!(await servicePost(env, "/rest/v1/twingrid_action_runs", receipt))) console.log("receipt_failed");
   return receipt;
 }
@@ -1247,6 +1256,69 @@ async function handleActionPost(request, env) {
   return json(request, 200, { status: "published", authorship: "OWNER", published_at: now });
 }
 
+// ---------------------------------------------------------------------------
+// Sparks (M5, 2026-09-07). PLAN.md section 3.3.
+// POST /api/spark { grid_id, kind: visit | reaction | note | conversation, reaction?, note?, transcript? }
+//   visit: no account, no identity stored; one counter per persona per UTC day (twingrid_spark_visit, service role).
+//   the rest: a signed-in visitor, on a public persona that is not their own, unless the owner blocked them.
+//   A conversation is stored only because the visitor asked (the button at the end of a chat) and is private to the owner.
+// Blocks are checked here and in /api/chat: a blocked account cannot spark or chat with that owner's personas.
+// ---------------------------------------------------------------------------
+const SPARK_REACTIONS = new Set(["wave", "spark", "laugh", "think", "heart", "clap"]);
+const SPARK_NOTE_MAX = 280, SPARK_TRANSCRIPT_MAX = 40, SPARK_DAILY_MAX = 40, SPARK_CONVERSATION_DAYS = 90;
+async function isBlocked(env, owner, account) {
+  if (!owner || !account) return false;
+  const rows = await serviceGet(env, "/rest/v1/twingrid_blocks?select=owner&owner=eq." + encodeURIComponent(owner) + "&blocked_account=eq." + encodeURIComponent(account) + "&limit=1");
+  return !!(rows && rows.length);
+}
+function validateSpark(b) {
+  if (!b || typeof b !== "object" || Array.isArray(b)) return "bad_body";
+  if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id)) return "bad_grid_id";
+  if (b.kind === "visit") return null;
+  if (b.kind === "reaction") return SPARK_REACTIONS.has(b.reaction) ? null : "bad_reaction";
+  if (b.kind === "note") return typeof b.note === "string" && b.note.trim().length >= 1 && b.note.trim().length <= SPARK_NOTE_MAX ? null : "bad_note";
+  if (b.kind === "conversation") {
+    const t = b.transcript;
+    if (!Array.isArray(t) || t.length < 2 || t.length > SPARK_TRANSCRIPT_MAX) return "bad_transcript";
+    for (const m of t) if (!m || (m.role !== "user" && m.role !== "assistant") || typeof m.content !== "string" || m.content.length > MAX_CONTENT_CHARS) return "bad_transcript";
+    return null;
+  }
+  return "bad_kind";
+}
+async function handleSpark(request, env) {
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value;
+  const bad = validateSpark(b);
+  if (bad) return json(request, 400, { error: bad });
+  if (b.kind === "visit") {
+    const ip = request.headers.get("cf-connecting-ip") || "unknown";
+    if (await rateLimited(env, "visit:" + ip + ":" + b.grid_id, 3, 86400)) return json(request, 200, { ok: true, counted: false });
+    const r = await rpcService(env, "twingrid_spark_visit", { p_grid: b.grid_id });
+    if (!r.ok) return json(request, 502, { error: "sparks_unavailable" });
+    if (Number(r.value) < 0) return json(request, 404, { error: "grid_not_found" });
+    return json(request, 200, { ok: true, counted: true, count: Number(r.value) });
+  }
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const g = await fetchPublicGrid(env, b.grid_id, "id,owner");
+  if (g.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (g.error) return json(request, 502, { error: "grid_unavailable" });
+  if (g.grid.owner === user.id) return json(request, 400, { error: "own_persona" });
+  if (await isBlocked(env, g.grid.owner, user.id)) return json(request, 403, { error: "blocked" });
+  const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+  const today = await serviceGet(env, "/rest/v1/twingrid_sparks?select=id&from_account=eq." + encodeURIComponent(user.id) + "&created_at=gte." + encodeURIComponent(dayStart.toISOString()) + "&limit=" + (SPARK_DAILY_MAX + 1));
+  if (!today) return json(request, 502, { error: "sparks_unavailable" });
+  if (today.length >= SPARK_DAILY_MAX) return json(request, 429, { error: "rate_limited" }, { "Retry-After": "86400" });
+  const row = { grid_id: b.grid_id, owner: g.grid.owner, from_account: user.id, kind: b.kind, is_public: b.kind !== "conversation" };
+  if (b.kind === "reaction") row.reaction = b.reaction;
+  if (b.kind === "note") row.note = b.note.trim();
+  if (b.kind === "conversation") row.transcript = b.transcript.map((m) => ({ role: m.role, content: m.content }));
+  if (!(await servicePost(env, "/rest/v1/twingrid_sparks", row))) return json(request, 502, { error: "write_failed" });
+  return json(request, 200, { ok: true, kind: b.kind, is_public: row.is_public });
+}
+
 // CSP violation reports (M0, 2026-09-07). The header ships Report-Only with report-uri pointing here.
 // Log two short fields, never the whole report (it can carry the page URL with a query string).
 async function handleCspReport(request) {
@@ -1280,7 +1352,8 @@ export async function handleApi(request, env) {
     if (path === "/api/autopilot/tick" && method === "POST") return await handleAutopilotTick(request, env);
     { const m = /^\/api\/actions\/(\d{1,12})\/decide$/.exec(path); if (m) return method === "POST" ? await handleActionDecide(request, env, m[1]) : json(request, 405, { error: "method_not_allowed" }); }
     if (path === "/api/actions" && method === "POST") return await handleActionPost(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions") {
+    if (path === "/api/spark" && method === "POST") return await handleSpark(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });

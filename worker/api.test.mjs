@@ -49,6 +49,9 @@ let capacityCalls = [];
 let capacityReleases = []; // twingrid_capacity_unspend calls (2026-09-04)
 // Autopilot (M3, 2026-09-07): rules rows the fake serves (filtered by the hour in the query), the actions it stores, the receipts.
 let rulesRows = [];
+let blocksRows = [];
+let sparksRows = [];
+let visitCounts = {};
 let actionsRows = [];
 let runsRows = [];
 let anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house.";
@@ -67,6 +70,24 @@ globalThis.fetch = async (url, init) => {
     if (auth === "Bearer " + GOOD_TOKEN) return respond(200, { id: USER_ID, email: "t@example.com" });
     if (auth === "Bearer " + STRANGER_TOKEN) return respond(200, { id: STRANGER_ID, email: "s@example.com" });
     return respond(401, { message: "invalid JWT" });
+  }
+  if (u.includes("/rest/v1/twingrid_blocks")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("blocks are read with the service key");
+    const o = /owner=eq\.([0-9a-f-]+)/.exec(u), a = /blocked_account=eq\.([0-9a-f-]+)/.exec(u);
+    return respond(200, blocksRows.filter((r) => (!o || r.owner === o[1]) && (!a || r.blocked_account === a[1])));
+  }
+  if (u.includes("/rest/v1/twingrid_sparks")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("sparks are touched with the service key");
+    if (method === "POST") { sparksRows.push(Object.assign({ id: sparksRows.length + 1, created_at: new Date().toISOString() }, body)); return new Response(null, { status: 201 }); }
+    if (method === "DELETE") { const m = /created_at=lt\.([^&]+)/.exec(u); const cut = m ? decodeURIComponent(m[1]) : null; if (!/kind=eq\.conversation/.test(u) || !cut) throw new Error("the sweep must name kind=conversation and a cutoff");
+      sparksRows = sparksRows.filter((r) => !(r.kind === "conversation" && r.created_at < cut)); return new Response(null, { status: 204 }); }
+    const f = /from_account=eq\.([0-9a-f-]+)/.exec(u);
+    return respond(200, sparksRows.filter((r) => !f || r.from_account === f[1]));
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_spark_visit")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("visit counts are service role");
+    if (body.p_grid !== GRID_ID || !gridPublic) return respond(200, -1);
+    visitCounts[body.p_grid] = (visitCounts[body.p_grid] || 0) + 1; return respond(200, visitCounts[body.p_grid]);
   }
   if (u.includes("/rest/v1/twingrid_rules")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("rules are read with the service key");
@@ -865,6 +886,65 @@ await check("manual post: the operator publishes at once as OWNER with no credit
   eq(s.status, 403, "stranger"); eq(actionsRows.length, 1, "stranger wrote nothing");
   const l = await handleApi(req("/api/actions", { method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }), body: JSON.stringify({ grid_id: GRID_ID, text: "buy now at www.example.com" }) }), ENV);
   eq(l.status, 400, "boundary"); eq(actionsRows.length, 1, "refused draft not stored");
+});
+
+// ---------------------------------------------------------------------------
+// Sparks (M5, 2026-09-07)
+// ---------------------------------------------------------------------------
+function spark(body, token) { return handleApi(req("/api/spark", { method: "POST", headers: H(token ? { Authorization: "Bearer " + token } : {}), body: JSON.stringify(body) }), ENV); }
+function resetSparks() { blocksRows = []; sparksRows = []; visitCounts = {}; gridPublic = true; calls.length = 0; }
+
+await check("spark: an anonymous visit is counted through the service function with no identity; a private grid is 404", async () => {
+  resetSparks();
+  const r = await spark({ grid_id: GRID_ID, kind: "visit" });
+  eq(r.status, 200, "status"); const j = await r.json(); eq(j.counted, true, "counted"); eq(j.count, 1, "count");
+  eq(sparksRows.length, 0, "no row written by the Worker itself"); eq(visitCounts[GRID_ID], 1, "counter");
+  if (calls.some((c) => c.url.includes("/auth/v1/user"))) throw new Error("a visit must not require or look up an account");
+  gridPublic = false; eq((await spark({ grid_id: GRID_ID, kind: "visit" })).status, 404, "private grid");
+});
+
+await check("spark: a signed-in stranger leaves a reaction and a note (public rows), a conversation is stored private", async () => {
+  resetSparks();
+  eq((await spark({ grid_id: GRID_ID, kind: "reaction", reaction: "wave" }, STRANGER_TOKEN)).status, 200, "reaction");
+  eq((await spark({ grid_id: GRID_ID, kind: "note", note: "  Loved the porch.  " }, STRANGER_TOKEN)).status, 200, "note");
+  const conv = await spark({ grid_id: GRID_ID, kind: "conversation", transcript: [{ role: "user", content: "hi" }, { role: "assistant", content: "hello" }] }, STRANGER_TOKEN);
+  eq(conv.status, 200, "conversation"); eq((await conv.json()).is_public, false, "private");
+  eq(sparksRows.length, 3, "three rows");
+  eq(sparksRows[0].owner, USER_ID, "owner is the target owner"); eq(sparksRows[0].from_account, STRANGER_ID, "from the visitor"); eq(sparksRows[0].is_public, true, "reaction public");
+  eq(sparksRows[1].note, "Loved the porch.", "note trimmed"); eq(sparksRows[2].is_public, false, "conversation private"); eq(sparksRows[2].transcript.length, 2, "transcript kept");
+});
+
+await check("spark: validation: too long a note, an unknown reaction, a one-line transcript, a bad kind, signed out, own persona", async () => {
+  resetSparks();
+  eq((await spark({ grid_id: GRID_ID, kind: "note", note: "x".repeat(281) }, STRANGER_TOKEN)).status, 400, "note 281");
+  eq((await spark({ grid_id: GRID_ID, kind: "reaction", reaction: "shrug" }, STRANGER_TOKEN)).status, 400, "reaction");
+  eq((await spark({ grid_id: GRID_ID, kind: "conversation", transcript: [{ role: "user", content: "hi" }] }, STRANGER_TOKEN)).status, 400, "transcript");
+  eq((await spark({ grid_id: GRID_ID, kind: "poke" }, STRANGER_TOKEN)).status, 400, "kind");
+  eq((await spark({ grid_id: GRID_ID, kind: "reaction", reaction: "wave" }, null)).status, 401, "signed out");
+  eq((await spark({ grid_id: GRID_ID, kind: "reaction", reaction: "wave" }, GOOD_TOKEN)).status, 400, "own persona");
+  eq(sparksRows.length, 0, "nothing stored");
+});
+
+await check("spark and chat: a blocked account gets 403 from both; the owner is never blocked from their own persona", async () => {
+  resetSparks(); blocksRows = [{ owner: USER_ID, blocked_account: STRANGER_ID }]; balance = 3;
+  eq((await spark({ grid_id: GRID_ID, kind: "reaction", reaction: "wave" }, STRANGER_TOKEN)).status, 403, "spark blocked");
+  const chat = await handleApi(req("/api/chat", { method: "POST", headers: H({ Authorization: "Bearer " + STRANGER_TOKEN }), body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "hi" }] }) }), ENV);
+  eq(chat.status, 403, "chat blocked"); eq(balance, 3, "no credit spent on a blocked chat");
+  const own = await handleApi(req("/api/chat", { method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }), body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "hi" }] }) }), ENV);
+  eq(own.status, 200, "owner still chats");
+});
+
+await check("spark retention: the hourly tick deletes opted-in conversations older than 90 days and nothing else", async () => {
+  resetAutopilot([]); resetSparks();
+  sparksRows = [{ id: 1, kind: "conversation", from_account: STRANGER_ID, created_at: "2026-05-01T00:00:00.000Z" }, { id: 2, kind: "conversation", from_account: STRANGER_ID, created_at: "2026-09-01T00:00:00.000Z" }, { id: 3, kind: "note", from_account: STRANGER_ID, created_at: "2026-05-01T00:00:00.000Z" }];
+  await runAutopilotTick(ENV, NOW);
+  eq(sparksRows.map((r) => r.id).join(","), "2,3", "only the old conversation went");
+});
+
+await check("spark: the daily cap per visitor is 40", async () => {
+  resetSparks();
+  for (let i = 0; i < 40; i++) sparksRows.push({ id: i + 1, from_account: STRANGER_ID, created_at: new Date().toISOString() });
+  eq((await spark({ grid_id: GRID_ID, kind: "reaction", reaction: "wave" }, STRANGER_TOKEN)).status, 429, "capped");
 });
 
 await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {
