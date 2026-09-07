@@ -9,7 +9,7 @@
 // falls through to env.ASSETS.fetch here when no asset matched (same 404 as before).
 
 import { handleMcp } from "./mcp.js";
-import { handleApi, handleSitemap } from "./api.js";
+import { handleApi, handleSitemap, runAutopilotTick } from "./api.js";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -84,5 +84,9 @@ export default {
       return new Response(shell.body, { status: 200, statusText: "OK", headers: shell.headers });
     }
     return env.ASSETS.fetch(request);
+  },
+  // Cron Trigger (wrangler.jsonc triggers.crons, hourly). The tick is idempotent within the hour and writes its own receipt.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runAutopilotTick(env, new Date(event.scheduledTime)));
   },
 };

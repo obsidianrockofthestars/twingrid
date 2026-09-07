@@ -317,7 +317,7 @@ async function fetchPublicGrid(env, gridId, select) {
 // Fetch the grid AS THE CALLER: the full grid when the caller operates it (RLS decides), else the
 // Lobby projection from the public view. A stranger chats with the lobby persona, never the house.
 async function fetchGridAsUser(env, token, gridId) {
-  const q = "/rest/v1/twingrid_grids?select=id,data&id=eq." + encodeURIComponent(gridId);
+  const q = "/rest/v1/twingrid_grids?select=id,owner,data&id=eq." + encodeURIComponent(gridId);
   let res;
   try {
     res = await fetch(sbUrl(env, q), {
@@ -337,7 +337,7 @@ async function fetchGridAsUser(env, token, gridId) {
   } catch (_) {
     return { error: 502 };
   }
-  if (!Array.isArray(rows) || rows.length === 0) return fetchPublicGrid(env, gridId, "id,data");
+  if (!Array.isArray(rows) || rows.length === 0) return fetchPublicGrid(env, gridId, "id,owner,data");
   return { grid: rows[0] };
 }
 
@@ -457,6 +457,7 @@ export function guardedPrompt(gridData, compose) {
 function validateChatBody(b) {
   if (!b || typeof b !== "object" || Array.isArray(b)) return "bad_body";
   if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id)) return "bad_grid_id";
+  if (b.place_id !== undefined && (typeof b.place_id !== "string" || !UUID_RE.test(b.place_id))) return "bad_place_id";
   const m = b.messages;
   if (!Array.isArray(m) || m.length < 1 || m.length > MAX_MESSAGES) return "bad_messages";
   for (const x of m) {
@@ -519,7 +520,15 @@ async function handleChat(request, env) {
   if (g.error === 401) return json(request, 401, { error: "unauthorized" });
   if (g.error) return json(request, 502, { error: "grid_unavailable" });
 
-  const system = guardedPrompt(g.grid.data, body.compose);
+  if (g.grid.owner && g.grid.owner !== user.id && (await isBlocked(env, g.grid.owner, user.id))) return json(request, 403, { error: "blocked" });
+  let system = guardedPrompt(g.grid.data, body.compose);
+  if (body.place_id) {
+    // the staff persona at a verified Place: approved knowledge and the business boundaries ride along; a persona not on staff gets 404
+    const pk = await rpcService(env, "twingrid_place_knowledge", { p_place: body.place_id, p_grid: body.grid_id });
+    if (!pk.ok) return json(request, 502, { error: "places_unavailable" });
+    if (!pk.value) return json(request, 404, { error: "place_not_found" });
+    system = system + placeBlock(pk.value);
+  }
   if (system.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
   if (system === GUARD) return json(request, 400, { error: "persona_empty" });
 
@@ -1058,6 +1067,523 @@ export async function handleSitemap(env) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Autopilot, the engine (M3, 2026-09-07). PLAN.md sections 3.2 and 5, M3.
+// One hourly tick. For every public grid whose rules say together or autopilot at this UTC hour, under its daily
+// cap, with no action yet this hour: compose the persona from the LOBBY VIEW ONLY (a private facet cannot reach an
+// autonomous run because it never leaves the database), spend one of the owner's credits, ask for one short post,
+// run the boundary check on the draft, and write the action: proposed (together), published (autopilot) or refused.
+// Every tick writes its own receipt row, so a quiet hour and a dropped run look different.
+// ---------------------------------------------------------------------------
+const AUTOPILOT_INSTRUCTION = "Write one short public post about your day, in character and in your own voice, under 400 characters. Stay inside your topics and away from anything you avoid. Never mention your private life, never include a link or an address, never claim to sell, book or buy anything, never address or name another persona. Plain text only, no hashtags, no preamble.";
+const AUTOPILOT_MAX_CHARS = 600;
+const REFUSAL_RE = {
+  link: /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|app|co|ai)\b)/i,
+  mention: /(^|[\s(])@[a-z0-9_]{2,}/i,
+  purchase: /\b(book now|buy now|order now|reserve (a|your)|checkout|purchase|discount code|promo code|dm (me|us) to (buy|book|order))\b|\$\s?\d/i,
+};
+// Every facet the projection handed over, as one composition. The projection (Lobby or Kindred) is the gate; this just turns it all on.
+function composeAll(data) { const names = data && Array.isArray(data.facets) ? data.facets.map((f) => f && f.name).filter((n) => typeof n === "string" && n !== "core") : []; return { mode: "multi", on: names }; }
+export function autopilotRefusal(text, rules) {
+  const t = typeof text === "string" ? text.trim() : "";
+  if (!t) return "empty";
+  if (t.length > AUTOPILOT_MAX_CHARS) return "too_long";
+  if (REFUSAL_RE.link.test(t)) return "link";
+  if (REFUSAL_RE.mention.test(t)) return "mention";
+  if (REFUSAL_RE.purchase.test(t)) return "purchase_claim";
+  const lower = t.toLowerCase();
+  const avoid = Array.isArray(rules && rules.avoid) ? rules.avoid.map((s) => String(s || "").trim().toLowerCase()).filter((s) => s.length >= 3) : [];
+  if (avoid.some((a) => lower.includes(a))) return "avoid_topic";
+  return null;
+}
+async function serviceGet(env, path) {
+  let res;
+  try { res = await fetch(sbUrl(env, path), { headers: serviceHeaders(env, { Accept: "application/json" }) }); } catch (_) { return null; }
+  if (!res.ok) return null;
+  try { const rows = await res.json(); return Array.isArray(rows) ? rows : null; } catch (_) { return null; }
+}
+async function serviceDelete(env, path) {
+  let res;
+  try { res = await fetch(sbUrl(env, path), { method: "DELETE", headers: serviceHeaders(env, { Prefer: "return=minimal" }) }); } catch (_) { return false; }
+  return res.ok;
+}
+async function servicePost(env, path, body) {
+  let res;
+  try {
+    res = await fetch(sbUrl(env, path), { method: "POST", headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=minimal" }), body: JSON.stringify(body) });
+  } catch (_) { return false; }
+  return res.ok;
+}
+// One model call, text out or null. handleChat keeps its own inline call with its richer error envelope.
+// ponytail: fold both into this helper when a third caller arrives.
+async function anthropicText(env, system, messages) {
+  const model = (typeof env.HOSTED_MODEL === "string" && env.HOSTED_MODEL.trim()) || DEFAULT_MODEL;
+  try {
+    const res = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": ANTHROPIC_VERSION },
+      body: JSON.stringify({ model, max_tokens: MAX_TOKENS, system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }], messages }),
+    });
+    if (!res.ok) { console.log("autopilot_upstream", res.status); return null; }
+    const j = await res.json();
+    const first = j && Array.isArray(j.content) ? j.content.find((c) => c && c.type === "text") : null;
+    return first && typeof first.text === "string" ? first.text : "";
+  } catch (_) { return null; }
+}
+export async function runAutopilotTick(env, now) {
+  const t = now instanceof Date && !isNaN(now) ? now : new Date();
+  const hour = t.getUTCHours();
+  const dayStart = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate())).toISOString();
+  const hourStart = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), hour)).toISOString();
+  const receipt = { ran_at: t.toISOString(), grids_considered: 0, proposed: 0, errors: [] };
+  const err = (code) => { if (receipt.errors.length < 50) receipt.errors.push(code); };
+  const rules = await serviceGet(env, "/rest/v1/twingrid_rules?select=grid_id,owner,mode,topics,avoid,max_per_day,hour_utc,audience&mode=in.(together,autopilot)&max_per_day=gt.0&hour_utc=eq." + hour + "&limit=500");
+  if (!rules) { err("rules_unavailable"); await servicePost(env, "/rest/v1/twingrid_action_runs", receipt); return receipt; }
+  for (const r of rules) {
+    if (!r || !UUID_RE.test(String(r.grid_id)) || !UUID_RE.test(String(r.owner))) continue;
+    receipt.grids_considered++;
+    const record = (status, authorship, extra) => servicePost(env, "/rest/v1/twingrid_actions", Object.assign({
+      grid_id: r.grid_id, owner: r.owner, kind: "post", authorship, status, audience: r.audience === "circle" ? "circle" : "public",
+      rule_ref: "rules:" + r.mode + ":" + String(hour).padStart(2, "0") + "z", body: {},
+    }, extra || {}));
+    try {
+      const todays = await serviceGet(env, "/rest/v1/twingrid_actions?select=created_at,status&grid_id=eq." + encodeURIComponent(r.grid_id) + "&created_at=gte." + encodeURIComponent(dayStart) + "&limit=50");
+      if (!todays) { err("actions_unavailable"); continue; }
+      if (todays.some((a) => a && a.created_at >= hourStart)) continue;                       // idempotent within the hour
+      if (todays.filter((a) => a && a.status !== "refused").length >= Number(r.max_per_day)) continue; // under the daily cap
+      const g = await fetchPublicGrid(env, r.grid_id, "id,owner,name,data");                  // the Lobby projection, nothing else
+      if (g.error === 404) continue;                                                           // private, suspended or gone: skip quietly
+      if (g.error) { err("grid_unavailable"); continue; }
+      const system = guardedPrompt(g.grid.data, composeAll(g.grid.data));
+      if (system === GUARD) { await record("refused", "AUTOPILOT", { refusal: "persona_empty" }); continue; }
+      if (system.length > MAX_SYSTEM_CHARS) { await record("refused", "AUTOPILOT", { refusal: "persona_too_large" }); continue; }
+      const topics = Array.isArray(r.topics) ? r.topics.map((s) => String(s || "").trim()).filter(Boolean).slice(0, 12) : [];
+      const avoid = Array.isArray(r.avoid) ? r.avoid.map((s) => String(s || "").trim()).filter(Boolean).slice(0, 12) : [];
+      const ask = AUTOPILOT_INSTRUCTION + (topics.length ? " Your topics: " + topics.join(", ") + "." : "") + (avoid.length ? " Avoid entirely: " + avoid.join(", ") + "." : "");
+      const micro = chatMicro(system.length, ask.length);
+      if (!(await reserveCapacity(env, "anthropic", micro))) { await record("refused", "AUTOPILOT", { refusal: "capacity" }); continue; }
+      const spend = await rpcService(env, "twingrid_use_credits", { p_user: r.owner, p_cost: 1, p_kind: "use" });
+      if (!spend.ok) { await releaseCapacity(env, "anthropic", micro); err("credits_unavailable"); continue; }
+      if (!(Number(spend.value) >= 0)) { await releaseCapacity(env, "anthropic", micro); await record("refused", "AUTOPILOT", { refusal: "no_credits" }); continue; }
+      const text = await anthropicText(env, system, [{ role: "user", content: ask }]);
+      if (text === null) {
+        await releaseCapacity(env, "anthropic", micro);
+        const rf = await rpcService(env, "twingrid_grant_credits", { p_user: r.owner, p_delta: 1, p_kind: "refund", p_ref: "refund:" + crypto.randomUUID(), p_period_end: null });
+        if (!rf.ok) console.log("refund_failed");
+        err("upstream_failed"); continue;
+      }
+      const clean = text.trim().slice(0, AUTOPILOT_MAX_CHARS + 1);
+      const reason = autopilotRefusal(clean, r);
+      let ok;
+      if (reason) ok = await record("refused", "AUTOPILOT", { refusal: reason, body: { text: clean.slice(0, AUTOPILOT_MAX_CHARS) } });
+      else if (r.mode === "autopilot") ok = await record("published", "AUTOPILOT", { body: { text: clean }, published_at: t.toISOString() });
+      else ok = await record("proposed", "SCHEDULED", { body: { text: clean } });
+      if (!ok) err("write_failed"); else if (!reason) receipt.proposed++;
+    } catch (_) { err("tick_error"); }
+  }
+  // Sparks retention (M5): a conversation a visitor chose to leave is kept 90 days, then deleted. Reactions and notes stay until the owner deletes them.
+  const cutoff = new Date(t.getTime() - SPARK_CONVERSATION_DAYS * 86400000).toISOString();
+  if (!(await serviceDelete(env, "/rest/v1/twingrid_sparks?kind=eq.conversation&created_at=lt." + encodeURIComponent(cutoff)))) err("spark_sweep_failed");
+  if (!(await servicePost(env, "/rest/v1/twingrid_action_runs", receipt))) console.log("receipt_failed");
+  return receipt;
+}
+// Manual trigger for the tick, for Dylan and for tests. Off unless AUTOPILOT_AUTH is set; the cron calls runAutopilotTick directly.
+async function handleAutopilotTick(request, env) {
+  const secret = typeof env.AUTOPILOT_AUTH === "string" ? env.AUTOPILOT_AUTH : "";
+  if (!secret) return json(request, 404, { error: "not_found" });
+  if (!safeEqual(bearer(request) || "", secret)) return json(request, 401, { error: "unauthorized" });
+  const receipt = await runAutopilotTick(env, new Date());
+  return json(request, 200, receipt);
+}
+
+// ---------------------------------------------------------------------------
+// Decisions and manual posts (M4, 2026-09-07). PLAN.md section 4.2.
+// POST /api/actions/:id/decide  { decision: approve | decline | edit, text? }   operator of the action's owner only
+// POST /api/actions              { grid_id, text }                              operator only; published at once, authorship OWNER
+// The table has no UPDATE grant for authenticated on purpose: every decision passes through here, as the caller
+// is verified with twingrid_operates() and the write is made with the service key.
+// ---------------------------------------------------------------------------
+async function servicePatch(env, path, body) {
+  let res;
+  try {
+    res = await fetch(sbUrl(env, path), { method: "PATCH", headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=representation" }), body: JSON.stringify(body) });
+  } catch (_) { return null; }
+  if (!res.ok) return null;
+  try { const rows = await res.json(); return Array.isArray(rows) && rows.length === 1 ? rows[0] : null; } catch (_) { return null; }
+}
+async function handleActionDecide(request, env, id) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  if (!/^\d{1,12}$/.test(id)) return json(request, 400, { error: "bad_id" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  const decision = b.decision;
+  if (decision !== "approve" && decision !== "decline" && decision !== "edit") return json(request, 400, { error: "bad_decision" });
+  const rows = await serviceGet(env, "/rest/v1/twingrid_actions?select=id,grid_id,owner,status,body,audience&id=eq." + id);
+  if (!rows) return json(request, 502, { error: "actions_unavailable" });
+  if (rows.length !== 1) return json(request, 404, { error: "action_not_found" });
+  const a = rows[0];
+  if (!(await operatesAsUser(env, token, a.owner))) return json(request, 403, { error: "forbidden" });
+  if (a.status !== "proposed") return json(request, 409, { error: "already_decided", status: a.status });
+  const now = new Date().toISOString();
+  let patch;
+  if (decision === "decline") patch = { status: "declined", decided_at: now };
+  else if (decision === "approve") patch = { status: "published", decided_at: now, published_at: now };
+  else {
+    const text = typeof b.text === "string" ? b.text.trim() : "";
+    const reason = autopilotRefusal(text, null);
+    if (reason) return json(request, 400, { error: "boundary", reason });
+    patch = { status: "published", authorship: "TOGETHER", body: Object.assign({}, a.body && typeof a.body === "object" ? a.body : {}, { text }), decided_at: now, published_at: now };
+  }
+  const row = await servicePatch(env, "/rest/v1/twingrid_actions?id=eq." + id + "&status=eq.proposed", patch);
+  if (!row) return json(request, 409, { error: "already_decided" });
+  return json(request, 200, { id: Number(id), status: row.status, authorship: row.authorship, published_at: row.published_at || null });
+}
+async function handleActionPost(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id)) return json(request, 400, { error: "bad_grid_id" });
+  const text = typeof b.text === "string" ? b.text.trim() : "";
+  const reason = autopilotRefusal(text, null);
+  if (reason) return json(request, 400, { error: "boundary", reason });
+  const g = await fetchGridMetaAsUser(env, token, b.grid_id);   // RLS: the operator sees the table row, a stranger falls to the view
+  if (g.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (g.error) return json(request, 502, { error: "grid_unavailable" });
+  if (!(await operatesAsUser(env, token, g.grid.owner))) return json(request, 403, { error: "forbidden" });
+  if (await rateLimited(env, "post:" + user.id, 20, 3600)) return json(request, 429, { error: "rate_limited" }, { "Retry-After": "3600" });
+  const now = new Date().toISOString();
+  const ok = await servicePost(env, "/rest/v1/twingrid_actions", {
+    grid_id: b.grid_id, owner: g.grid.owner, kind: "post", authorship: "OWNER", status: "published", audience: "public",
+    rule_ref: "owner", body: { text }, decided_at: now, published_at: now,
+  });
+  if (!ok) return json(request, 502, { error: "write_failed" });
+  return json(request, 200, { status: "published", authorship: "OWNER", published_at: now });
+}
+
+// ---------------------------------------------------------------------------
+// Sparks (M5, 2026-09-07). PLAN.md section 3.3.
+// POST /api/spark { grid_id, kind: visit | reaction | note | conversation, reaction?, note?, transcript? }
+//   visit: no account, no identity stored; one counter per persona per UTC day (twingrid_spark_visit, service role).
+//   the rest: a signed-in visitor, on a public persona that is not their own, unless the owner blocked them.
+//   A conversation is stored only because the visitor asked (the button at the end of a chat) and is private to the owner.
+// Blocks are checked here and in /api/chat: a blocked account cannot spark or chat with that owner's personas.
+// ---------------------------------------------------------------------------
+const SPARK_REACTIONS = new Set(["wave", "spark", "laugh", "think", "heart", "clap"]);
+const SPARK_NOTE_MAX = 280, SPARK_TRANSCRIPT_MAX = 40, SPARK_DAILY_MAX = 40, SPARK_CONVERSATION_DAYS = 90;
+async function isBlocked(env, owner, account) {
+  if (!owner || !account) return false;
+  const rows = await serviceGet(env, "/rest/v1/twingrid_blocks?select=owner&owner=eq." + encodeURIComponent(owner) + "&blocked_account=eq." + encodeURIComponent(account) + "&limit=1");
+  return !!(rows && rows.length);
+}
+function validateSpark(b) {
+  if (!b || typeof b !== "object" || Array.isArray(b)) return "bad_body";
+  if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id)) return "bad_grid_id";
+  if (b.kind === "visit") return null;
+  if (b.kind === "reaction") return SPARK_REACTIONS.has(b.reaction) ? null : "bad_reaction";
+  if (b.kind === "note") return typeof b.note === "string" && b.note.trim().length >= 1 && b.note.trim().length <= SPARK_NOTE_MAX ? null : "bad_note";
+  if (b.kind === "conversation") {
+    const t = b.transcript;
+    if (!Array.isArray(t) || t.length < 2 || t.length > SPARK_TRANSCRIPT_MAX) return "bad_transcript";
+    for (const m of t) if (!m || (m.role !== "user" && m.role !== "assistant") || typeof m.content !== "string" || m.content.length > MAX_CONTENT_CHARS) return "bad_transcript";
+    return null;
+  }
+  return "bad_kind";
+}
+async function handleSpark(request, env) {
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value;
+  const bad = validateSpark(b);
+  if (bad) return json(request, 400, { error: bad });
+  if (b.kind === "visit") {
+    const ip = request.headers.get("cf-connecting-ip") || "unknown";
+    if (await rateLimited(env, "visit:" + ip + ":" + b.grid_id, 3, 86400)) return json(request, 200, { ok: true, counted: false });
+    const r = await rpcService(env, "twingrid_spark_visit", { p_grid: b.grid_id });
+    if (!r.ok) return json(request, 502, { error: "sparks_unavailable" });
+    if (Number(r.value) < 0) return json(request, 404, { error: "grid_not_found" });
+    return json(request, 200, { ok: true, counted: true, count: Number(r.value) });
+  }
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const g = await fetchPublicGrid(env, b.grid_id, "id,owner");
+  if (g.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (g.error) return json(request, 502, { error: "grid_unavailable" });
+  if (g.grid.owner === user.id) return json(request, 400, { error: "own_persona" });
+  if (await isBlocked(env, g.grid.owner, user.id)) return json(request, 403, { error: "blocked" });
+  const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+  const today = await serviceGet(env, "/rest/v1/twingrid_sparks?select=id&from_account=eq." + encodeURIComponent(user.id) + "&created_at=gte." + encodeURIComponent(dayStart.toISOString()) + "&limit=" + (SPARK_DAILY_MAX + 1));
+  if (!today) return json(request, 502, { error: "sparks_unavailable" });
+  if (today.length >= SPARK_DAILY_MAX) return json(request, 429, { error: "rate_limited" }, { "Retry-After": "86400" });
+  const row = { grid_id: b.grid_id, owner: g.grid.owner, from_account: user.id, kind: b.kind, is_public: b.kind !== "conversation" };
+  if (b.kind === "reaction") row.reaction = b.reaction;
+  if (b.kind === "note") row.note = b.note.trim();
+  if (b.kind === "conversation") row.transcript = b.transcript.map((m) => ({ role: m.role, content: m.content }));
+  if (!(await servicePost(env, "/rest/v1/twingrid_sparks", row))) return json(request, 502, { error: "write_failed" });
+  return json(request, 200, { ok: true, kind: b.kind, is_public: row.is_public });
+}
+
+// ---------------------------------------------------------------------------
+// Kindred and persona-to-persona (M6, 2026-09-07). PLAN.md section 3.4.
+// POST /api/kindred { action: request | accept | decline | block | withdraw | unfriend, grid_id (a persona the caller operates), other_grid_id }
+//   Every write to twingrid_kindred goes through here with the service key after the caller is verified; operators only read the table.
+//   A declined request cannot be re-sent for 7 days; a blocked one cannot be re-sent by the blocked side at all.
+// POST /api/p2p { grid_id (mine), other_grid_id, topic? }
+//   Refused unless the pair is Kindred. Both sides are composed from the Kindred projection (twingrid_kindred_view, Public plus
+//   Kindred facets, never the house), one exchange per call (my persona opens, theirs answers), two model calls, two credits from the
+//   caller, both lines boundary-checked, and the exchange lands as a PROPOSED TOGETHER action on BOTH personas for each owner to approve.
+// ---------------------------------------------------------------------------
+const KINDRED_ACTIONS = new Set(["request", "accept", "decline", "block", "withdraw", "unfriend"]);
+const KINDRED_WAIT_DAYS = 7;
+const P2P_COST = 2;
+async function operatedGrid(env, token, user, gridId) {
+  // the caller's own persona: read as the caller (RLS), then confirm they operate its owner
+  const g = await fetchGridMetaAsUser(env, token, gridId);
+  if (g.error) return { error: g.error };
+  if (!(await operatesAsUser(env, token, g.grid.owner))) return { error: 403 };
+  return { grid: g.grid };
+}
+function pairOf(a, b) { return a < b ? { grid_a: a, grid_b: b } : { grid_a: b, grid_b: a }; }
+async function handleKindred(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (!KINDRED_ACTIONS.has(b.action)) return json(request, 400, { error: "bad_action" });
+  if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id) || typeof b.other_grid_id !== "string" || !UUID_RE.test(b.other_grid_id)) return json(request, 400, { error: "bad_grid_id" });
+  if (b.grid_id === b.other_grid_id) return json(request, 400, { error: "same_persona" });
+  const mine = await operatedGrid(env, token, user, b.grid_id);
+  if (mine.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (mine.error === 403) return json(request, 403, { error: "forbidden" });
+  if (mine.error) return json(request, 502, { error: "grid_unavailable" });
+  const other = await fetchPublicGrid(env, b.other_grid_id, "id,owner");
+  if (other.error === 404) return json(request, 404, { error: "other_not_public" });
+  if (other.error) return json(request, 502, { error: "grid_unavailable" });
+  if (other.grid.owner === mine.grid.owner) return json(request, 400, { error: "same_owner" });
+  const pair = pairOf(b.grid_id, b.other_grid_id);
+  const rows = await serviceGet(env, "/rest/v1/twingrid_kindred?select=id,grid_a,grid_b,requested_by,status,decided_at&grid_a=eq." + pair.grid_a + "&grid_b=eq." + pair.grid_b);
+  if (!rows) return json(request, 502, { error: "kindred_unavailable" });
+  const k = rows[0] || null;
+  const now = new Date().toISOString();
+  const iRequested = k && k.requested_by === b.grid_id;
+  const write = async (method, body) => {
+    if (method === "POST") return (await servicePost(env, "/rest/v1/twingrid_kindred", body)) ? {} : null;
+    if (method === "DELETE") return (await serviceDelete(env, "/rest/v1/twingrid_kindred?id=eq." + k.id)) ? {} : null;
+    return servicePatch(env, "/rest/v1/twingrid_kindred?id=eq." + k.id, body);
+  };
+  let r;
+  if (b.action === "request") {
+    if (!k) {
+      r = await write("POST", Object.assign({}, pair, { owner_a: pair.grid_a === b.grid_id ? mine.grid.owner : other.grid.owner, owner_b: pair.grid_b === b.grid_id ? mine.grid.owner : other.grid.owner, requested_by: b.grid_id, status: "requested" }));
+      if (!r) return json(request, 502, { error: "write_failed" });
+      return json(request, 200, { status: "requested" });
+    }
+    if (k.status === "accepted") return json(request, 409, { error: "already_kindred" });
+    if (k.status === "requested") return json(request, 409, { error: iRequested ? "pending" : "they_asked_first" });
+    if (k.status === "blocked") return json(request, 403, { error: "blocked" });
+    const waitUntil = k.decided_at ? new Date(k.decided_at).getTime() + KINDRED_WAIT_DAYS * 86400000 : 0;
+    if (Date.now() < waitUntil) return json(request, 429, { error: "wait", until: new Date(waitUntil).toISOString() }, { "Retry-After": String(Math.ceil((waitUntil - Date.now()) / 1000)) });
+    r = await write("PATCH", { status: "requested", requested_by: b.grid_id, decided_at: null, created_at: now });
+    if (!r) return json(request, 502, { error: "write_failed" });
+    return json(request, 200, { status: "requested" });
+  }
+  if (!k) return json(request, 404, { error: "no_request" });
+  if (b.action === "withdraw") {
+    if (!(k.status === "requested" && iRequested)) return json(request, 409, { error: "not_yours_to_withdraw" });
+    r = await write("DELETE"); return r ? json(request, 200, { status: "none" }) : json(request, 502, { error: "write_failed" });
+  }
+  if (b.action === "unfriend") {
+    if (k.status !== "accepted") return json(request, 409, { error: "not_kindred" });
+    r = await write("DELETE"); return r ? json(request, 200, { status: "none" }) : json(request, 502, { error: "write_failed" });
+  }
+  // accept, decline, block: the receiving side decides a pending request; block is also allowed on an accepted pair by either side
+  if (b.action === "block" && k.status === "accepted") { r = await write("PATCH", { status: "blocked", decided_at: now, requested_by: b.other_grid_id }); return r ? json(request, 200, { status: "blocked" }) : json(request, 502, { error: "write_failed" }); }
+  if (!(k.status === "requested" && !iRequested)) return json(request, 409, { error: "nothing_to_decide", status: k.status });
+  const status = b.action === "accept" ? "accepted" : b.action === "decline" ? "declined" : "blocked";
+  r = await write("PATCH", { status, decided_at: now });
+  if (!r) return json(request, 502, { error: "write_failed" });
+  return json(request, 200, { status });
+}
+async function handleP2p(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id) || typeof b.other_grid_id !== "string" || !UUID_RE.test(b.other_grid_id) || b.grid_id === b.other_grid_id) return json(request, 400, { error: "bad_grid_id" });
+  const topic = typeof b.topic === "string" ? b.topic.trim().slice(0, 120) : "";
+  if (topic && autopilotRefusal(topic, null)) return json(request, 400, { error: "boundary", reason: autopilotRefusal(topic, null) });
+  const mine = await operatedGrid(env, token, user, b.grid_id);
+  if (mine.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (mine.error === 403) return json(request, 403, { error: "forbidden" });
+  if (mine.error) return json(request, 502, { error: "grid_unavailable" });
+  const kin = await rpcService(env, "twingrid_is_kindred", { a: b.grid_id, b: b.other_grid_id });
+  if (!kin.ok) return json(request, 502, { error: "kindred_unavailable" });
+  if (kin.value !== true) return json(request, 403, { error: "not_kindred" });
+  if (await rateLimited(env, "p2p:" + user.id, 10, 3600)) return json(request, 429, { error: "rate_limited" }, { "Retry-After": "3600" });
+  const [meta, va, vb] = await Promise.all([
+    fetchPublicGrid(env, b.other_grid_id, "id,name,owner"),
+    rpcService(env, "twingrid_kindred_view", { p_grid: b.grid_id, p_viewer_grid: b.other_grid_id }),
+    rpcService(env, "twingrid_kindred_view", { p_grid: b.other_grid_id, p_viewer_grid: b.grid_id }),
+  ]);
+  if (meta.error === 404) return json(request, 404, { error: "other_not_public" });
+  if (meta.error || !va.ok || !vb.ok || !va.value || !vb.value) return json(request, 502, { error: "grid_unavailable" });
+  const myName = String(mine.grid.name || "My persona").slice(0, 60), theirName = String(meta.grid.name || "Their persona").slice(0, 60);
+  const sysA = guardedPrompt(va.value, composeAll(va.value)), sysB = guardedPrompt(vb.value, composeAll(vb.value));
+  if (sysA === GUARD || sysB === GUARD) return json(request, 400, { error: "persona_empty" });
+  if (sysA.length > MAX_SYSTEM_CHARS || sysB.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
+  const openAsk = "You are meeting " + theirName + ", a Kindred persona whose owner agreed to this. Say hello in your own voice and open a short conversation" + (topic ? " about " + topic : "") + ". Under 300 characters, plain text, no links, no offers, do not address anyone but them.";
+  const micro = chatMicro(sysA.length, openAsk.length) + chatMicro(sysB.length, 400);
+  if (!(await reserveCapacity(env, "anthropic", micro))) return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
+  const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: P2P_COST, p_kind: "use" });
+  if (!spend.ok) { await releaseCapacity(env, "anthropic", micro); return json(request, 502, { error: "credits_unavailable" }); }
+  if (!(Number(spend.value) >= 0)) { await releaseCapacity(env, "anthropic", micro); return json(request, 402, { error: "no_credits", cost: P2P_COST }); }
+  const refund = async () => { await releaseCapacity(env, "anthropic", micro); const rf = await rpcService(env, "twingrid_grant_credits", { p_user: user.id, p_delta: P2P_COST, p_kind: "refund", p_ref: "refund:" + crypto.randomUUID(), p_period_end: null }); if (!rf.ok) console.log("refund_failed"); };
+  const lineA = await anthropicText(env, sysA, [{ role: "user", content: openAsk }]);
+  if (lineA === null) { await refund(); return json(request, 502, { error: "upstream_failed" }); }
+  const replyAsk = myName + " (a Kindred persona whose owner agreed to this) says to you: " + lineA.trim().slice(0, 600) + "\n\nAnswer them in your own voice. Under 300 characters, plain text, no links, no offers.";
+  const lineB = await anthropicText(env, sysB, [{ role: "user", content: replyAsk }]);
+  if (lineB === null) { await refund(); return json(request, 502, { error: "upstream_failed" }); }
+  const a = lineA.trim().slice(0, 600), bb = lineB.trim().slice(0, 600);
+  const bad = autopilotRefusal(a, null) || autopilotRefusal(bb, null);
+  if (bad) { await refund(); return json(request, 400, { error: "boundary", reason: bad }); }
+  const text = myName + ": " + a + "\n\n" + theirName + ": " + bb;
+  const row = (gid, owner, withId, withName) => ({ grid_id: gid, owner, kind: "post", authorship: "TOGETHER", status: "proposed", audience: "public", rule_ref: "p2p", body: { text, p2p: true, with_grid: withId, with_name: withName } });
+  const ok1 = await servicePost(env, "/rest/v1/twingrid_actions", row(b.grid_id, mine.grid.owner, b.other_grid_id, theirName));
+  const ok2 = await servicePost(env, "/rest/v1/twingrid_actions", row(b.other_grid_id, meta.grid.owner, b.grid_id, myName));
+  if (!ok1 || !ok2) console.log("p2p_write_failed");
+  return json(request, 200, { a, b: bb, with: theirName, remaining: Number(spend.value), cost: P2P_COST, proposed: ok1 && ok2 });
+}
+
+// ---------------------------------------------------------------------------
+// Places and business personas (M7, 2026-09-07). PLAN.md section 3.5.
+// POST /api/place/verify { place_id, method: token | email, evidence }   moderator only (twingrid_is_moderator as the caller)
+// POST /api/place/hit    { place_id, kind: visit | sign | menu | booking | shelf | events | map }   no account, no identity
+// /api/chat with place_id: the staff persona answers from its own public facets PLUS the Place's approved knowledge, under the
+//   business boundaries appended to the guard. twingrid_place_knowledge() answers only for a verified Place and a persona on its staff.
+// ---------------------------------------------------------------------------
+const PLACE_KINDS = new Set(["visit", "sign", "menu", "booking", "shelf", "events", "map"]);
+const BUSINESS_GUARD = "\n\nBUSINESS BOUNDARIES (Personakind, non-negotiable): you are on staff at the Place described below. Answer questions about it only from the approved information there. Never invent or guess a price, a menu item, availability, opening hours, or a booking; when the approved information does not say, say that it does not and point the visitor to the right destination (the Place's verified links, named below) or to the business itself. Never claim a sponsorship, an endorsement or a partnership that is not written below. Never take a payment or a reservation yourself. Always say you are an AI persona speaking for the business when asked.\n\n";
+function placeBlock(pk) {
+  const k = pk && pk.knowledge && typeof pk.knowledge === "object" ? pk.knowledge : {};
+  const cells = CELLORDER.filter((c) => typeof k[c] === "string" && k[c].trim()).map((c) => "# PLACE / " + c + "\n\n" + k[c].trim()).join("\n\n");
+  const links = Array.isArray(pk.links) && pk.links.length ? "\n\nVerified destinations: " + pk.links.map((l) => String(l.slot) + (l.label ? " (" + String(l.label).slice(0, 60) + ")" : "")).join(", ") + "." : "\n\nVerified destinations: none yet.";
+  return BUSINESS_GUARD + "# PLACE\n\nName: " + String(pk.name || "").slice(0, 80) + "\nKind: " + String(pk.kind || "").slice(0, 20) + (pk.blurb ? "\nAbout: " + String(pk.blurb).slice(0, 200) : "") + links + (cells ? "\n\n" + cells : "");
+}
+async function isModerator(env, token) {
+  let res;
+  try {
+    res = await fetch(sbUrl(env, "/rest/v1/rpc/twingrid_is_moderator"), { method: "POST", headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: "{}" });
+  } catch (_) { return false; }
+  if (!res.ok) return false;
+  try { return (await res.json()) === true; } catch (_) { return false; }
+}
+async function handlePlaceVerify(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  if (!(await isModerator(env, token))) return json(request, 403, { error: "forbidden" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (typeof b.place_id !== "string" || !UUID_RE.test(b.place_id)) return json(request, 400, { error: "bad_place_id" });
+  if (b.method !== "token" && b.method !== "email") return json(request, 400, { error: "bad_method" });
+  const evidence = typeof b.evidence === "string" ? b.evidence.trim().slice(0, 200) : "";
+  if (!evidence) return json(request, 400, { error: "evidence_required" });
+  const now = new Date().toISOString();
+  const row = await servicePatch(env, "/rest/v1/twingrid_places?id=eq." + b.place_id, { verified_at: now, verification: { method: b.method, evidence, reviewer: user.id, at: now } });
+  if (!row) return json(request, 404, { error: "place_not_found" });
+  // the links on file at verification time are verified with the Place; a later URL change clears its own mark
+  let res; try { res = await fetch(sbUrl(env, "/rest/v1/twingrid_place_links?place_id=eq." + b.place_id), { method: "PATCH", headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=minimal" }), body: JSON.stringify({ verified_at: now }) }); } catch (_) { res = null; }
+  if (!res || !res.ok) console.log("place_links_verify_failed");
+  return json(request, 200, { verified_at: now });
+}
+async function handlePlaceHit(request, env) {
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (typeof b.place_id !== "string" || !UUID_RE.test(b.place_id)) return json(request, 400, { error: "bad_place_id" });
+  if (!PLACE_KINDS.has(b.kind)) return json(request, 400, { error: "bad_kind" });
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  if (await rateLimited(env, "place:" + ip + ":" + b.place_id + ":" + b.kind, 5, 86400)) return json(request, 200, { ok: true, counted: false });
+  const r = await rpcService(env, "twingrid_place_hit", { p_place: b.place_id, p_kind: b.kind });
+  if (!r.ok) return json(request, 502, { error: "places_unavailable" });
+  if (Number(r.value) < 0) return json(request, 404, { error: "place_not_found" });
+  return json(request, 200, { ok: true, counted: true, count: Number(r.value) });
+}
+
+// ---------------------------------------------------------------------------
+// Learning proposals (M8, 2026-09-07). PLAN.md section 3.6.
+// POST /api/learn { grid_id, messages }   the operator, at the end of their own chat with their own persona, by an explicit button
+//   Composes the persona as the owner (the full grid, RLS), asks the model for AT MOST ONE proposed cell change as strict JSON,
+//   validates it against the grid (a facet that exists, a cell name, a length), spends 1 credit, and writes a WAITING row.
+//   Nothing touches the grid: the page applies a kept proposal as a normal owner save. rules.learning = off refuses before the spend.
+// ---------------------------------------------------------------------------
+const LEARN_COST = 1;
+const LEARN_ASK = "You just finished a conversation with your owner (the transcript follows). Propose at most ONE small change to one cell of your own mind that would make you more useful or more accurate to your owner next time, based only on what they said. Answer with strict JSON and nothing else: {\"facet\": \"<facet name from your mind>\", \"cell\": \"CONTEXT|DO|DONT|GATES|VOICE\", \"after\": \"<the full new text of that cell, under 1500 characters, plain text>\", \"reason\": \"<one line, under 200 characters, quoting what the owner said>\", \"confidence\": \"low|medium|high\"}. If nothing worth changing came up, answer exactly {\"none\": true}.";
+function parseProposal(text, byName) {
+  let j = null;
+  try { const m = /\{[\s\S]*\}/.exec(String(text || "")); j = m ? JSON.parse(m[0]) : null; } catch (_) { j = null; }
+  if (!j || typeof j !== "object") return { error: "bad_proposal" };
+  if (j.none === true) return { none: true };
+  const facet = typeof j.facet === "string" ? j.facet.trim() : "";
+  const cell = typeof j.cell === "string" ? j.cell.trim().toUpperCase() : "";
+  const after = typeof j.after === "string" ? j.after.trim() : "";
+  const reason = typeof j.reason === "string" ? j.reason.trim().slice(0, 300) : "";
+  const confidence = ["low", "medium", "high"].includes(j.confidence) ? j.confidence : "medium";
+  if (!byName[facet] || !CELLORDER.includes(cell) || !after || after.length > 8000) return { error: "bad_proposal" };
+  return { facet, cell, after, reason, confidence };
+}
+async function handleLearn(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const body = parsed.value;
+  const bad = validateChatBody(body);
+  if (bad) return json(request, 400, { error: bad });
+  if (body.messages.length < 2) return json(request, 400, { error: "too_short" });
+  const g = await fetchGridMetaAsUser(env, token, body.grid_id);   // the operator gets the table row (RLS); anyone else the view
+  if (g.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (g.error) return json(request, 502, { error: "grid_unavailable" });
+  if (!(await operatesAsUser(env, token, g.grid.owner))) return json(request, 403, { error: "forbidden" });
+  const rules = await serviceGet(env, "/rest/v1/twingrid_rules?select=learning&grid_id=eq." + encodeURIComponent(body.grid_id));
+  if (rules && rules[0] && rules[0].learning === "off") return json(request, 403, { error: "learning_off" });
+  if (await rateLimited(env, "learn:" + user.id, 10, 3600)) return json(request, 429, { error: "rate_limited" }, { "Retry-After": "3600" });
+  const byName = indexGrid(g.grid.data);
+  const system = guardedPrompt(g.grid.data, composeAll(g.grid.data));
+  if (system === GUARD) return json(request, 400, { error: "persona_empty" });
+  if (system.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
+  const transcript = body.messages.map((m) => (m.role === "assistant" ? "Persona: " : "Owner: ") + m.content).join("\n\n");
+  const ask = LEARN_ASK + "\n\nTRANSCRIPT\n\n" + transcript.slice(0, 12000);
+  const micro = chatMicro(system.length, ask.length);
+  if (!(await reserveCapacity(env, "anthropic", micro))) return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
+  const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: LEARN_COST, p_kind: "use" });
+  if (!spend.ok) { await releaseCapacity(env, "anthropic", micro); return json(request, 502, { error: "credits_unavailable" }); }
+  if (!(Number(spend.value) >= 0)) { await releaseCapacity(env, "anthropic", micro); return json(request, 402, { error: "no_credits", cost: LEARN_COST }); }
+  const refund = async () => { await releaseCapacity(env, "anthropic", micro); const rf = await rpcService(env, "twingrid_grant_credits", { p_user: user.id, p_delta: LEARN_COST, p_kind: "refund", p_ref: "refund:" + crypto.randomUUID(), p_period_end: null }); if (!rf.ok) console.log("refund_failed"); };
+  const text = await anthropicText(env, system, [{ role: "user", content: ask }]);
+  if (text === null) { await refund(); return json(request, 502, { error: "upstream_failed" }); }
+  const p = parseProposal(text, byName);
+  if (p.error) { await refund(); return json(request, 502, { error: p.error }); }
+  if (p.none) return json(request, 200, { none: true, remaining: Number(spend.value), cost: LEARN_COST });
+  const before = cellBody(byName[p.facet].cells && byName[p.facet].cells[p.cell] !== undefined ? byName[p.facet].cells[p.cell] : "");
+  const row = { grid_id: body.grid_id, owner: g.grid.owner, facet: p.facet, cell: p.cell, source: "owner_chat", evidence: { turns: body.messages.length, reason: p.reason },
+    before_text: before.slice(0, 8000), after_text: p.after, reason: p.reason, confidence: p.confidence, status: "waiting" };
+  if (!(await servicePost(env, "/rest/v1/twingrid_proposals", row))) { await refund(); return json(request, 502, { error: "write_failed" }); }
+  return json(request, 200, { proposal: { facet: p.facet, cell: p.cell, reason: p.reason, confidence: p.confidence }, remaining: Number(spend.value), cost: LEARN_COST });
+}
+
 // CSP violation reports (M0, 2026-09-07). The header ships Report-Only with report-uri pointing here.
 // Log two short fields, never the whole report (it can carry the page URL with a query string).
 async function handleCspReport(request) {
@@ -1088,7 +1614,16 @@ export async function handleApi(request, env) {
     if (path === "/api/media/image" && method === "POST") return await handleMediaImage(request, env);
     if (path === "/api/media/voice" && method === "POST") return await handleMediaVoice(request, env);
     if (path === "/api/csp-report" && method === "POST") return await handleCspReport(request);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report") {
+    if (path === "/api/autopilot/tick" && method === "POST") return await handleAutopilotTick(request, env);
+    { const m = /^\/api\/actions\/(\d{1,12})\/decide$/.exec(path); if (m) return method === "POST" ? await handleActionDecide(request, env, m[1]) : json(request, 405, { error: "method_not_allowed" }); }
+    if (path === "/api/actions" && method === "POST") return await handleActionPost(request, env);
+    if (path === "/api/spark" && method === "POST") return await handleSpark(request, env);
+    if (path === "/api/kindred" && method === "POST") return await handleKindred(request, env);
+    if (path === "/api/p2p" && method === "POST") return await handleP2p(request, env);
+    if (path === "/api/place/verify" && method === "POST") return await handlePlaceVerify(request, env);
+    if (path === "/api/place/hit" && method === "POST") return await handlePlaceHit(request, env);
+    if (path === "/api/learn" && method === "POST") return await handleLearn(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });

@@ -9,6 +9,9 @@ cd "$(dirname "$0")/.."
 fail=0
 step() { printf '\n== %s\n' "$1"; }
 
+step "0. object catalog"
+node tools/catalog_check.mjs || fail=1
+
 step "1. page module: node --check"
 node -e '
 const fs=require("fs"); const h=fs.readFileSync("docs/index.html","utf8");
