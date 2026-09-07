@@ -1177,6 +1177,76 @@ async function handleAutopilotTick(request, env) {
   return json(request, 200, receipt);
 }
 
+// ---------------------------------------------------------------------------
+// Decisions and manual posts (M4, 2026-09-07). PLAN.md section 4.2.
+// POST /api/actions/:id/decide  { decision: approve | decline | edit, text? }   operator of the action's owner only
+// POST /api/actions              { grid_id, text }                              operator only; published at once, authorship OWNER
+// The table has no UPDATE grant for authenticated on purpose: every decision passes through here, as the caller
+// is verified with twingrid_operates() and the write is made with the service key.
+// ---------------------------------------------------------------------------
+async function servicePatch(env, path, body) {
+  let res;
+  try {
+    res = await fetch(sbUrl(env, path), { method: "PATCH", headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=representation" }), body: JSON.stringify(body) });
+  } catch (_) { return null; }
+  if (!res.ok) return null;
+  try { const rows = await res.json(); return Array.isArray(rows) && rows.length === 1 ? rows[0] : null; } catch (_) { return null; }
+}
+async function handleActionDecide(request, env, id) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  if (!/^\d{1,12}$/.test(id)) return json(request, 400, { error: "bad_id" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  const decision = b.decision;
+  if (decision !== "approve" && decision !== "decline" && decision !== "edit") return json(request, 400, { error: "bad_decision" });
+  const rows = await serviceGet(env, "/rest/v1/twingrid_actions?select=id,grid_id,owner,status,body,audience&id=eq." + id);
+  if (!rows) return json(request, 502, { error: "actions_unavailable" });
+  if (rows.length !== 1) return json(request, 404, { error: "action_not_found" });
+  const a = rows[0];
+  if (!(await operatesAsUser(env, token, a.owner))) return json(request, 403, { error: "forbidden" });
+  if (a.status !== "proposed") return json(request, 409, { error: "already_decided", status: a.status });
+  const now = new Date().toISOString();
+  let patch;
+  if (decision === "decline") patch = { status: "declined", decided_at: now };
+  else if (decision === "approve") patch = { status: "published", decided_at: now, published_at: now };
+  else {
+    const text = typeof b.text === "string" ? b.text.trim() : "";
+    const reason = autopilotRefusal(text, null);
+    if (reason) return json(request, 400, { error: "boundary", reason });
+    patch = { status: "published", authorship: "TOGETHER", body: Object.assign({}, a.body && typeof a.body === "object" ? a.body : {}, { text }), decided_at: now, published_at: now };
+  }
+  const row = await servicePatch(env, "/rest/v1/twingrid_actions?id=eq." + id + "&status=eq.proposed", patch);
+  if (!row) return json(request, 409, { error: "already_decided" });
+  return json(request, 200, { id: Number(id), status: row.status, authorship: row.authorship, published_at: row.published_at || null });
+}
+async function handleActionPost(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id)) return json(request, 400, { error: "bad_grid_id" });
+  const text = typeof b.text === "string" ? b.text.trim() : "";
+  const reason = autopilotRefusal(text, null);
+  if (reason) return json(request, 400, { error: "boundary", reason });
+  const g = await fetchGridMetaAsUser(env, token, b.grid_id);   // RLS: the operator sees the table row, a stranger falls to the view
+  if (g.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (g.error) return json(request, 502, { error: "grid_unavailable" });
+  if (!(await operatesAsUser(env, token, g.grid.owner))) return json(request, 403, { error: "forbidden" });
+  if (await rateLimited(env, "post:" + user.id, 20, 3600)) return json(request, 429, { error: "rate_limited" }, { "Retry-After": "3600" });
+  const now = new Date().toISOString();
+  const ok = await servicePost(env, "/rest/v1/twingrid_actions", {
+    grid_id: b.grid_id, owner: g.grid.owner, kind: "post", authorship: "OWNER", status: "published", audience: "public",
+    rule_ref: "owner", body: { text }, decided_at: now, published_at: now,
+  });
+  if (!ok) return json(request, 502, { error: "write_failed" });
+  return json(request, 200, { status: "published", authorship: "OWNER", published_at: now });
+}
+
 // CSP violation reports (M0, 2026-09-07). The header ships Report-Only with report-uri pointing here.
 // Log two short fields, never the whole report (it can carry the page URL with a query string).
 async function handleCspReport(request) {
@@ -1208,7 +1278,9 @@ export async function handleApi(request, env) {
     if (path === "/api/media/voice" && method === "POST") return await handleMediaVoice(request, env);
     if (path === "/api/csp-report" && method === "POST") return await handleCspReport(request);
     if (path === "/api/autopilot/tick" && method === "POST") return await handleAutopilotTick(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick") {
+    { const m = /^\/api\/actions\/(\d{1,12})\/decide$/.exec(path); if (m) return method === "POST" ? await handleActionDecide(request, env, m[1]) : json(request, 405, { error: "method_not_allowed" }); }
+    if (path === "/api/actions" && method === "POST") return await handleActionPost(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });

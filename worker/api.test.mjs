@@ -25,6 +25,7 @@ const STRANGER_TOKEN = "stranger-token";
 
 const GRID = {
   id: GRID_ID,
+  owner: USER_ID,
   data: {
     facets: [
       { name: "core", kind: "core", cells: { CONTEXT: "# core / CONTEXT\n\nI am a test persona.", VOICE: "Short sentences." } },
@@ -35,7 +36,7 @@ const GRID = {
 };
 
 // The Lobby projection of GRID, what twingrid_grids_public serves (facets scoped lobby: core and vibe by default).
-const GRID_LOBBY = { id: GRID_ID, data: { facets: GRID.data.facets.filter((f) => f.name === "core" || f.name === "vibe") } };
+const GRID_LOBBY = { id: GRID_ID, owner: USER_ID, data: { facets: GRID.data.facets.filter((f) => f.name === "core" || f.name === "vibe") } };
 
 // State the fake backend mutates so we can assert on it.
 const calls = [];
@@ -78,7 +79,12 @@ globalThis.fetch = async (url, init) => {
   }
   if (u.includes("/rest/v1/twingrid_actions")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("actions are touched with the service key");
-    if (method === "POST") { actionsRows.push(Object.assign({ created_at: new Date().toISOString() }, body)); return new Response(null, { status: 201 }); }
+    if (method === "POST") { actionsRows.push(Object.assign({ id: actionsRows.length + 1, created_at: new Date().toISOString() }, body)); return new Response(null, { status: 201 }); }
+    const idm = /[?&]id=eq\.(\d+)/.exec(u); if (idm) {
+      const row = actionsRows.find((a) => a.id === Number(idm[1]));
+      if (method === "PATCH") { if (!row || (/status=eq\.proposed/.test(u) && row.status !== "proposed")) return respond(200, []); Object.assign(row, body); return respond(200, [row]); }
+      return respond(200, row ? [row] : []);
+    }
     const m = /grid_id=eq\.([0-9a-f-]+)/.exec(u); const gid = m ? m[1] : "";
     return respond(200, actionsRows.filter((a) => a.grid_id === gid));
   }
@@ -95,6 +101,10 @@ globalThis.fetch = async (url, init) => {
   }
   if (u.includes("/rest/v1/twingrid_credits")) {
     return respond(200, [{ balance, period_end: "2026-10-01T00:00:00+00:00" }]);
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_operates")) {
+    const auth = headers.Authorization || "";
+    return respond(200, auth === "Bearer " + GOOD_TOKEN && body.target === USER_ID);
   }
   if (u.endsWith("/rest/v1/rpc/twingrid_use_credit")) {
     if (balance <= 0) return respond(200, -1);
@@ -805,6 +815,56 @@ await check("autopilot route: 404 without AUTOPILOT_AUTH, 401 with the wrong bea
   eq(ok.status, 200, "ok"); const j = await ok.json(); eq(typeof j.grids_considered, "number", "receipt shape");
   const get = await handleApi(req("/api/autopilot/tick", { method: "GET", headers: H() }), envOn);
   eq(get.status, 405, "GET is 405");
+});
+
+// ---------------------------------------------------------------------------
+// Decisions and manual posts (M4, 2026-09-07)
+// ---------------------------------------------------------------------------
+async function seedProposed() { resetAutopilot([RULE]); await runAutopilotTick(ENV, NOW); return actionsRows[0]; }
+function decide(id, body, token) { return handleApi(req("/api/actions/" + id + "/decide", { method: "POST", headers: H(token ? { Authorization: "Bearer " + token } : {}), body: JSON.stringify(body) }), ENV); }
+
+await check("decide: approve publishes the proposed action, stamps decided_at and published_at, keeps SCHEDULED", async () => {
+  const a = await seedProposed();
+  const r = await decide(a.id, { decision: "approve" }, GOOD_TOKEN);
+  eq(r.status, 200, "status"); const j = await r.json(); eq(j.status, "published", "published"); eq(j.authorship, "SCHEDULED", "authorship");
+  eq(actionsRows[0].status, "published", "row"); eq(typeof actionsRows[0].published_at, "string", "published_at"); eq(typeof actionsRows[0].decided_at, "string", "decided_at");
+});
+
+await check("decide: decline never publishes; a decided action cannot be decided again (409)", async () => {
+  const a = await seedProposed();
+  const r = await decide(a.id, { decision: "decline" }, GOOD_TOKEN);
+  eq(r.status, 200, "status"); eq(actionsRows[0].status, "declined", "declined"); eq(actionsRows[0].published_at, undefined, "never published");
+  const again = await decide(a.id, { decision: "approve" }, GOOD_TOKEN);
+  eq(again.status, 409, "already decided");
+});
+
+await check("decide: edit and approve stamps TOGETHER with the edited body, and refuses an edit that trips a boundary", async () => {
+  const a = await seedProposed();
+  const bad = await decide(a.id, { decision: "edit", text: "See https://example.com" }, GOOD_TOKEN);
+  eq(bad.status, 400, "boundary"); eq((await bad.json()).reason, "link", "reason"); eq(actionsRows[0].status, "proposed", "still proposed");
+  const r = await decide(a.id, { decision: "edit", text: "The porch is done, come sit." }, GOOD_TOKEN);
+  eq(r.status, 200, "status"); eq(actionsRows[0].status, "published", "published"); eq(actionsRows[0].authorship, "TOGETHER", "TOGETHER"); eq(actionsRows[0].body.text, "The porch is done, come sit.", "edited body");
+});
+
+await check("decide: signed out is 401, a stranger is 403, an unknown id is 404, a bad decision is 400", async () => {
+  const a = await seedProposed();
+  eq((await decide(a.id, { decision: "approve" }, null)).status, 401, "signed out");
+  eq((await decide(a.id, { decision: "approve" }, STRANGER_TOKEN)).status, 403, "stranger");
+  eq(actionsRows[0].status, "proposed", "untouched by the stranger");
+  eq((await decide(999, { decision: "approve" }, GOOD_TOKEN)).status, 404, "unknown");
+  eq((await decide(a.id, { decision: "maybe" }, GOOD_TOKEN)).status, 400, "bad decision");
+  eq((await handleApi(req("/api/actions/1/decide", { method: "GET", headers: H() }), ENV)).status, 405, "GET is 405");
+});
+
+await check("manual post: the operator publishes at once as OWNER with no credit; a stranger is 403; a link is refused", async () => {
+  resetAutopilot([]); balance = 3;
+  const r = await handleApi(req("/api/actions", { method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }), body: JSON.stringify({ grid_id: GRID_ID, text: "Stepping in today. The porch has a rail now." }) }), ENV);
+  eq(r.status, 200, "status"); const j = await r.json(); eq(j.authorship, "OWNER", "OWNER"); eq(j.status, "published", "published");
+  eq(actionsRows.length, 1, "one row"); eq(actionsRows[0].rule_ref, "owner", "rule_ref"); eq(balance, 3, "no credit");
+  const s = await handleApi(req("/api/actions", { method: "POST", headers: H({ Authorization: "Bearer " + STRANGER_TOKEN }), body: JSON.stringify({ grid_id: GRID_ID, text: "I am not the owner" }) }), ENV);
+  eq(s.status, 403, "stranger"); eq(actionsRows.length, 1, "stranger wrote nothing");
+  const l = await handleApi(req("/api/actions", { method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }), body: JSON.stringify({ grid_id: GRID_ID, text: "buy now at www.example.com" }) }), ENV);
+  eq(l.status, 400, "boundary"); eq(actionsRows.length, 1, "refused draft not stored");
 });
 
 await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {

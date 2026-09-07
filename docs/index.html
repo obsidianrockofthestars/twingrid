@@ -382,6 +382,47 @@ body.route-profile #chat{background:var(--psurf);color:var(--ptext);border-left-
 #profile .fcard.flash{outline:2px solid var(--pacc);outline-offset:3px}
 #profile .pstatus{margin:8px 0 0;font-size:15px;line-height:1.5;color:var(--pmuted);font-style:italic}
 #explore .exmood{font-size:13px;line-height:1.5;color:var(--ink-soft);margin-top:9px;overflow-wrap:anywhere}
+/* the owner dashboard, ?life (M4, 2026-09-07): public palette, owner only */
+#life{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
+body.route-life #life{display:block}
+body.route-life{overflow:auto;background:var(--paper)}
+#life .pnav{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+#life .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
+#life .pnav .brand span{color:var(--accent-w)}
+#life .btn.solid,#life .lfmodes .btn[aria-pressed="true"]{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
+#life .btn.solid:hover{background:var(--accent-w-deep)}
+#life .exhead{padding:26px 0 22px;border-bottom:1px solid var(--line-w);margin-bottom:24px}
+#life .exhead h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;margin:6px 0 10px;color:var(--ink)}
+#life .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
+#life .note{color:var(--ink-soft);font-size:13.5px;line-height:1.5}
+#life .btn{min-height:36px;background:var(--card-w);border-color:var(--line-w);color:var(--ink)}
+#life .btn:hover{border-color:var(--accent-w)}
+#life .btn:focus-visible{outline:2px solid var(--accent-w-deep);outline-offset:2px}
+.lfrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lfsel,.lfin,.lfta{font:inherit;font-size:14px;color:var(--ink);background:var(--card-w);border:1px solid var(--line-w);border-radius:10px;padding:8px 10px;min-height:36px;max-width:100%}
+.lfta{width:100%;min-height:84px;resize:vertical;display:block;margin:8px 0}
+.lfgrid{display:grid;grid-template-columns:1.2fr .8fr;gap:22px;padding-bottom:60px;align-items:start}
+@media (max-width:820px){.lfgrid{grid-template-columns:1fr}}
+.lfbox{background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:18px 20px;margin-bottom:18px;min-width:0}
+.lfbox h2{font-family:var(--serif);font-weight:600;font-size:21px;margin:0 0 10px;color:var(--ink)}
+.lfitem{border-top:1px solid var(--line-w);padding:12px 0}
+.lfitem:first-child{border-top:0}
+.lfstamp{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.lfstamp b{color:var(--accent-w);font-weight:600}
+.lftext{font-size:15px;line-height:1.55;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.lfacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.lfmodes{display:flex;gap:6px;flex-wrap:wrap}
+#life .lfrules label{display:block;font-size:13px;color:var(--ink-soft);margin:12px 0 4px}
+#life .lfrules .lfin,#life .lfrules .lfsel{width:100%}
+.lfempty{color:var(--ink-soft);font-size:14.5px;margin:0}
+/* Lately: the last three published actions on the persona page */
+.plately{padding:0 0 34px}
+#profile .plately h2{font-family:var(--serif);font-weight:600;font-size:24px;margin:0 0 10px;letter-spacing:-.02em;color:var(--ptext)}
+#profile .plitem{background:var(--psurf);border:1px solid var(--pline);border-radius:16px;padding:14px 18px;margin-bottom:10px}
+#profile .plstamp{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--pmuted);margin-bottom:6px}
+#profile .plstamp b{color:var(--pacc-ink);font-weight:600}
+#profile .pltext{margin:0;font-size:15px;line-height:1.55;color:var(--ptext);white-space:pre-wrap;overflow-wrap:anywhere}
+#profile .plately .pdisc{margin:8px 0 0;font-size:13px}
 body.route-profile #chat .dhead,body.route-profile #chat .chatin{border-color:var(--pline)}
 body.route-profile #chat .msg.a{background:var(--pbg);border-color:var(--pline);color:var(--ptext)}
 body.route-profile #chat .msg.u{background:var(--pacc);color:var(--pacc-text)}
@@ -972,8 +1013,8 @@ body.route-profile #helpbtn{left:16px;right:auto}
   #tutbody{padding:14px 14px}
   #tutbtn{display:none}
   #helpbtn{min-height:42px;padding:0 16px;font-size:14px;right:12px;bottom:12px}
-  #home .pnav,#explore .pnav,#mod .pnav,#account .pnav{gap:8px;flex-wrap:wrap}
-  #home .pnav .btn,#explore .pnav .btn,#mod .pnav .btn,#account .pnav .btn{padding:8px 12px;font-size:13px}
+  #home .pnav,#explore .pnav,#mod .pnav,#account .pnav,#life .pnav{gap:8px;flex-wrap:wrap}
+  #home .pnav .btn,#explore .pnav .btn,#mod .pnav .btn,#account .pnav .btn,#life .pnav .btn{padding:8px 12px;font-size:13px}
   #home,#explore,#mod,#account{padding-bottom:84px}
   #tutfoot label{flex-basis:100%}
 }
@@ -1201,6 +1242,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
       <details class="pk-rooms" id="roomsbox"><summary>Who sees what <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Public facets are the persona strangers, Explore and hosted chat by anyone but you can read. Private stays yours. Kindred is saved now and opens to mutual relationships when they ship. Save to apply.</p><div id="roomlist"></div></details>
       <details class="pk-rooms" id="homebox"><summary>Home <span class="note" id="homesum"></span></summary><p class="note" style="margin:6px 0 4px">The room your persona lives in. Everyone who opens its page sees it. An object can open one of your facets; if that facet is Private or Kindred, strangers see the object and no door. Save to apply.</p><div id="homefields"></div></details>
+      <a class="newbtn" href="?life" style="display:block;text-align:center;text-decoration:none;margin-top:8px">Life log and rules</a>
       <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
       <div id="facemsg" aria-live="polite"></div>
       <div id="voicebox" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="facevoice" class="note" style="margin:0">Voice</label><select id="facevoice" class="tbtn" aria-label="Persona voice" style="font-size:12px;padding:6px 8px"><option value="">No voice</option><option value="browser">Browser voice (free)</option></select><span class="note" id="voicenote" style="margin:0">Gemini voices cost 2 to 6 messages a reply to hear; the browser voice is free.</span></div>
@@ -1337,6 +1379,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <a class="brand" href="?">Persona<span>kind</span></a>
       <span class="sp" style="flex:1"></span>
       <a class="btn" href="?" hidden data-home>Home</a>
+      <a class="btn" href="?life" hidden data-home>Life log</a>
       <a class="btn" href="?explore">Explore</a>
       <a class="btn" href="?" hidden data-acct>Account</a>
       <button class="btn solid" data-auth data-anon id="acbuild">Build your own</button>
@@ -1368,6 +1411,34 @@ body.route-profile #helpbtn{left:16px;right:auto}
     <p class="exfoot" id="acfoot"></p>
   </div>
 </div>
+<div id="life">
+  <div class="wrap">
+    <nav class="pnav">
+      <a class="brand" href="?">Persona<span>kind</span></a>
+      <span class="sp" style="flex:1"></span>
+      <a class="btn" href="?" hidden data-home>Home</a>
+      <a class="btn" href="?explore">Explore</a>
+      <a class="btn" href="?" hidden data-acct>Account</a>
+      <button class="btn solid" data-auth data-anon>Sign in</button>
+    </nav>
+    <div class="exhead">
+      <div class="pk-kicker" style="text-align:left">Life log</div>
+      <h1>While you were away</h1>
+      <p class="exlede">What your persona did on its own, what it wants to do next, and the rules it lives by. Only you see this page.</p>
+      <div class="lfrow" style="margin-top:14px"><label for="lfpick" class="note">Persona</label><select id="lfpick" class="lfsel" aria-label="Persona"></select><span class="note" id="lfmsg" role="status" aria-live="polite"></span></div>
+    </div>
+    <div class="lfgrid">
+      <div>
+        <section class="lfbox" aria-labelledby="lfqh"><h2 id="lfqh">Waiting for you</h2><div id="lfqueue"></div></section>
+        <section class="lfbox" aria-labelledby="lfsh"><h2 id="lfsh">Step in</h2><div id="lfstep"></div></section>
+        <section class="lfbox" aria-labelledby="lflh"><h2 id="lflh">Life log</h2><div id="lflog"></div></section>
+      </div>
+      <aside>
+        <section class="lfbox" aria-labelledby="lfrh"><h2 id="lfrh">Rules</h2><p class="note">Each attempt spends 1 hosted message from your balance, whether the draft is proposed, published or refused. Nothing runs while the mode is Private or Manual. Every published post carries who wrote it.</p><form class="lfrules" id="lfrules"></form></section>
+      </aside>
+    </div>
+  </div>
+</div>
 <div id="profile">
   <div class="phero">
     <div class="band" id="pband"></div>
@@ -1376,6 +1447,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
         <a class="brand" href="?" id="phome">Persona<span>kind</span></a>
         <span class="sp" style="flex:1"></span>
         <a class="btn ghost" href="?" hidden data-home style="margin-right:10px">Home</a>
+        <a class="btn ghost" href="?life" hidden data-home style="margin-right:10px">Life log</a>
         <a class="btn ghost" href="?explore" style="margin-right:10px">Explore</a>
         <a class="btn ghost" href="?" hidden data-acct style="margin-right:10px">Account</a>
         <button class="btn solid" data-auth data-anon id="pmake">Build your own</button>
@@ -1429,6 +1501,11 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <h2 id="phouseh">Home</h2>
       <p class="phroom" id="phroom"></p>
       <div class="phzones" id="phzones"></div>
+    </section>
+    <section class="plately" id="plately" hidden aria-labelledby="platelyh">
+      <h2 id="platelyh">Lately</h2>
+      <div id="platelylist"></div>
+      <p class="pdisc">Each post says who wrote it: the persona on its own, its owner, or the two together. The persona is an AI, not a person.</p>
     </section>
     <div class="facets">
       <h2>Everything its owner wrote</h2>
@@ -1921,12 +1998,14 @@ async function resolveHandlePersona(h,name){ const a=await accountByHandle(h); i
   const {data}=await SB.from('twingrid_grids_public').select('id,name').eq('owner',a.id).eq('is_public',true).ilike('name',ilikeEscape(name)).limit(1);
   return {acc:a,id:(data&&data[0])?data[0].id:null}; }
 function onExploreRoute(){ return new URLSearchParams(location.search).has('explore'); }
+function onLifeRoute(){ return new URLSearchParams(location.search).has('life'); }
 function route(){ const twin=onProfileRoute();
   if(twin){ document.body.className='marketing route-profile'; app.style.display='none'; renderProfile(twin); return; }
   const acct=onAccountRoute();
   if(acct){ const pn=accountPersonaParam(); app.style.display='none';
     if(pn){ document.body.className='marketing route-profile'; resolveHandlePersona(acct,pn).then(r=>{ if(r.id) renderProfile(r.id,{handle:acct}); else renderProfile('00000000-0000-0000-0000-000000000000',{handle:acct,missingName:pn}); }); return; }
     document.body.className='marketing route-account'; renderAccount(acct); return; }
+  if(onLifeRoute()){ document.body.className='marketing route-life'; app.style.display='none'; renderLife(); return; }
   if(onExploreRoute()){ document.body.className='marketing route-explore'; app.style.display='none'; renderExplore(); return; }
   if(onModRoute()){ document.body.className='marketing route-mod'; app.style.display='none'; renderMod(); return; }
   document.body.className='marketing route-landing'; refreshAuth(); }
@@ -2002,7 +2081,7 @@ function termsBar(session){ const bar=document.getElementById('termsbar'); if(!b
 document.getElementById('termsagree').onclick=async()=>{ try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} document.getElementById('termsbar').hidden=true;
   try{ await SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}); }catch(_){} };
 SB.auth.getSession().then(({data})=>termsBar(data&&data.session)).catch(()=>{});
-SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
+SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
   // Terms acceptance record (2026-09-02): the box was ticked in this browser before sign-in, so stamp the version on the user once.
   try{ const u=session&&session.user; const md=(u&&u.user_metadata)||{}; if(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')===TERMS_VERSION){ SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}).catch(()=>{}); } }catch(_){} });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
@@ -2949,7 +3028,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     document.getElementById('pfacets').innerHTML=''; document.getElementById('pcells').textContent='';
     document.getElementById('pfacetcount').textContent=''; document.getElementById('pkind').textContent='not found';
     const __ct=document.getElementById('pctatalk'); if(__ct)__ct.style.display='none';
-    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); return; }
+    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); pkRenderLately(null); return; }
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
   nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
@@ -2987,7 +3066,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; syncHideBtn();
-  pkRenderHome(g);
+  pkRenderHome(g); pkRenderLately(id);
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
   // Same guarded text the editor's Copy prompt hands out. No key, no account, no money: this is the door most readers take.
@@ -3041,6 +3120,107 @@ async function pkRenderHome(g){ const sec=document.getElementById('phouse'), roo
       if(!starters.length) any=true; }
     zones.appendChild(panel); }
   sec.hidden=!(any||bits.length); }
+
+// ---------- the owner dashboard, ?life (M4, 2026-09-07). Reads twingrid_actions and twingrid_rules as the operator (RLS);
+// decisions and owner posts go through the Worker (/api/actions), which verifies twingrid_operates() and writes with the service key.
+// Every string from the database is rendered through textContent. ----------
+const LF_AUTH={AUTOPILOT:'Autopilot',OWNER:'Owner',TOGETHER:'Together',SCHEDULED:'Scheduled'};
+const LF_MODES=[['private','Private','Nothing runs. The persona only talks when someone opens it.'],['manual','Manual','You post. The persona proposes nothing.'],['together','Together','The persona drafts once a day and waits for you here.'],['autopilot','Autopilot','The persona posts once a day on its own, inside these rules.']];
+let LF_GRID=null, LF_RULES=null;
+function lfMsg(t){ const m=document.getElementById('lfmsg'); if(m) m.textContent=t||''; }
+function lfLocalHourLabel(hUtc){ const d=new Date(); d.setUTCHours(Number(hUtc)||0,0,0,0); return d.toLocaleTimeString([],{hour:'numeric'}); }
+function lfUtcFromLocal(hLocal){ const d=new Date(); d.setHours(Number(hLocal)||0,0,0,0); return d.getUTCHours(); }
+function lfLocalFromUtc(hUtc){ const d=new Date(); d.setUTCHours(Number(hUtc)||0,0,0,0); return d.getHours(); }
+function lfEmpty(host,text){ const p=document.createElement('p'); p.className='lfempty'; p.textContent=text; host.appendChild(p); }
+function lfBtn(label,on,solid){ const b=document.createElement('button'); b.type='button'; b.className='btn'+(solid?' solid':''); b.textContent=label; if(on) b.onclick=on; return b; }
+async function renderLife(){ document.title='Life log \u00b7 Personakind'; const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'), pick=document.getElementById('lfpick'), rules=document.getElementById('lfrules'), step=document.getElementById('lfstep');
+  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg('');
+  const {data:{session}}=await SB.auth.getSession();
+  if(!session){ lfEmpty(q,'Sign in to see what your persona has been doing.'); openAuth(); return; }
+  const uid=await ownerId();
+  const {data:grids,error}=await SB.from('twingrid_grids').select('id,name,owner,is_public').eq('owner',uid).order('updated_at',{ascending:false});
+  if(error){ lfEmpty(q,'Could not load your personas.'); return; }
+  if(!grids||!grids.length){ lfEmpty(q,'No personas yet. Build one first, then come back.'); return; }
+  grids.forEach(g=>{ const o=document.createElement('option'); o.value=g.id; o.textContent=(g.name||'Untitled')+(g.is_public?'':' (private)'); pick.appendChild(o); });
+  const want=new URLSearchParams(location.search).get('g'); LF_GRID=grids.find(g=>g.id===want)||grids[0]; pick.value=LF_GRID.id;
+  pick.onchange=()=>{ LF_GRID=grids.find(g=>g.id===pick.value)||grids[0]; lfLoad(); };
+  await lfLoad(); }
+async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); }
+async function lfLoadActions(){ const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'); q.innerHTML=''; lg.innerHTML='';
+  const {data,error}=await SB.from('twingrid_actions').select('id,kind,authorship,status,audience,body,rule_ref,refusal,created_at,decided_at,published_at').eq('grid_id',LF_GRID.id).order('created_at',{ascending:false}).limit(100);
+  if(error){ lfEmpty(q,'Could not load the life log.'); return; }
+  const rows=data||[]; const proposed=rows.filter(r=>r.status==='proposed'), refused=rows.filter(r=>r.status==='refused');
+  if(!proposed.length&&!refused.length){ const on=LF_RULES&&(LF_RULES.mode==='together'||LF_RULES.mode==='autopilot')&&LF_RULES.max_per_day>0;
+    lfEmpty(q, on?('Nothing waiting. The next attempt runs at '+lfLocalHourLabel(LF_RULES.hour_utc)+' your time.'):'Nothing waiting. Set the rules and pick Together to get a daily draft to approve.'); }
+  proposed.forEach(r=>q.appendChild(lfItem(r,true))); refused.forEach(r=>q.appendChild(lfItem(r,false)));
+  if(!rows.length) lfEmpty(lg,'Nothing yet.'); rows.forEach(r=>lg.appendChild(lfItem(r,false))); }
+function lfItem(r,withActions){ const it=document.createElement('div'); it.className='lfitem';
+  const st=document.createElement('div'); st.className='lfstamp'; const b=document.createElement('b'); b.textContent=LF_AUTH[r.authorship]||String(r.authorship||''); st.appendChild(b);
+  [String(r.status||''), String(r.kind||''), new Date(r.created_at).toLocaleString(), r.rule_ref?('rule '+r.rule_ref):'', r.refusal?('refused: '+r.refusal):''].filter(Boolean).forEach(x=>{ const sp=document.createElement('span'); sp.textContent=x; st.appendChild(sp); });
+  it.appendChild(st); const p=document.createElement('p'); p.className='lftext'; p.textContent=(r.body&&typeof r.body.text==='string')?r.body.text:'(no text)'; it.appendChild(p);
+  if(withActions&&r.status==='proposed'){ const acts=document.createElement('div'); acts.className='lfacts';
+    const edit=()=>{ const ta=document.createElement('textarea'); ta.className='lfta'; ta.maxLength=600; ta.value=p.textContent; ta.setAttribute('aria-label','Edit the post before publishing'); it.insertBefore(ta,acts); acts.innerHTML='';
+      acts.append(lfBtn('Publish my edit (stamped Together)',()=>lfDecide(r.id,'edit',ta.value),true), lfBtn('Cancel',()=>lfLoadActions())); ta.focus(); };
+    acts.append(lfBtn('Approve',()=>lfDecide(r.id,'approve'),true), lfBtn('Edit and approve',edit), lfBtn('Decline',()=>lfDecide(r.id,'decline'))); it.appendChild(acts); }
+  return it; }
+async function lfDecide(id,decision,text){ const token=await hostedToken(); if(!token){ lfMsg('Sign in again.'); return; } lfMsg('Saving...');
+  try{ const r=await fetch(HOSTED_API+'/actions/'+encodeURIComponent(id)+'/decide',{method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(text!=null?{decision,text}:{decision})});
+    const j=await r.json().catch(()=>({})); if(!r.ok){ lfMsg(j.error==='boundary'?('Not published: the text trips a boundary ('+String(j.reason||'')+').'):('Could not save ('+String(j.error||r.status)+').')); return; }
+    lfMsg(decision==='decline'?'Declined.':'Published.'); }catch(_){ lfMsg('Could not reach the server.'); }
+  await lfLoadActions(); }
+async function lfLoadRules(){ const f=document.getElementById('lfrules'); f.innerHTML=''; const {data}=await SB.from('twingrid_rules').select('*').eq('grid_id',LF_GRID.id).maybeSingle(); LF_RULES=data||null;
+  const cur=Object.assign({mode:'together',topics:[],avoid:[],max_per_day:1,hour_utc:15,audience:'public',replies:'propose',learning:'propose'},LF_RULES||{});
+  const lab=(t,el)=>{ const l=document.createElement('label'); l.textContent=t; f.appendChild(l); f.appendChild(el); return el; };
+  const sel=(opts,val)=>{ const e=document.createElement('select'); e.className='lfsel'; opts.forEach(([v,t])=>{ const o=document.createElement('option'); o.value=String(v); o.textContent=t; o.selected=String(v)===String(val); e.appendChild(o); }); return e; };
+  let mode=cur.mode; const modes=document.createElement('div'); modes.className='lfmodes'; modes.setAttribute('role','group'); modes.setAttribute('aria-label','Mode'); const modeNote=document.createElement('p'); modeNote.className='note';
+  const paint=()=>{ modes.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===mode))); const m=LF_MODES.find(x=>x[0]===mode); modeNote.textContent=m?m[2]:''; };
+  LF_MODES.forEach(([k,l])=>{ const b=lfBtn(l,()=>{ mode=k; paint(); }); b.dataset.m=k; modes.appendChild(b); });
+  const ml=document.createElement('label'); ml.textContent='Mode'; f.append(ml,modes,modeNote); paint();
+  const topics=lab('Topics it may post about (comma separated)',Object.assign(document.createElement('input'),{className:'lfin',value:(cur.topics||[]).join(', '),maxLength:600,placeholder:'porches, small towns, what I am reading'}));
+  const avoid=lab('Never touch (comma separated)',Object.assign(document.createElement('input'),{className:'lfin',value:(cur.avoid||[]).join(', '),maxLength:600,placeholder:'politics, my family'}));
+  const per=lab('Posts a day',sel([[0,'0 (paused)'],[1,'1'],[2,'2'],[3,'3']],cur.max_per_day));
+  const hours=[]; for(let h=0;h<24;h++){ const d=new Date(); d.setHours(h,0,0,0); hours.push([h,d.toLocaleTimeString([],{hour:'numeric'})]); }
+  const hour=lab('When, your local time',sel(hours,lfLocalFromUtc(cur.hour_utc)));
+  const aud=lab('Audience',sel([['public','Public'],['circle','Circle only (stored now, served when Circle ships)']],cur.audience));
+  const rep=lab('Replies to Sparks (used when Sparks ship)',sel([['act','Reply on its own'],['propose','Draft a reply for me'],['ask','Ask me first']],cur.replies));
+  const lrn=lab('Learning (used when proposals ship)',sel([['propose','Propose changes for me to inspect'],['off','Off']],cur.learning));
+  const row=document.createElement('div'); row.className='lfacts'; const save=lfBtn('Save rules',null,true); save.type='submit'; const msg=document.createElement('span'); msg.className='note'; msg.setAttribute('role','status'); row.append(save,msg); f.appendChild(row);
+  const split=v=>String(v||'').split(',').map(x=>x.trim().slice(0,60)).filter(Boolean).slice(0,12);
+  f.onsubmit=async e=>{ e.preventDefault(); msg.textContent='Saving...';
+    const rowv={grid_id:LF_GRID.id,owner:LF_GRID.owner,mode,topics:split(topics.value),avoid:split(avoid.value),max_per_day:Number(per.value),hour_utc:lfUtcFromLocal(Number(hour.value)),audience:aud.value,replies:rep.value,learning:lrn.value,updated_at:new Date().toISOString()};
+    const {error}=await SB.from('twingrid_rules').upsert(rowv,{onConflict:'grid_id'});
+    msg.textContent=error?('Could not save: '+String(error.message||'').slice(0,120)):('Saved. Runs at '+lfLocalHourLabel(rowv.hour_utc)+' your time.');
+    if(!error){ LF_RULES=rowv; lfRenderStep(); } }; }
+// Step in (Jennifer 9.2): opening this page never pauses autopilot. Stepping in sets the mode to Manual and remembers the
+// previous mode in this browser; the box offers to resume on every visit until you step out. Owner posts are stamped OWNER.
+function lfStepKey(){ return 'pk_stepped_'+LF_GRID.id; }
+function lfRenderStep(){ const host=document.getElementById('lfstep'); host.innerHTML=''; let saved=null; try{ saved=JSON.parse(localStorage.getItem(lfStepKey())||'null'); }catch(_){}
+  const mode=LF_RULES?LF_RULES.mode:null; const on=mode==='together'||mode==='autopilot'; const line=document.createElement('p'); line.className='note';
+  if(saved&&saved.prev) line.textContent='You stepped in. Autopilot is paused (mode Manual) until you step out; stepping out sets it back to '+saved.prev+'.';
+  else line.textContent= on?('Autopilot is on ('+mode+'). Stepping in pauses it and lets you post as yourself. Your posts are stamped Owner.'):'Post as yourself any time. Your posts are stamped Owner.';
+  host.appendChild(line);
+  const ta=document.createElement('textarea'); ta.className='lfta'; ta.maxLength=600; ta.placeholder='Say something as the owner, in your own words.'; ta.setAttribute('aria-label','Your post as the owner'); host.appendChild(ta);
+  const acts=document.createElement('div'); acts.className='lfacts'; acts.appendChild(lfBtn('Post as owner',()=>lfOwnerPost(ta),true));
+  if(saved&&saved.prev) acts.appendChild(lfBtn('Step out and resume '+saved.prev,()=>lfStep(false,saved)));
+  else if(on) acts.appendChild(lfBtn('Step in (pause autopilot)',()=>lfStep(true)));
+  host.appendChild(acts); }
+async function lfStep(on,saved){ const stamp={updated_at:new Date().toISOString()};
+  if(on){ const prev=LF_RULES.mode; const {error}=await SB.from('twingrid_rules').update(Object.assign({mode:'manual'},stamp)).eq('grid_id',LF_GRID.id); if(error){ lfMsg('Could not pause autopilot.'); return; } try{ localStorage.setItem(lfStepKey(),JSON.stringify({prev})); }catch(_){} lfMsg('You are in. Autopilot paused.'); }
+  else { const {error}=await SB.from('twingrid_rules').update(Object.assign({mode:saved.prev},stamp)).eq('grid_id',LF_GRID.id); if(error){ lfMsg('Could not resume.'); return; } try{ localStorage.removeItem(lfStepKey()); }catch(_){} lfMsg('Resumed '+saved.prev+'.'); }
+  await lfLoadRules(); lfRenderStep(); }
+async function lfOwnerPost(ta){ const text=ta.value.trim(); if(!text){ lfMsg('Write something first.'); ta.focus(); return; } const token=await hostedToken(); if(!token){ lfMsg('Sign in again.'); return; } lfMsg('Posting...');
+  try{ const r=await fetch(HOSTED_API+'/actions',{method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({grid_id:LF_GRID.id,text})});
+    const j=await r.json().catch(()=>({})); if(!r.ok){ lfMsg(j.error==='boundary'?('Not posted: it trips a boundary ('+String(j.reason||'')+').'):('Could not post ('+String(j.error||r.status)+').')); return; }
+    ta.value=''; lfMsg('Posted as owner.'); }catch(_){ lfMsg('Could not reach the server.'); }
+  await lfLoadActions(); }
+// Lately (M4): the last three published actions on the persona page, from the public feed view, with their authorship stamps.
+async function pkRenderLately(id){ const sec=document.getElementById('plately'), list=document.getElementById('platelylist'); if(!sec||!list) return; const gen=(sec.__gen=(sec.__gen||0)+1);
+  sec.hidden=true; list.innerHTML=''; if(!id) return;
+  const {data}=await SB.from('twingrid_actions_public').select('id,authorship,body,published_at').eq('grid_id',id).order('published_at',{ascending:false}).limit(3);
+  if(gen!==sec.__gen) return; const rows=data||[]; if(!rows.length) return;
+  rows.forEach(r=>{ const it=document.createElement('div'); it.className='plitem'; const st=document.createElement('div'); st.className='plstamp'; const b=document.createElement('b'); b.textContent=LF_AUTH[r.authorship]||String(r.authorship||'');
+    st.append(b,document.createTextNode(' \u00b7 '+(r.published_at?new Date(r.published_at).toLocaleDateString():''))); const p=document.createElement('p'); p.className='pltext'; p.textContent=(r.body&&typeof r.body.text==='string')?r.body.text:''; it.append(st,p); list.appendChild(it); });
+  sec.hidden=false; }
 
 
 // ---------- new-persona flow (chooser + questionnaire) ----------
