@@ -58,6 +58,7 @@ let rulesRows = [];
 let blocksRows = [];
 let kindredRows = [];
 const PLACE_ID = "77777777-7777-4777-8777-777777777777";
+let proposalRows = []; let learnReply = null;
 let placeRow = null; let placeLinkPatches = []; let placeHits = {}; let moderators = new Set();
 let sparksRows = [];
 let visitCounts = {};
@@ -100,8 +101,8 @@ globalThis.fetch = async (url, init) => {
   }
   if (u.includes("/rest/v1/twingrid_rules")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("rules are read with the service key");
-    const m = /hour_utc=eq\.(\d+)/.exec(u); const hour = m ? Number(m[1]) : -1;
-    return respond(200, rulesRows.filter((r) => r.hour_utc === hour && (r.mode === "together" || r.mode === "autopilot") && r.max_per_day > 0));
+    const m = /hour_utc=eq\.(\d+)/.exec(u); const gm = /grid_id=eq\.([0-9a-f-]+)/.exec(u);
+    return respond(200, rulesRows.filter((r) => (!m || (r.hour_utc === Number(m[1]) && (r.mode === "together" || r.mode === "autopilot") && r.max_per_day > 0)) && (!gm || r.grid_id === gm[1])));
   }
   if (u.includes("/rest/v1/twingrid_action_runs")) {
     if (method !== "POST") throw new Error("runs are write-only from the Worker");
@@ -158,6 +159,10 @@ globalThis.fetch = async (url, init) => {
     if (!placeRow || body.p_place !== PLACE_ID || !placeRow.verified_at) return respond(200, -1);
     placeHits[body.p_kind] = (placeHits[body.p_kind] || 0) + 1; return respond(200, placeHits[body.p_kind]);
   }
+  if (u.includes("/rest/v1/twingrid_proposals")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY || method !== "POST") throw new Error("proposals are inserted by the Worker only");
+    proposalRows.push(Object.assign({ id: proposalRows.length + 1 }, body)); return new Response(null, { status: 201 });
+  }
   if (u.includes("/rest/v1/twingrid_place_links")) { if (method !== "PATCH") throw new Error("links: only PATCH from the Worker"); placeLinkPatches.push(body); return new Response(null, { status: 204 }); }
   if (u.includes("/rest/v1/twingrid_places")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("places are verified with the service key");
@@ -212,7 +217,8 @@ globalThis.fetch = async (url, init) => {
     if (headers["x-api-key"] !== ENV.ANTHROPIC_API_KEY) throw new Error("x-api-key missing");
     if (headers["anthropic-version"] !== "2023-06-01") throw new Error("anthropic-version missing");
     const isTick = body.messages.length === 1 && /Write one short public post|Kindred persona/.test(body.messages[0].content);
-    return respond(200, { content: [{ type: "text", text: isTick ? anthropicReply : "Hello from the persona." }], model: body.model });
+    const isLearn = body.messages.length === 1 && /Propose at most ONE small change/.test(body.messages[0].content);
+    return respond(200, { content: [{ type: "text", text: isLearn ? (learnReply || '{"none": true}') : isTick ? anthropicReply : "Hello from the persona." }], model: body.model });
   }
   throw new Error("unexpected fetch: " + u);
 };
@@ -1113,6 +1119,40 @@ await check("place hit: counted anonymously per kind on a verified Place; unveri
   eq((await handleApi(req("/api/place/hit", { method: "POST", headers: H(), body: JSON.stringify({ place_id: PLACE_ID, kind: "buy" }) }), ENV)).status, 400, "bad kind");
   resetPlace(false);
   eq((await handleApi(req("/api/place/hit", { method: "POST", headers: H(), body: JSON.stringify({ place_id: PLACE_ID, kind: "visit" }) }), ENV)).status, 404, "unverified");
+});
+
+// ---------------------------------------------------------------------------
+// Learning proposals (M8, 2026-09-07)
+// ---------------------------------------------------------------------------
+function learn(token, extra) { return handleApi(req("/api/learn", { method: "POST", headers: H(token ? { Authorization: "Bearer " + token } : {}), body: JSON.stringify(Object.assign({ grid_id: GRID_ID, messages: [{ role: "user", content: "I prefer short answers, two lines at most." }, { role: "assistant", content: "Noted." }] }, extra || {})) }), ENV); }
+
+await check("learn: the owner asks, one credit, a valid proposal lands as waiting with the before text and never touches the grid", async () => {
+  proposalRows = []; rulesRows = []; balance = 3; calls.length = 0;
+  learnReply = JSON.stringify({ facet: "core", cell: "VOICE", after: "Short sentences. Two lines at most unless asked for more.", reason: "Owner said: I prefer short answers, two lines at most.", confidence: "high" });
+  const r = await learn(GOOD_TOKEN);
+  eq(r.status, 200, "status"); const j = await r.json(); eq(j.proposal.facet, "core", "facet"); eq(j.proposal.cell, "VOICE", "cell"); eq(j.cost, 1, "cost"); eq(balance, 2, "one credit");
+  eq(proposalRows.length, 1, "one row"); eq(proposalRows[0].status, "waiting", "waiting"); eq(proposalRows[0].before_text, "Short sentences.", "before text from the grid"); eq(proposalRows[0].owner, USER_ID, "owner");
+  if (calls.some((c) => c.url.includes("/rest/v1/twingrid_grids") && c.method === "PATCH")) throw new Error("the Worker wrote the grid");
+  if (!lastSystem.includes("Ask one question at a time")) throw new Error("the owner's full persona (house facets included) should be composed for the owner");
+});
+
+await check("learn: nothing worth changing -> none, credit still spent; a bad facet or malformed JSON -> 502 and refund", async () => {
+  proposalRows = []; balance = 3;
+  learnReply = '{"none": true}';
+  const r = await learn(GOOD_TOKEN); eq(r.status, 200, "none status"); eq((await r.json()).none, true, "none"); eq(balance, 2, "spent"); eq(proposalRows.length, 0, "no row");
+  balance = 3; learnReply = JSON.stringify({ facet: "ghost", cell: "DO", after: "x" });
+  eq((await learn(GOOD_TOKEN)).status, 502, "bad facet"); eq(balance, 3, "refunded"); eq(proposalRows.length, 0, "no row");
+  learnReply = "not json at all"; eq((await learn(GOOD_TOKEN)).status, 502, "bad json"); eq(balance, 3, "refunded again");
+});
+
+await check("learn: a stranger is 403, signed out 401, learning off is 403 before any spend, one message is too short", async () => {
+  proposalRows = []; balance = 3; learnReply = JSON.stringify({ facet: "core", cell: "DO", after: "x", reason: "r" });
+  eq((await learn(STRANGER_TOKEN)).status, 403, "stranger"); eq((await learn(null)).status, 401, "signed out");
+  rulesRows = [Object.assign({}, RULE, { learning: "off" })];
+  eq((await learn(GOOD_TOKEN)).status, 403, "learning off"); eq(balance, 3, "nothing spent");
+  rulesRows = [];
+  eq((await learn(GOOD_TOKEN, { messages: [{ role: "user", content: "hi" }] })).status, 400, "too short");
+  eq(proposalRows.length, 0, "nothing written");
 });
 
 await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {

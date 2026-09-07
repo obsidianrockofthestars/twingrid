@@ -1521,6 +1521,69 @@ async function handlePlaceHit(request, env) {
   return json(request, 200, { ok: true, counted: true, count: Number(r.value) });
 }
 
+// ---------------------------------------------------------------------------
+// Learning proposals (M8, 2026-09-07). PLAN.md section 3.6.
+// POST /api/learn { grid_id, messages }   the operator, at the end of their own chat with their own persona, by an explicit button
+//   Composes the persona as the owner (the full grid, RLS), asks the model for AT MOST ONE proposed cell change as strict JSON,
+//   validates it against the grid (a facet that exists, a cell name, a length), spends 1 credit, and writes a WAITING row.
+//   Nothing touches the grid: the page applies a kept proposal as a normal owner save. rules.learning = off refuses before the spend.
+// ---------------------------------------------------------------------------
+const LEARN_COST = 1;
+const LEARN_ASK = "You just finished a conversation with your owner (the transcript follows). Propose at most ONE small change to one cell of your own mind that would make you more useful or more accurate to your owner next time, based only on what they said. Answer with strict JSON and nothing else: {\"facet\": \"<facet name from your mind>\", \"cell\": \"CONTEXT|DO|DONT|GATES|VOICE\", \"after\": \"<the full new text of that cell, under 1500 characters, plain text>\", \"reason\": \"<one line, under 200 characters, quoting what the owner said>\", \"confidence\": \"low|medium|high\"}. If nothing worth changing came up, answer exactly {\"none\": true}.";
+function parseProposal(text, byName) {
+  let j = null;
+  try { const m = /\{[\s\S]*\}/.exec(String(text || "")); j = m ? JSON.parse(m[0]) : null; } catch (_) { j = null; }
+  if (!j || typeof j !== "object") return { error: "bad_proposal" };
+  if (j.none === true) return { none: true };
+  const facet = typeof j.facet === "string" ? j.facet.trim() : "";
+  const cell = typeof j.cell === "string" ? j.cell.trim().toUpperCase() : "";
+  const after = typeof j.after === "string" ? j.after.trim() : "";
+  const reason = typeof j.reason === "string" ? j.reason.trim().slice(0, 300) : "";
+  const confidence = ["low", "medium", "high"].includes(j.confidence) ? j.confidence : "medium";
+  if (!byName[facet] || !CELLORDER.includes(cell) || !after || after.length > 8000) return { error: "bad_proposal" };
+  return { facet, cell, after, reason, confidence };
+}
+async function handleLearn(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const body = parsed.value;
+  const bad = validateChatBody(body);
+  if (bad) return json(request, 400, { error: bad });
+  if (body.messages.length < 2) return json(request, 400, { error: "too_short" });
+  const g = await fetchGridMetaAsUser(env, token, body.grid_id);   // the operator gets the table row (RLS); anyone else the view
+  if (g.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (g.error) return json(request, 502, { error: "grid_unavailable" });
+  if (!(await operatesAsUser(env, token, g.grid.owner))) return json(request, 403, { error: "forbidden" });
+  const rules = await serviceGet(env, "/rest/v1/twingrid_rules?select=learning&grid_id=eq." + encodeURIComponent(body.grid_id));
+  if (rules && rules[0] && rules[0].learning === "off") return json(request, 403, { error: "learning_off" });
+  if (await rateLimited(env, "learn:" + user.id, 10, 3600)) return json(request, 429, { error: "rate_limited" }, { "Retry-After": "3600" });
+  const byName = indexGrid(g.grid.data);
+  const system = guardedPrompt(g.grid.data, composeAll(g.grid.data));
+  if (system === GUARD) return json(request, 400, { error: "persona_empty" });
+  if (system.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
+  const transcript = body.messages.map((m) => (m.role === "assistant" ? "Persona: " : "Owner: ") + m.content).join("\n\n");
+  const ask = LEARN_ASK + "\n\nTRANSCRIPT\n\n" + transcript.slice(0, 12000);
+  const micro = chatMicro(system.length, ask.length);
+  if (!(await reserveCapacity(env, "anthropic", micro))) return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
+  const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: LEARN_COST, p_kind: "use" });
+  if (!spend.ok) { await releaseCapacity(env, "anthropic", micro); return json(request, 502, { error: "credits_unavailable" }); }
+  if (!(Number(spend.value) >= 0)) { await releaseCapacity(env, "anthropic", micro); return json(request, 402, { error: "no_credits", cost: LEARN_COST }); }
+  const refund = async () => { await releaseCapacity(env, "anthropic", micro); const rf = await rpcService(env, "twingrid_grant_credits", { p_user: user.id, p_delta: LEARN_COST, p_kind: "refund", p_ref: "refund:" + crypto.randomUUID(), p_period_end: null }); if (!rf.ok) console.log("refund_failed"); };
+  const text = await anthropicText(env, system, [{ role: "user", content: ask }]);
+  if (text === null) { await refund(); return json(request, 502, { error: "upstream_failed" }); }
+  const p = parseProposal(text, byName);
+  if (p.error) { await refund(); return json(request, 502, { error: p.error }); }
+  if (p.none) return json(request, 200, { none: true, remaining: Number(spend.value), cost: LEARN_COST });
+  const before = cellBody(byName[p.facet].cells && byName[p.facet].cells[p.cell] !== undefined ? byName[p.facet].cells[p.cell] : "");
+  const row = { grid_id: body.grid_id, owner: g.grid.owner, facet: p.facet, cell: p.cell, source: "owner_chat", evidence: { turns: body.messages.length, reason: p.reason },
+    before_text: before.slice(0, 8000), after_text: p.after, reason: p.reason, confidence: p.confidence, status: "waiting" };
+  if (!(await servicePost(env, "/rest/v1/twingrid_proposals", row))) { await refund(); return json(request, 502, { error: "write_failed" }); }
+  return json(request, 200, { proposal: { facet: p.facet, cell: p.cell, reason: p.reason, confidence: p.confidence }, remaining: Number(spend.value), cost: LEARN_COST });
+}
+
 // CSP violation reports (M0, 2026-09-07). The header ships Report-Only with report-uri pointing here.
 // Log two short fields, never the whole report (it can carry the page URL with a query string).
 async function handleCspReport(request) {
@@ -1559,7 +1622,8 @@ export async function handleApi(request, env) {
     if (path === "/api/p2p" && method === "POST") return await handleP2p(request, env);
     if (path === "/api/place/verify" && method === "POST") return await handlePlaceVerify(request, env);
     if (path === "/api/place/hit" && method === "POST") return await handlePlaceHit(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit") {
+    if (path === "/api/learn" && method === "POST") return await handleLearn(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });
