@@ -35,6 +35,12 @@ const GRID = {
   },
 };
 
+// The stranger's own public persona (M6): a core facet and a Kindred-scoped facet that only an accepted pair may see.
+const OTHER_ID = "66666666-6666-4666-8666-666666666666";
+const OTHER = { id: OTHER_ID, owner: STRANGER_ID, name: "Other Persona", data: { facets: [
+  { name: "core", kind: "core", cells: { CONTEXT: "# core / CONTEXT\n\nI am the other persona." } },
+  { name: "garden", kind: "specialist", scope: "visiting", cells: { DO: "Talk about the KINDRED GARDEN." } } ] } };
+const OTHER_LOBBY = { id: OTHER_ID, owner: STRANGER_ID, name: "Other Persona", data: { facets: OTHER.data.facets.filter((f) => f.name === "core") } };
 // The Lobby projection of GRID, what twingrid_grids_public serves (facets scoped lobby: core and vibe by default).
 const GRID_LOBBY = { id: GRID_ID, owner: USER_ID, data: { facets: GRID.data.facets.filter((f) => f.name === "core" || f.name === "vibe") } };
 
@@ -50,6 +56,7 @@ let capacityReleases = []; // twingrid_capacity_unspend calls (2026-09-04)
 // Autopilot (M3, 2026-09-07): rules rows the fake serves (filtered by the hour in the query), the actions it stores, the receipts.
 let rulesRows = [];
 let blocksRows = [];
+let kindredRows = [];
 let sparksRows = [];
 let visitCounts = {};
 let actionsRows = [];
@@ -112,11 +119,13 @@ globalThis.fetch = async (url, init) => {
   if (u.includes("/rest/v1/twingrid_grids_public")) {
     // The Lobby view: anon key only, public rows only, data projected. Never the house.
     if (headers.Authorization) throw new Error("the public view must be read with the anon key, not a user token");
+    if (u.includes("id=eq." + OTHER_ID)) return respond(200, [OTHER_LOBBY]);
     if (!gridPublic) return respond(200, []);
     return respond(200, u.includes("id=eq." + GRID_ID) ? [GRID_LOBBY] : []);
   }
   if (u.includes("/rest/v1/twingrid_grids")) {
     // RLS stand-in: only the good token can see the grid.
+    if ((headers.Authorization || "") === "Bearer " + STRANGER_TOKEN) return respond(200, u.includes("id=eq." + OTHER_ID) ? [OTHER] : []);
     if ((headers.Authorization || "") !== "Bearer " + GOOD_TOKEN) return respond(200, []);
     return respond(200, u.includes("id=eq." + GRID_ID) ? [GRID] : []);
   }
@@ -125,7 +134,28 @@ globalThis.fetch = async (url, init) => {
   }
   if (u.endsWith("/rest/v1/rpc/twingrid_operates")) {
     const auth = headers.Authorization || "";
-    return respond(200, auth === "Bearer " + GOOD_TOKEN && body.target === USER_ID);
+    return respond(200, (auth === "Bearer " + GOOD_TOKEN && body.target === USER_ID) || (auth === "Bearer " + STRANGER_TOKEN && body.target === STRANGER_ID));
+  }
+  if (u.includes("/rest/v1/twingrid_kindred")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("kindred is written with the service key");
+    if (method === "POST") { kindredRows.push(Object.assign({ id: kindredRows.length + 1, created_at: new Date().toISOString(), decided_at: null }, body)); return new Response(null, { status: 201 }); }
+    const idm = /[?&]id=eq\.(\d+)/.exec(u); const row = idm ? kindredRows.find((r) => r.id === Number(idm[1])) : null;
+    if (method === "PATCH") { if (!row) return respond(200, []); Object.assign(row, body); return respond(200, [row]); }
+    if (method === "DELETE") { kindredRows = kindredRows.filter((r) => r !== row); return new Response(null, { status: 204 }); }
+    const a = /grid_a=eq\.([0-9a-f-]+)/.exec(u), bb = /grid_b=eq\.([0-9a-f-]+)/.exec(u);
+    return respond(200, kindredRows.filter((r) => (!a || r.grid_a === a[1]) && (!bb || r.grid_b === bb[1])));
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_is_kindred")) {
+    const lo = body.a < body.b ? body.a : body.b, hi = body.a < body.b ? body.b : body.a;
+    return respond(200, kindredRows.some((r) => r.grid_a === lo && r.grid_b === hi && r.status === "accepted"));
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_kindred_view")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("the Worker asks the view as service role");
+    const lo = body.p_grid < body.p_viewer_grid ? body.p_grid : body.p_viewer_grid, hi = body.p_grid < body.p_viewer_grid ? body.p_viewer_grid : body.p_grid;
+    const kin = kindredRows.some((r) => r.grid_a === lo && r.grid_b === hi && r.status === "accepted");
+    const src = body.p_grid === GRID_ID ? GRID : body.p_grid === OTHER_ID ? OTHER : null; if (!src) return respond(200, null);
+    const facets = src.data.facets.filter((f) => f.name === "core" || f.name === "vibe" || (kin && f.scope === "visiting"));
+    return respond(200, Object.assign({ facets }, kin ? { kindred: true } : {}));
   }
   if (u.endsWith("/rest/v1/rpc/twingrid_use_credit")) {
     if (balance <= 0) return respond(200, -1);
@@ -161,7 +191,7 @@ globalThis.fetch = async (url, init) => {
     if (body.max_tokens !== 700) throw new Error("max_tokens should be 700");
     if (headers["x-api-key"] !== ENV.ANTHROPIC_API_KEY) throw new Error("x-api-key missing");
     if (headers["anthropic-version"] !== "2023-06-01") throw new Error("anthropic-version missing");
-    const isTick = body.messages.length === 1 && /Write one short public post/.test(body.messages[0].content);
+    const isTick = body.messages.length === 1 && /Write one short public post|Kindred persona/.test(body.messages[0].content);
     return respond(200, { content: [{ type: "text", text: isTick ? anthropicReply : "Hello from the persona." }], model: body.model });
   }
   throw new Error("unexpected fetch: " + u);
@@ -945,6 +975,74 @@ await check("spark: the daily cap per visitor is 40", async () => {
   resetSparks();
   for (let i = 0; i < 40; i++) sparksRows.push({ id: i + 1, from_account: STRANGER_ID, created_at: new Date().toISOString() });
   eq((await spark({ grid_id: GRID_ID, kind: "reaction", reaction: "wave" }, STRANGER_TOKEN)).status, 429, "capped");
+});
+
+// ---------------------------------------------------------------------------
+// Kindred and persona-to-persona (M6, 2026-09-07)
+// ---------------------------------------------------------------------------
+function kindred(body, token) { return handleApi(req("/api/kindred", { method: "POST", headers: H(token ? { Authorization: "Bearer " + token } : {}), body: JSON.stringify(body) }), ENV); }
+function p2p(body, token) { return handleApi(req("/api/p2p", { method: "POST", headers: H(token ? { Authorization: "Bearer " + token } : {}), body: JSON.stringify(body) }), ENV); }
+async function seedKindred(status) { kindredRows = []; if (status) kindredRows.push({ id: 1, grid_a: GRID_ID, grid_b: OTHER_ID, owner_a: USER_ID, owner_b: STRANGER_ID, requested_by: GRID_ID, status, created_at: "2026-09-01T00:00:00Z", decided_at: status === "requested" ? null : "2026-09-02T00:00:00Z" }); }
+
+await check("kindred: request from my persona to theirs, the other side accepts, is_kindred flips, unfriend removes", async () => {
+  await seedKindred(null); resetAutopilot([]); gridPublic = true;
+  const r = await kindred({ action: "request", grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN);
+  eq(r.status, 200, "request"); eq(kindredRows.length, 1, "one row"); eq(kindredRows[0].status, "requested", "requested"); eq(kindredRows[0].requested_by, GRID_ID, "by mine"); eq(kindredRows[0].owner_b, STRANGER_ID, "owner_b");
+  eq((await kindred({ action: "accept", grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN)).status, 409, "the requester cannot accept their own request");
+  const acc = await kindred({ action: "accept", grid_id: OTHER_ID, other_grid_id: GRID_ID }, STRANGER_TOKEN);
+  eq(acc.status, 200, "accept"); eq(kindredRows[0].status, "accepted", "accepted"); eq(typeof kindredRows[0].decided_at, "string", "decided_at");
+  eq((await kindred({ action: "request", grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN)).status, 409, "already kindred");
+  eq((await kindred({ action: "unfriend", grid_id: OTHER_ID, other_grid_id: GRID_ID }, STRANGER_TOKEN)).status, 200, "unfriend"); eq(kindredRows.length, 0, "row gone");
+});
+
+await check("kindred: a declined request cannot be re-sent for 7 days; blocked never by the blocked side; withdraw only by the requester", async () => {
+  await seedKindred("requested");
+  eq((await kindred({ action: "withdraw", grid_id: OTHER_ID, other_grid_id: GRID_ID }, STRANGER_TOKEN)).status, 409, "not theirs to withdraw");
+  eq((await kindred({ action: "decline", grid_id: OTHER_ID, other_grid_id: GRID_ID }, STRANGER_TOKEN)).status, 200, "decline");
+  kindredRows[0].decided_at = new Date(Date.now() - 2 * 86400000).toISOString();
+  const soon = await kindred({ action: "request", grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN);
+  eq(soon.status, 429, "too soon"); eq(typeof (await soon.json()).until, "string", "until");
+  kindredRows[0].decided_at = new Date(Date.now() - 8 * 86400000).toISOString();
+  eq((await kindred({ action: "request", grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN)).status, 200, "after 7 days"); eq(kindredRows[0].status, "requested", "re-requested");
+  eq((await kindred({ action: "withdraw", grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN)).status, 200, "withdraw"); eq(kindredRows.length, 0, "withdrawn");
+  await seedKindred("blocked");
+  eq((await kindred({ action: "request", grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN)).status, 403, "blocked");
+});
+
+await check("kindred: signed out 401, a stranger acting for a persona they do not operate 403, own persona pair 400, private other 404", async () => {
+  await seedKindred(null);
+  eq((await kindred({ action: "request", grid_id: GRID_ID, other_grid_id: OTHER_ID }, null)).status, 401, "signed out");
+  eq((await kindred({ action: "request", grid_id: GRID_ID, other_grid_id: OTHER_ID }, STRANGER_TOKEN)).status, 403, "a stranger cannot act for my persona");
+  eq((await kindred({ action: "request", grid_id: GRID_ID, other_grid_id: GRID_ID }, GOOD_TOKEN)).status, 400, "same persona");
+  gridPublic = false;
+  eq((await kindred({ action: "request", grid_id: OTHER_ID, other_grid_id: GRID_ID }, STRANGER_TOKEN)).status, 404, "other not public");
+  gridPublic = true; eq(kindredRows.length, 0, "nothing written");
+});
+
+await check("p2p: refused with 403 unless the pair is Kindred; nothing spent", async () => {
+  await seedKindred("requested"); balance = 5; calls.length = 0;
+  eq((await p2p({ grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN)).status, 403, "not kindred");
+  eq(balance, 5, "no credit"); if (calls.some((c) => c.url === "https://api.anthropic.com/v1/messages")) throw new Error("model called");
+});
+
+await check("p2p: an accepted pair talks once: both composed from the Kindred projection, two credits, two proposed TOGETHER rows", async () => {
+  await seedKindred("accepted"); resetAutopilot([]); balance = 5; calls.length = 0; anthropicReply = "Hello from the exchange.";
+  const systems = []; const origFetch = globalThis.fetch;
+  globalThis.fetch = async (u, init) => { if (String(u) === "https://api.anthropic.com/v1/messages") systems.push(JSON.parse(init.body).system[0].text); return origFetch(u, init); };
+  const r = await p2p({ grid_id: GRID_ID, other_grid_id: OTHER_ID, topic: "porches" }, GOOD_TOKEN);
+  globalThis.fetch = origFetch;
+  eq(r.status, 200, "status"); const j = await r.json(); eq(j.cost, 2, "cost"); eq(balance, 3, "two credits");
+  eq(systems.length, 2, "two model calls");
+  if (!systems[1].includes("KINDRED GARDEN")) throw new Error("the other side's Kindred facet did not reach its own composition");
+  if (systems[0].includes("Ask one question at a time")) throw new Error("HOUSE FACET LEAKED into p2p");
+  eq(actionsRows.length, 2, "two rows"); eq(actionsRows[0].authorship, "TOGETHER", "TOGETHER"); eq(actionsRows[0].status, "proposed", "proposed");
+  eq(actionsRows[1].grid_id, OTHER_ID, "second row on the other persona"); eq(actionsRows[1].owner, STRANGER_ID, "owned by the other owner"); eq(actionsRows[0].body.p2p, true, "marked p2p");
+});
+
+await check("p2p: a line that trips a boundary refunds both credits and writes nothing", async () => {
+  await seedKindred("accepted"); resetAutopilot([]); balance = 5; anthropicReply = "Buy now at www.example.com";
+  const r = await p2p({ grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN);
+  eq(r.status, 400, "boundary"); eq(balance, 5, "refunded"); eq(actionsRows.length, 0, "nothing written");
 });
 
 await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {

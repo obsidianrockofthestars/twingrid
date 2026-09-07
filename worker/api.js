@@ -1074,6 +1074,8 @@ const REFUSAL_RE = {
   mention: /(^|[\s(])@[a-z0-9_]{2,}/i,
   purchase: /\b(book now|buy now|order now|reserve (a|your)|checkout|purchase|discount code|promo code|dm (me|us) to (buy|book|order))\b|\$\s?\d/i,
 };
+// Every facet the projection handed over, as one composition. The projection (Lobby or Kindred) is the gate; this just turns it all on.
+function composeAll(data) { const names = data && Array.isArray(data.facets) ? data.facets.map((f) => f && f.name).filter((n) => typeof n === "string" && n !== "core") : []; return { mode: "multi", on: names }; }
 export function autopilotRefusal(text, rules) {
   const t = typeof text === "string" ? text.trim() : "";
   if (!t) return "empty";
@@ -1144,7 +1146,7 @@ export async function runAutopilotTick(env, now) {
       const g = await fetchPublicGrid(env, r.grid_id, "id,owner,name,data");                  // the Lobby projection, nothing else
       if (g.error === 404) continue;                                                           // private, suspended or gone: skip quietly
       if (g.error) { err("grid_unavailable"); continue; }
-      const system = guardedPrompt(g.grid.data, null);
+      const system = guardedPrompt(g.grid.data, composeAll(g.grid.data));
       if (system === GUARD) { await record("refused", "AUTOPILOT", { refusal: "persona_empty" }); continue; }
       if (system.length > MAX_SYSTEM_CHARS) { await record("refused", "AUTOPILOT", { refusal: "persona_too_large" }); continue; }
       const topics = Array.isArray(r.topics) ? r.topics.map((s) => String(s || "").trim()).filter(Boolean).slice(0, 12) : [];
@@ -1319,6 +1321,141 @@ async function handleSpark(request, env) {
   return json(request, 200, { ok: true, kind: b.kind, is_public: row.is_public });
 }
 
+// ---------------------------------------------------------------------------
+// Kindred and persona-to-persona (M6, 2026-09-07). PLAN.md section 3.4.
+// POST /api/kindred { action: request | accept | decline | block | withdraw | unfriend, grid_id (a persona the caller operates), other_grid_id }
+//   Every write to twingrid_kindred goes through here with the service key after the caller is verified; operators only read the table.
+//   A declined request cannot be re-sent for 7 days; a blocked one cannot be re-sent by the blocked side at all.
+// POST /api/p2p { grid_id (mine), other_grid_id, topic? }
+//   Refused unless the pair is Kindred. Both sides are composed from the Kindred projection (twingrid_kindred_view, Public plus
+//   Kindred facets, never the house), one exchange per call (my persona opens, theirs answers), two model calls, two credits from the
+//   caller, both lines boundary-checked, and the exchange lands as a PROPOSED TOGETHER action on BOTH personas for each owner to approve.
+// ---------------------------------------------------------------------------
+const KINDRED_ACTIONS = new Set(["request", "accept", "decline", "block", "withdraw", "unfriend"]);
+const KINDRED_WAIT_DAYS = 7;
+const P2P_COST = 2;
+async function operatedGrid(env, token, user, gridId) {
+  // the caller's own persona: read as the caller (RLS), then confirm they operate its owner
+  const g = await fetchGridMetaAsUser(env, token, gridId);
+  if (g.error) return { error: g.error };
+  if (!(await operatesAsUser(env, token, g.grid.owner))) return { error: 403 };
+  return { grid: g.grid };
+}
+function pairOf(a, b) { return a < b ? { grid_a: a, grid_b: b } : { grid_a: b, grid_b: a }; }
+async function handleKindred(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (!KINDRED_ACTIONS.has(b.action)) return json(request, 400, { error: "bad_action" });
+  if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id) || typeof b.other_grid_id !== "string" || !UUID_RE.test(b.other_grid_id)) return json(request, 400, { error: "bad_grid_id" });
+  if (b.grid_id === b.other_grid_id) return json(request, 400, { error: "same_persona" });
+  const mine = await operatedGrid(env, token, user, b.grid_id);
+  if (mine.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (mine.error === 403) return json(request, 403, { error: "forbidden" });
+  if (mine.error) return json(request, 502, { error: "grid_unavailable" });
+  const other = await fetchPublicGrid(env, b.other_grid_id, "id,owner");
+  if (other.error === 404) return json(request, 404, { error: "other_not_public" });
+  if (other.error) return json(request, 502, { error: "grid_unavailable" });
+  if (other.grid.owner === mine.grid.owner) return json(request, 400, { error: "same_owner" });
+  const pair = pairOf(b.grid_id, b.other_grid_id);
+  const rows = await serviceGet(env, "/rest/v1/twingrid_kindred?select=id,grid_a,grid_b,requested_by,status,decided_at&grid_a=eq." + pair.grid_a + "&grid_b=eq." + pair.grid_b);
+  if (!rows) return json(request, 502, { error: "kindred_unavailable" });
+  const k = rows[0] || null;
+  const now = new Date().toISOString();
+  const iRequested = k && k.requested_by === b.grid_id;
+  const write = async (method, body) => {
+    if (method === "POST") return (await servicePost(env, "/rest/v1/twingrid_kindred", body)) ? {} : null;
+    if (method === "DELETE") return (await serviceDelete(env, "/rest/v1/twingrid_kindred?id=eq." + k.id)) ? {} : null;
+    return servicePatch(env, "/rest/v1/twingrid_kindred?id=eq." + k.id, body);
+  };
+  let r;
+  if (b.action === "request") {
+    if (!k) {
+      r = await write("POST", Object.assign({}, pair, { owner_a: pair.grid_a === b.grid_id ? mine.grid.owner : other.grid.owner, owner_b: pair.grid_b === b.grid_id ? mine.grid.owner : other.grid.owner, requested_by: b.grid_id, status: "requested" }));
+      if (!r) return json(request, 502, { error: "write_failed" });
+      return json(request, 200, { status: "requested" });
+    }
+    if (k.status === "accepted") return json(request, 409, { error: "already_kindred" });
+    if (k.status === "requested") return json(request, 409, { error: iRequested ? "pending" : "they_asked_first" });
+    if (k.status === "blocked") return json(request, 403, { error: "blocked" });
+    const waitUntil = k.decided_at ? new Date(k.decided_at).getTime() + KINDRED_WAIT_DAYS * 86400000 : 0;
+    if (Date.now() < waitUntil) return json(request, 429, { error: "wait", until: new Date(waitUntil).toISOString() }, { "Retry-After": String(Math.ceil((waitUntil - Date.now()) / 1000)) });
+    r = await write("PATCH", { status: "requested", requested_by: b.grid_id, decided_at: null, created_at: now });
+    if (!r) return json(request, 502, { error: "write_failed" });
+    return json(request, 200, { status: "requested" });
+  }
+  if (!k) return json(request, 404, { error: "no_request" });
+  if (b.action === "withdraw") {
+    if (!(k.status === "requested" && iRequested)) return json(request, 409, { error: "not_yours_to_withdraw" });
+    r = await write("DELETE"); return r ? json(request, 200, { status: "none" }) : json(request, 502, { error: "write_failed" });
+  }
+  if (b.action === "unfriend") {
+    if (k.status !== "accepted") return json(request, 409, { error: "not_kindred" });
+    r = await write("DELETE"); return r ? json(request, 200, { status: "none" }) : json(request, 502, { error: "write_failed" });
+  }
+  // accept, decline, block: the receiving side decides a pending request; block is also allowed on an accepted pair by either side
+  if (b.action === "block" && k.status === "accepted") { r = await write("PATCH", { status: "blocked", decided_at: now, requested_by: b.other_grid_id }); return r ? json(request, 200, { status: "blocked" }) : json(request, 502, { error: "write_failed" }); }
+  if (!(k.status === "requested" && !iRequested)) return json(request, 409, { error: "nothing_to_decide", status: k.status });
+  const status = b.action === "accept" ? "accepted" : b.action === "decline" ? "declined" : "blocked";
+  r = await write("PATCH", { status, decided_at: now });
+  if (!r) return json(request, 502, { error: "write_failed" });
+  return json(request, 200, { status });
+}
+async function handleP2p(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id) || typeof b.other_grid_id !== "string" || !UUID_RE.test(b.other_grid_id) || b.grid_id === b.other_grid_id) return json(request, 400, { error: "bad_grid_id" });
+  const topic = typeof b.topic === "string" ? b.topic.trim().slice(0, 120) : "";
+  if (topic && autopilotRefusal(topic, null)) return json(request, 400, { error: "boundary", reason: autopilotRefusal(topic, null) });
+  const mine = await operatedGrid(env, token, user, b.grid_id);
+  if (mine.error === 404) return json(request, 404, { error: "grid_not_found" });
+  if (mine.error === 403) return json(request, 403, { error: "forbidden" });
+  if (mine.error) return json(request, 502, { error: "grid_unavailable" });
+  const kin = await rpcService(env, "twingrid_is_kindred", { a: b.grid_id, b: b.other_grid_id });
+  if (!kin.ok) return json(request, 502, { error: "kindred_unavailable" });
+  if (kin.value !== true) return json(request, 403, { error: "not_kindred" });
+  if (await rateLimited(env, "p2p:" + user.id, 10, 3600)) return json(request, 429, { error: "rate_limited" }, { "Retry-After": "3600" });
+  const [meta, va, vb] = await Promise.all([
+    fetchPublicGrid(env, b.other_grid_id, "id,name,owner"),
+    rpcService(env, "twingrid_kindred_view", { p_grid: b.grid_id, p_viewer_grid: b.other_grid_id }),
+    rpcService(env, "twingrid_kindred_view", { p_grid: b.other_grid_id, p_viewer_grid: b.grid_id }),
+  ]);
+  if (meta.error === 404) return json(request, 404, { error: "other_not_public" });
+  if (meta.error || !va.ok || !vb.ok || !va.value || !vb.value) return json(request, 502, { error: "grid_unavailable" });
+  const myName = String(mine.grid.name || "My persona").slice(0, 60), theirName = String(meta.grid.name || "Their persona").slice(0, 60);
+  const sysA = guardedPrompt(va.value, composeAll(va.value)), sysB = guardedPrompt(vb.value, composeAll(vb.value));
+  if (sysA === GUARD || sysB === GUARD) return json(request, 400, { error: "persona_empty" });
+  if (sysA.length > MAX_SYSTEM_CHARS || sysB.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
+  const openAsk = "You are meeting " + theirName + ", a Kindred persona whose owner agreed to this. Say hello in your own voice and open a short conversation" + (topic ? " about " + topic : "") + ". Under 300 characters, plain text, no links, no offers, do not address anyone but them.";
+  const micro = chatMicro(sysA.length, openAsk.length) + chatMicro(sysB.length, 400);
+  if (!(await reserveCapacity(env, "anthropic", micro))) return json(request, 503, { error: "capacity" }, { "Retry-After": "3600" });
+  const spend = await rpcService(env, "twingrid_use_credits", { p_user: user.id, p_cost: P2P_COST, p_kind: "use" });
+  if (!spend.ok) { await releaseCapacity(env, "anthropic", micro); return json(request, 502, { error: "credits_unavailable" }); }
+  if (!(Number(spend.value) >= 0)) { await releaseCapacity(env, "anthropic", micro); return json(request, 402, { error: "no_credits", cost: P2P_COST }); }
+  const refund = async () => { await releaseCapacity(env, "anthropic", micro); const rf = await rpcService(env, "twingrid_grant_credits", { p_user: user.id, p_delta: P2P_COST, p_kind: "refund", p_ref: "refund:" + crypto.randomUUID(), p_period_end: null }); if (!rf.ok) console.log("refund_failed"); };
+  const lineA = await anthropicText(env, sysA, [{ role: "user", content: openAsk }]);
+  if (lineA === null) { await refund(); return json(request, 502, { error: "upstream_failed" }); }
+  const replyAsk = myName + " (a Kindred persona whose owner agreed to this) says to you: " + lineA.trim().slice(0, 600) + "\n\nAnswer them in your own voice. Under 300 characters, plain text, no links, no offers.";
+  const lineB = await anthropicText(env, sysB, [{ role: "user", content: replyAsk }]);
+  if (lineB === null) { await refund(); return json(request, 502, { error: "upstream_failed" }); }
+  const a = lineA.trim().slice(0, 600), bb = lineB.trim().slice(0, 600);
+  const bad = autopilotRefusal(a, null) || autopilotRefusal(bb, null);
+  if (bad) { await refund(); return json(request, 400, { error: "boundary", reason: bad }); }
+  const text = myName + ": " + a + "\n\n" + theirName + ": " + bb;
+  const row = (gid, owner, withId, withName) => ({ grid_id: gid, owner, kind: "post", authorship: "TOGETHER", status: "proposed", audience: "public", rule_ref: "p2p", body: { text, p2p: true, with_grid: withId, with_name: withName } });
+  const ok1 = await servicePost(env, "/rest/v1/twingrid_actions", row(b.grid_id, mine.grid.owner, b.other_grid_id, theirName));
+  const ok2 = await servicePost(env, "/rest/v1/twingrid_actions", row(b.other_grid_id, meta.grid.owner, b.grid_id, myName));
+  if (!ok1 || !ok2) console.log("p2p_write_failed");
+  return json(request, 200, { a, b: bb, with: theirName, remaining: Number(spend.value), cost: P2P_COST, proposed: ok1 && ok2 });
+}
+
 // CSP violation reports (M0, 2026-09-07). The header ships Report-Only with report-uri pointing here.
 // Log two short fields, never the whole report (it can carry the page URL with a query string).
 async function handleCspReport(request) {
@@ -1353,7 +1490,9 @@ export async function handleApi(request, env) {
     { const m = /^\/api\/actions\/(\d{1,12})\/decide$/.exec(path); if (m) return method === "POST" ? await handleActionDecide(request, env, m[1]) : json(request, 405, { error: "method_not_allowed" }); }
     if (path === "/api/actions" && method === "POST") return await handleActionPost(request, env);
     if (path === "/api/spark" && method === "POST") return await handleSpark(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark") {
+    if (path === "/api/kindred" && method === "POST") return await handleKindred(request, env);
+    if (path === "/api/p2p" && method === "POST") return await handleP2p(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });
