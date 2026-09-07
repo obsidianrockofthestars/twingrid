@@ -2337,8 +2337,10 @@ async function pkAdultRowSync(){ const row=document.getElementById('adultrow'), 
 // returns null when publishing may proceed, else the message to show
 async function pkPublishGate(){ const pub=document.getElementById('ispublic'), ok=document.getElementById('adultok'); if(!pub||!pub.checked) return null; if(await pkAdultKnown()) return null;
   if(!ok||!ok.checked){ await pkAdultRowSync(); return 'Tick the 18 or older box to publish.'; }
-  const {error}=await SB.from('twingrid_accounts').update({adult_confirmed_at:new Date().toISOString()}).eq('id',await ownerId());
+  const {data:upd,error}=await SB.from('twingrid_accounts').update({adult_confirmed_at:new Date().toISOString()}).eq('id',await ownerId()).select('id');
   if(error) return 'Could not record the confirmation: '+String(error.message||'').slice(0,80);
+  // an account with no row yet (a handle was never claimed) has nowhere to record the confirmation: 0 rows updated, so say what to do instead of looping
+  if(!upd||!upd.length) return 'Claim your @handle on Home first, then publish.';
   PK_ADULT=true; await pkAdultRowSync(); return null; }
 { const pub=document.getElementById('ispublic'); if(pub) pub.addEventListener('change',()=>{ pkAdultRowSync(); }); }
 
