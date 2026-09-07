@@ -848,6 +848,18 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 .nf-choice{font:inherit;font-size:14px;cursor:pointer;border:1.5px solid var(--line-w);background:var(--paper);color:var(--ink-soft);border-radius:999px;padding:8px 16px}
 .nf-choice[aria-pressed="true"]{border-color:var(--accent-w);background:var(--accent-soft);color:var(--brand-text);font-weight:600}
 .nf-nav{display:flex;align-items:center;gap:14px;margin-top:26px}
+/* the reveal (2026-09-07): meet the persona before the editor */
+.nf-reveal{margin-top:14px;text-align:center}
+.nf-rv-av{width:72px;height:72px;border-radius:20px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:34px;font-weight:600;background:var(--accent-w);color:var(--brand-ink)}
+.nf-reveal h2{margin:0 0 6px}
+.nf-rv-intro{font-size:16px;color:var(--ink-soft);line-height:1.5;margin:0 0 16px}
+.nf-rv-traits{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.nf-rv-traits span{border:1.5px solid var(--accent-w);color:var(--brand-text);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:600}
+.nf-rv-line,.nf-rv-sample{text-align:left;background:var(--paper);border:1px solid var(--line-w);border-radius:14px;padding:14px 16px;margin-top:10px}
+.nf-rv-lab{display:block;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:6px}
+.nf-rv-line p,.nf-rv-sample p{margin:0;color:var(--ink);font-size:15px;line-height:1.55}
+#nfReveal .nf-nav .nf-count{margin-left:0;flex:1;text-align:center}
+@media (max-width:480px){#nfReveal .nf-nav{flex-wrap:wrap;gap:10px}#nfReveal .nf-nav .pk-btn{flex:0 0 100%}#nfReveal .nf-nav #nfRvGo{order:1}#nfReveal .nf-nav #nfRvAdjust{order:2}#nfReveal .nf-nav .nf-count{order:3;flex:0 0 100%;margin:4px 0 0}}
 .nf-nav .nf-count{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-dim)}
 .nf-nav #nfBack[disabled]{opacity:.4;pointer-events:none}
 
@@ -1147,7 +1159,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <h4 style="margin-top:20px">Grid</h4>
       <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="persona name">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
-      <details class="pk-rooms" id="roomsbox"><summary>Who sees what <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Lobby is the public persona: strangers, Explore, and hosted chat by anyone but you read these facets only. House stays yours. Visiting room is saved now and opens to mutual links when they ship. Save to apply.</p><div id="roomlist"></div></details>
+      <details class="pk-rooms" id="roomsbox"><summary>Who sees what <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Public facets are the persona strangers, Explore and hosted chat by anyone but you can read. Private stays yours. Kindred is saved now and opens to mutual relationships when they ship. Save to apply.</p><div id="roomlist"></div></details>
       <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
       <div id="facemsg" aria-live="polite"></div>
       <div id="voicebox" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="facevoice" class="note" style="margin:0">Voice</label><select id="facevoice" class="tbtn" aria-label="Persona voice" style="font-size:12px;padding:6px 8px"><option value="">No voice</option><option value="browser">Browser voice (free)</option></select><span class="note" id="voicenote" style="margin:0">Gemini voices cost 2 to 6 messages a reply to hear; the browser voice is free.</span></div>
@@ -1433,6 +1445,18 @@ body.route-profile #helpbtn{left:16px;right:auto}
       </div>
     </div>
 
+    <div id="nfReveal" hidden>
+      <div class="nf-kick">Meet your persona</div>
+      <div class="nf-reveal">
+        <div class="nf-rv-av" id="nfRvAv" aria-hidden="true">P</div>
+        <h2 id="nfRvName"></h2>
+        <p class="nf-rv-intro" id="nfRvIntro"></p>
+        <div class="nf-rv-traits" id="nfRvTraits" aria-label="Signature traits"></div>
+        <div class="nf-rv-line"><span class="nf-rv-lab">One line it holds</span><p id="nfRvBoundary"></p></div>
+        <div class="nf-rv-sample"><span class="nf-rv-lab">How it might open a conversation</span><p id="nfRvSample"></p></div>
+      </div>
+      <div class="nf-nav"><button class="pk-btn ghost" type="button" id="nfRvAdjust">Let's adjust it</button><span class="nf-count">You can change everything in the editor</span><button class="pk-btn solid" type="button" id="nfRvGo">This feels right</button></div>
+    </div>
     <div id="nfTemplates" hidden>
       <div class="nf-kick">Templates</div>
       <h2>Pick a starting point</h2>
@@ -1945,7 +1969,8 @@ function cellBody(v){ const t=String(v==null?'':v);
 function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // ---------- rooms (2026-09-07): every facet has a scope. Mirrors twingrid_facet_scope() in SQL; the database's
 // twingrid_grids_public view is the real gate, this only paints the editor and keeps the two rules identical. ----------
-const PK_SCOPES=['house','visiting','lobby'], PK_SCOPE_LABEL={house:'House',visiting:'Visiting',lobby:'Lobby'};
+// keys are internal (house, visiting, lobby); the words on screen are Jennifer's (Private, Kindred, Public), ruled 2026-09-07
+const PK_SCOPES=['house','visiting','lobby'], PK_SCOPE_LABEL={house:'Private',visiting:'Kindred',lobby:'Public'};
 function pkFacetScope(f){ if(!f) return 'house'; if(PK_SCOPES.indexOf(f.scope)>=0) return f.scope; return (f.name==='core'||f.name==='vibe')?'lobby':'house'; }
 function pkRepaintRooms(){ const list=document.getElementById('roomlist'), sum=document.getElementById('roomsum'); if(!list||!sum) return;
   list.innerHTML=''; const n={house:0,visiting:0,lobby:0};
@@ -1956,7 +1981,7 @@ function pkRepaintRooms(){ const list=document.getElementById('roomlist'), sum=d
     PK_SCOPES.forEach(s=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=PK_SCOPE_LABEL[s]; b.setAttribute('aria-pressed',String(sc===s));
       b.onclick=()=>{ f.scope=s; pkRepaintRooms(); }; seg.appendChild(b); });
     row.appendChild(seg); list.appendChild(row); });
-  sum.textContent=n.lobby+' in the Lobby \u00b7 '+n.visiting+' visiting \u00b7 '+n.house+' in the House'; }
+  sum.textContent=n.lobby+' public \u00b7 '+n.visiting+' kindred \u00b7 '+n.house+' private'; }
 
 // ---------- state ----------
 let GRID={facets:[]}, byName={}, curId=null;
@@ -2873,7 +2898,7 @@ async function renderProfile(id,opts){ opts=opts||{};
 
 // ---------- new-persona flow (chooser + questionnaire) ----------
 const nfEl=document.getElementById('newflow');
-const NF_PANELS=['nfChoose','nfQuiz','nfTemplates','nfMcp'];
+const NF_PANELS=['nfChoose','nfQuiz','nfReveal','nfTemplates','nfMcp'];
 function nfShow(id){ NF_PANELS.forEach(p=>{const e=document.getElementById(p); if(e) e.hidden=(p!==id);}); }
 function openChooser(){ nfShow('nfChoose'); nfEl.classList.add('open'); }
 function closeNewflow(){ nfEl.classList.remove('open'); }
@@ -2947,7 +2972,7 @@ function nfImportAnswers(raw){
 (function(){
   const cb=document.getElementById('nfCopyInterview'), cm=document.getElementById('nfCopyMsg'), pg=document.getElementById('nfPasteGo'), pm=document.getElementById('nfPasteMsg'), ta=document.getElementById('nfPaste');
   if(cb) cb.onclick=()=>{ navigator.clipboard.writeText(nfInterviewText()).then(()=>{ cm.textContent='Copied. Paste it into your AI.'; setTimeout(()=>cm.textContent='',2500); }).catch(()=>{ cm.textContent='Copy failed; select the text in the box below instead.'; ta.value=nfInterviewText(); }); };
-  if(pg) pg.onclick=async()=>{ pm.textContent=''; try{ const n=nfImportAnswers(ta.value); pm.textContent='Got '+n+' answers. Building...'; await nfFinish(); ta.value=''; pm.textContent=''; }catch(e){ pm.textContent=e.message; } };
+  if(pg) pg.onclick=async()=>{ pm.textContent=''; try{ const n=nfImportAnswers(ta.value); pm.textContent='Got '+n+' answers.'; ta.value=''; pm.textContent=''; nfReveal(); }catch(e){ pm.textContent=e.message; } };
 })();
 function nfStart(){ nfQi=0; nfShow('nfQuiz'); nfRender(); }
 function nfRender(){
@@ -2979,7 +3004,35 @@ function nfRender(){
   });
 }
 document.getElementById('nfBack').onclick=()=>{ if(nfQi>0){ nfQi--; nfRender(); } };
-document.getElementById('nfNext').onclick=()=>{ if(nfQi<QSTEPS.length-1){ nfQi++; nfRender(); } else { nfFinish(); } };
+document.getElementById('nfNext').onclick=()=>{ if(nfQi<QSTEPS.length-1){ nfQi++; nfRender(); } else { nfReveal(); } };
+
+// --- the reveal (2026-09-07): meet the persona before the editor. Built from the answers alone, no model call,
+// so a free account gets the same moment as a paid one. Every value lands through textContent. ---
+function nfShort(s,n){ s=String(s||'').replace(/\s+/g,' ').trim(); if(s.length<=n) return s; const cut=s.slice(0,n); const i=Math.max(cut.lastIndexOf('. '),cut.lastIndexOf(', '),cut.lastIndexOf(' ')); return (i>n*0.5?cut.slice(0,i):cut).replace(/[,.;:]$/,'')+'\u2026'; }
+function nfFirstSentence(s){ s=String(s||'').replace(/\s+/g,' ').trim(); const m=s.match(/^(.+?[.!?])(\s|$)/); return m?m[1]:s; }
+function nfTraits(){ const t=[]; const seen=new Set(); const add=(x)=>{ x=nfShort(x,26).replace(/[.!?\u2026]+$/,''); if(!x) return; const k=x.toLowerCase(); if(seen.has(k)||t.length>=3) return; seen.add(k); t.push(x.charAt(0).toUpperCase()+x.slice(1)); };
+  nfA('values').split(/,|;| and /i).slice(0,2).forEach(v=>{ v=v.trim(); if(v&&v.length<=26) add(v); });
+  if(nfA('direct')) add(nfA('direct'));
+  if(nfA('formality')) add(nfA('formality')+' voice');
+  if(t.length<3&&nfA('humor')&&!/^(none|no|nope)\b/i.test(nfA('humor'))) add('Has a sense of humor');
+  if(t.length<3&&nfA('decide')) add(nfShort(nfA('decide'),26));
+  ['Truthful','Practical','Loyal'].forEach(f=>{ if(t.length<3) add(f); });
+  return t; }
+function nfReveal(){
+  const nm=nfA('name')||'My persona'; const who=nfFirstSentence(nfA('who'));
+  document.getElementById('nfRvAv').textContent=(nm.trim()[0]||'P').toUpperCase();
+  document.getElementById('nfRvName').textContent=nm;
+  document.getElementById('nfRvIntro').textContent=who||(nfA('days')?('Spends the days on '+nfShort(nfA('days'),90)):'A persona built from your answers.');
+  const tr=document.getElementById('nfRvTraits'); tr.innerHTML=''; nfTraits().forEach(x=>{ const s=document.createElement('span'); s.textContent=x; tr.appendChild(s); });
+  document.getElementById('nfRvBoundary').textContent=nfFirstSentence(nfA('never')||nfA('rule')||nfA('line'))||'Never do anything that could hurt the people you love.';
+  const dir=(nfA('direct')||'balanced').toLowerCase(), form=(nfA('formality')||'conversational').toLowerCase();
+  const ph=nfA('phrases').split(/\r?\n|;|\. /)[0].replace(/^["\u201c]|["\u201d]$/g,'').trim();
+  let sample='Hey, I\u2019m '+nm+'.'+(who?(' '+who):'')+' Ask me anything, I\u2019ll keep it '+dir+' and '+form;
+  sample+=ph?(', and yes, \u201c'+nfShort(ph,60)+'\u201d is going to come up.'):'.';
+  document.getElementById('nfRvSample').textContent=sample;
+  nfShow('nfReveal'); try{ document.querySelector('.nf-shell').scrollTop=0; }catch(_){} }
+document.getElementById('nfRvGo').onclick=()=>{ nfFinish(); };
+document.getElementById('nfRvAdjust').onclick=()=>{ nfQi=0; nfShow('nfQuiz'); nfRender(); };
 
 function nfCell(name,parts){ const body=parts.filter(Boolean).join("\n\n"); return "# core / "+name+"\n\n"+(body||"(add your own here)"); }
 function nfA(id){ return (nfAns[id]||'').trim(); }
