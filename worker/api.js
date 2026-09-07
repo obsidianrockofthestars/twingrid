@@ -457,6 +457,7 @@ export function guardedPrompt(gridData, compose) {
 function validateChatBody(b) {
   if (!b || typeof b !== "object" || Array.isArray(b)) return "bad_body";
   if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id)) return "bad_grid_id";
+  if (b.place_id !== undefined && (typeof b.place_id !== "string" || !UUID_RE.test(b.place_id))) return "bad_place_id";
   const m = b.messages;
   if (!Array.isArray(m) || m.length < 1 || m.length > MAX_MESSAGES) return "bad_messages";
   for (const x of m) {
@@ -520,7 +521,14 @@ async function handleChat(request, env) {
   if (g.error) return json(request, 502, { error: "grid_unavailable" });
 
   if (g.grid.owner && g.grid.owner !== user.id && (await isBlocked(env, g.grid.owner, user.id))) return json(request, 403, { error: "blocked" });
-  const system = guardedPrompt(g.grid.data, body.compose);
+  let system = guardedPrompt(g.grid.data, body.compose);
+  if (body.place_id) {
+    // the staff persona at a verified Place: approved knowledge and the business boundaries ride along; a persona not on staff gets 404
+    const pk = await rpcService(env, "twingrid_place_knowledge", { p_place: body.place_id, p_grid: body.grid_id });
+    if (!pk.ok) return json(request, 502, { error: "places_unavailable" });
+    if (!pk.value) return json(request, 404, { error: "place_not_found" });
+    system = system + placeBlock(pk.value);
+  }
   if (system.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
   if (system === GUARD) return json(request, 400, { error: "persona_empty" });
 
@@ -1456,6 +1464,63 @@ async function handleP2p(request, env) {
   return json(request, 200, { a, b: bb, with: theirName, remaining: Number(spend.value), cost: P2P_COST, proposed: ok1 && ok2 });
 }
 
+// ---------------------------------------------------------------------------
+// Places and business personas (M7, 2026-09-07). PLAN.md section 3.5.
+// POST /api/place/verify { place_id, method: token | email, evidence }   moderator only (twingrid_is_moderator as the caller)
+// POST /api/place/hit    { place_id, kind: visit | sign | menu | booking | shelf | events | map }   no account, no identity
+// /api/chat with place_id: the staff persona answers from its own public facets PLUS the Place's approved knowledge, under the
+//   business boundaries appended to the guard. twingrid_place_knowledge() answers only for a verified Place and a persona on its staff.
+// ---------------------------------------------------------------------------
+const PLACE_KINDS = new Set(["visit", "sign", "menu", "booking", "shelf", "events", "map"]);
+const BUSINESS_GUARD = "\n\nBUSINESS BOUNDARIES (Personakind, non-negotiable): you are on staff at the Place described below. Answer questions about it only from the approved information there. Never invent or guess a price, a menu item, availability, opening hours, or a booking; when the approved information does not say, say that it does not and point the visitor to the right destination (the Place's verified links, named below) or to the business itself. Never claim a sponsorship, an endorsement or a partnership that is not written below. Never take a payment or a reservation yourself. Always say you are an AI persona speaking for the business when asked.\n\n";
+function placeBlock(pk) {
+  const k = pk && pk.knowledge && typeof pk.knowledge === "object" ? pk.knowledge : {};
+  const cells = CELLORDER.filter((c) => typeof k[c] === "string" && k[c].trim()).map((c) => "# PLACE / " + c + "\n\n" + k[c].trim()).join("\n\n");
+  const links = Array.isArray(pk.links) && pk.links.length ? "\n\nVerified destinations: " + pk.links.map((l) => String(l.slot) + (l.label ? " (" + String(l.label).slice(0, 60) + ")" : "")).join(", ") + "." : "\n\nVerified destinations: none yet.";
+  return BUSINESS_GUARD + "# PLACE\n\nName: " + String(pk.name || "").slice(0, 80) + "\nKind: " + String(pk.kind || "").slice(0, 20) + (pk.blurb ? "\nAbout: " + String(pk.blurb).slice(0, 200) : "") + links + (cells ? "\n\n" + cells : "");
+}
+async function isModerator(env, token) {
+  let res;
+  try {
+    res = await fetch(sbUrl(env, "/rest/v1/rpc/twingrid_is_moderator"), { method: "POST", headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: "{}" });
+  } catch (_) { return false; }
+  if (!res.ok) return false;
+  try { return (await res.json()) === true; } catch (_) { return false; }
+}
+async function handlePlaceVerify(request, env) {
+  const token = bearer(request);
+  const user = await verifyUser(env, token);
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  if (!(await isModerator(env, token))) return json(request, 403, { error: "forbidden" });
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (typeof b.place_id !== "string" || !UUID_RE.test(b.place_id)) return json(request, 400, { error: "bad_place_id" });
+  if (b.method !== "token" && b.method !== "email") return json(request, 400, { error: "bad_method" });
+  const evidence = typeof b.evidence === "string" ? b.evidence.trim().slice(0, 200) : "";
+  if (!evidence) return json(request, 400, { error: "evidence_required" });
+  const now = new Date().toISOString();
+  const row = await servicePatch(env, "/rest/v1/twingrid_places?id=eq." + b.place_id, { verified_at: now, verification: { method: b.method, evidence, reviewer: user.id, at: now } });
+  if (!row) return json(request, 404, { error: "place_not_found" });
+  // the links on file at verification time are verified with the Place; a later URL change clears its own mark
+  let res; try { res = await fetch(sbUrl(env, "/rest/v1/twingrid_place_links?place_id=eq." + b.place_id), { method: "PATCH", headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=minimal" }), body: JSON.stringify({ verified_at: now }) }); } catch (_) { res = null; }
+  if (!res || !res.ok) console.log("place_links_verify_failed");
+  return json(request, 200, { verified_at: now });
+}
+async function handlePlaceHit(request, env) {
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const b = parsed.value || {};
+  if (typeof b.place_id !== "string" || !UUID_RE.test(b.place_id)) return json(request, 400, { error: "bad_place_id" });
+  if (!PLACE_KINDS.has(b.kind)) return json(request, 400, { error: "bad_kind" });
+  const ip = request.headers.get("cf-connecting-ip") || "unknown";
+  if (await rateLimited(env, "place:" + ip + ":" + b.place_id + ":" + b.kind, 5, 86400)) return json(request, 200, { ok: true, counted: false });
+  const r = await rpcService(env, "twingrid_place_hit", { p_place: b.place_id, p_kind: b.kind });
+  if (!r.ok) return json(request, 502, { error: "places_unavailable" });
+  if (Number(r.value) < 0) return json(request, 404, { error: "place_not_found" });
+  return json(request, 200, { ok: true, counted: true, count: Number(r.value) });
+}
+
 // CSP violation reports (M0, 2026-09-07). The header ships Report-Only with report-uri pointing here.
 // Log two short fields, never the whole report (it can carry the page URL with a query string).
 async function handleCspReport(request) {
@@ -1492,7 +1557,9 @@ export async function handleApi(request, env) {
     if (path === "/api/spark" && method === "POST") return await handleSpark(request, env);
     if (path === "/api/kindred" && method === "POST") return await handleKindred(request, env);
     if (path === "/api/p2p" && method === "POST") return await handleP2p(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p") {
+    if (path === "/api/place/verify" && method === "POST") return await handlePlaceVerify(request, env);
+    if (path === "/api/place/hit" && method === "POST") return await handlePlaceHit(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });

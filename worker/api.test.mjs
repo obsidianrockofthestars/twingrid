@@ -57,6 +57,8 @@ let capacityReleases = []; // twingrid_capacity_unspend calls (2026-09-04)
 let rulesRows = [];
 let blocksRows = [];
 let kindredRows = [];
+const PLACE_ID = "77777777-7777-4777-8777-777777777777";
+let placeRow = null; let placeLinkPatches = []; let placeHits = {}; let moderators = new Set();
 let sparksRows = [];
 let visitCounts = {};
 let actionsRows = [];
@@ -144,6 +146,24 @@ globalThis.fetch = async (url, init) => {
     if (method === "DELETE") { kindredRows = kindredRows.filter((r) => r !== row); return new Response(null, { status: 204 }); }
     const a = /grid_a=eq\.([0-9a-f-]+)/.exec(u), bb = /grid_b=eq\.([0-9a-f-]+)/.exec(u);
     return respond(200, kindredRows.filter((r) => (!a || r.grid_a === a[1]) && (!bb || r.grid_b === bb[1])));
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_is_moderator")) { const auth = headers.Authorization || ""; return respond(200, moderators.has(auth)); }
+  if (u.endsWith("/rest/v1/rpc/twingrid_place_knowledge")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("place knowledge is service role");
+    if (!placeRow || body.p_place !== PLACE_ID || !placeRow.verified_at || !placeRow.staff.includes(body.p_grid)) return respond(200, null);
+    return respond(200, { name: placeRow.name, kind: placeRow.kind, blurb: placeRow.blurb, knowledge: placeRow.knowledge, links: placeRow.links });
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_place_hit")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("place hits are service role");
+    if (!placeRow || body.p_place !== PLACE_ID || !placeRow.verified_at) return respond(200, -1);
+    placeHits[body.p_kind] = (placeHits[body.p_kind] || 0) + 1; return respond(200, placeHits[body.p_kind]);
+  }
+  if (u.includes("/rest/v1/twingrid_place_links")) { if (method !== "PATCH") throw new Error("links: only PATCH from the Worker"); placeLinkPatches.push(body); return new Response(null, { status: 204 }); }
+  if (u.includes("/rest/v1/twingrid_places")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("places are verified with the service key");
+    if (method !== "PATCH") throw new Error("places: only PATCH from the Worker");
+    if (!placeRow || !u.includes("id=eq." + PLACE_ID)) return respond(200, []);
+    Object.assign(placeRow, body); return respond(200, [placeRow]);
   }
   if (u.endsWith("/rest/v1/rpc/twingrid_is_kindred")) {
     const lo = body.a < body.b ? body.a : body.b, hi = body.a < body.b ? body.b : body.a;
@@ -1043,6 +1063,56 @@ await check("p2p: a line that trips a boundary refunds both credits and writes n
   await seedKindred("accepted"); resetAutopilot([]); balance = 5; anthropicReply = "Buy now at www.example.com";
   const r = await p2p({ grid_id: GRID_ID, other_grid_id: OTHER_ID }, GOOD_TOKEN);
   eq(r.status, 400, "boundary"); eq(balance, 5, "refunded"); eq(actionsRows.length, 0, "nothing written");
+});
+
+// ---------------------------------------------------------------------------
+// Places and business personas (M7, 2026-09-07)
+// ---------------------------------------------------------------------------
+function resetPlace(verified) { placeRow = { id: PLACE_ID, name: "Porch Coffee", kind: "cafe", blurb: "A small cafe with a long porch.", knowledge: { CONTEXT: "Porch Coffee opens at 7 and closes at 3. The MENU has drip coffee, cortado and a daily scone.", DONT: "Never quote a price; the menu link has them." }, links: [{ slot: "menu", label: "Today's menu" }], staff: [GRID_ID], verified_at: verified ? "2026-09-07T12:00:00Z" : null }; placeLinkPatches = []; placeHits = {}; moderators = new Set(); }
+function chatAt(place, token, gridId) { return handleApi(req("/api/chat", { method: "POST", headers: H({ Authorization: "Bearer " + token }), body: JSON.stringify({ grid_id: gridId || GRID_ID, place_id: place, messages: [{ role: "user", content: "How much is a cortado?" }] }) }), ENV); }
+
+await check("place chat: the staff persona composes its public facets plus the approved knowledge under the business boundaries", async () => {
+  resetPlace(true); balance = 3; lastSystem = "";
+  const r = await chatAt(PLACE_ID, STRANGER_TOKEN);
+  eq(r.status, 200, "status");
+  if (!lastSystem.startsWith("You are role-playing a published Personakind persona")) throw new Error("guard preamble missing");
+  if (!lastSystem.includes("BUSINESS BOUNDARIES")) throw new Error("business boundaries missing");
+  if (!lastSystem.includes("Never invent or guess a price")) throw new Error("the no-invented-price rule is missing");
+  if (!lastSystem.includes("# PLACE / CONTEXT") || !lastSystem.includes("daily scone")) throw new Error("approved knowledge missing");
+  if (!lastSystem.includes("Verified destinations: menu (Today's menu)")) throw new Error("verified links missing from the block");
+  if (!lastSystem.includes("I am a test persona")) throw new Error("the persona's own core facet missing");
+  if (lastSystem.includes("Ask one question at a time")) throw new Error("HOUSE FACET LEAKED into a place chat");
+});
+
+await check("place chat: an unverified Place, a persona not on staff, or a bad place_id -> 404 / 400, no credit spent", async () => {
+  resetPlace(false); balance = 3;
+  eq((await chatAt(PLACE_ID, STRANGER_TOKEN)).status, 404, "unverified place"); eq(balance, 3, "no credit");
+  resetPlace(true); placeRow.staff = [];
+  eq((await chatAt(PLACE_ID, STRANGER_TOKEN)).status, 404, "not on staff"); eq(balance, 3, "no credit either");
+  eq((await chatAt("not-a-uuid", STRANGER_TOKEN)).status, 400, "bad place_id");
+});
+
+await check("place verify: a non-moderator is 403; a moderator verifies with method and evidence, the links on file are stamped too", async () => {
+  resetPlace(false);
+  const body = JSON.stringify({ place_id: PLACE_ID, method: "token", evidence: "meta tag personakind-verify=abc on porchcoffee.example" });
+  eq((await handleApi(req("/api/place/verify", { method: "POST", headers: H({ Authorization: "Bearer " + STRANGER_TOKEN }), body }), ENV)).status, 403, "not a moderator");
+  eq(placeRow.verified_at, null, "untouched");
+  moderators.add("Bearer " + GOOD_TOKEN);
+  const r = await handleApi(req("/api/place/verify", { method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }), body }), ENV);
+  eq(r.status, 200, "verified"); eq(typeof placeRow.verified_at, "string", "verified_at"); eq(placeRow.verification.method, "token", "method"); eq(placeRow.verification.reviewer, USER_ID, "reviewer");
+  eq(placeLinkPatches.length, 1, "links stamped"); eq(typeof placeLinkPatches[0].verified_at, "string", "link verified_at");
+  eq((await handleApi(req("/api/place/verify", { method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }), body: JSON.stringify({ place_id: PLACE_ID, method: "token", evidence: "" }) }), ENV)).status, 400, "evidence required");
+  eq((await handleApi(req("/api/place/verify", { method: "POST", headers: H(), body }), ENV)).status, 401, "signed out");
+});
+
+await check("place hit: counted anonymously per kind on a verified Place; unverified is 404; a bad kind is 400", async () => {
+  resetPlace(true); calls.length = 0;
+  const r = await handleApi(req("/api/place/hit", { method: "POST", headers: H(), body: JSON.stringify({ place_id: PLACE_ID, kind: "menu" }) }), ENV);
+  eq(r.status, 200, "status"); eq((await r.json()).count, 1, "count"); eq(placeHits.menu, 1, "menu hit");
+  if (calls.some((c) => c.url.includes("/auth/v1/user"))) throw new Error("a hit must not look up an account");
+  eq((await handleApi(req("/api/place/hit", { method: "POST", headers: H(), body: JSON.stringify({ place_id: PLACE_ID, kind: "buy" }) }), ENV)).status, 400, "bad kind");
+  resetPlace(false);
+  eq((await handleApi(req("/api/place/hit", { method: "POST", headers: H(), body: JSON.stringify({ place_id: PLACE_ID, kind: "visit" }) }), ENV)).status, 404, "unverified");
 });
 
 await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {

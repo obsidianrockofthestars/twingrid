@@ -460,6 +460,46 @@ body.route-profile #chatsparkrow{color:var(--pmuted)}
 #profile .fcard .kd.kinkd{color:var(--pacc-ink)}
 #profile .p2pout{margin:10px 0 0;padding:12px 14px;border-radius:12px;background:var(--psurf);border:1px solid var(--pline);color:var(--ptext);font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 .lfkin .lfstamp b{text-transform:none;letter-spacing:0;font-size:14px}
+/* Places (M7, 2026-09-07) */
+#places{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
+body.route-places #places{display:block}
+body.route-places{overflow:auto;background:var(--paper)}
+#places .pnav{display:flex;align-items:center;gap:12px;padding:22px 0 8px}
+#places .pnav .brand{font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink)}
+#places .pnav .brand span{color:var(--accent-w)}
+#places .btn{min-height:36px;background:var(--card-w);border-color:var(--line-w);color:var(--ink)}
+#places .btn.solid{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
+#places .btn:focus-visible{outline:2px solid var(--accent-w-deep);outline-offset:2px}
+#places .exhead{padding:26px 0 24px;border-bottom:1px solid var(--line-w);margin-bottom:24px}
+#places .exhead h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;margin:6px 0 10px;color:var(--ink)}
+#places .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
+#places .note{color:var(--ink-soft);font-size:13.5px;line-height:1.5}
+.plgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;padding-bottom:40px}
+.plcard{display:block;text-align:left;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:20px;color:inherit;text-decoration:none}
+.plcard:hover{border-color:var(--accent-w)}
+.plcard .plname{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--ink)}
+.plkind{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-w-deep)}
+.plcard p{color:var(--ink-soft);font-size:14px;line-height:1.55;margin:8px 0 0}
+.plstore{padding-bottom:60px}
+.plstore h2{font-family:var(--serif);font-weight:600;font-size:22px;margin:26px 0 10px;color:var(--ink)}
+.pllinks{display:flex;flex-wrap:wrap;gap:10px}
+.pllinks a{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 14px;border-radius:12px;border:1px solid var(--accent-w);background:var(--card-w);color:var(--ink);text-decoration:none;font-weight:600;font-size:14px}
+.pllinks a:hover{background:var(--accent-w);color:#fff}
+.pllinks a .plkind{color:inherit;opacity:.8}
+.plstaff{display:flex;flex-wrap:wrap;gap:12px}
+.plstaff .lfbox{margin:0;flex:1 1 240px}
+#places .lfbox h3{font-family:var(--serif);font-weight:600;font-size:18px;margin:0 0 4px;color:var(--ink)}
+.plempty{color:var(--ink-soft);font-size:15px}
+#life .plform label{display:block;font-size:13px;color:var(--ink-soft);margin:10px 0 4px}
+#life .plform .lfin,#life .plform .lfsel,#life .plform .lfta{width:100%}
+#life .plform .lfta{min-height:64px}
+.plslot{display:grid;grid-template-columns:90px 1fr 1fr;gap:6px;align-items:center;margin-top:6px}
+@media (max-width:520px){.plslot{grid-template-columns:1fr}}
+.plstaffpick{display:flex;flex-wrap:wrap;gap:10px}
+.plstaffpick label{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--ink);margin:0;min-height:24px}
+.plstaffpick input{width:16px;height:16px;margin:0}
+#life .plstatus{font-size:13.5px;color:var(--ink-soft);margin:8px 0 0}
+#life .plstatus b{color:var(--accent-w)}
 body.route-profile #chat .dhead,body.route-profile #chat .chatin{border-color:var(--pline)}
 body.route-profile #chat .msg.a{background:var(--pbg);border-color:var(--pline);color:var(--ptext)}
 body.route-profile #chat .msg.u{background:var(--pacc);color:var(--pacc-text)}
@@ -1050,8 +1090,8 @@ body.route-profile #helpbtn{left:16px;right:auto}
   #tutbody{padding:14px 14px}
   #tutbtn{display:none}
   #helpbtn{min-height:42px;padding:0 16px;font-size:14px;right:12px;bottom:12px}
-  #home .pnav,#explore .pnav,#mod .pnav,#account .pnav,#life .pnav,#profile .pnav{gap:8px;flex-wrap:wrap}
-  #home .pnav .btn,#explore .pnav .btn,#mod .pnav .btn,#account .pnav .btn,#life .pnav .btn,#profile .pnav .btn{padding:8px 12px;font-size:13px;margin-right:0!important}
+  #home .pnav,#explore .pnav,#mod .pnav,#account .pnav,#life .pnav,#profile .pnav,#places .pnav{gap:8px;flex-wrap:wrap}
+  #home .pnav .btn,#explore .pnav .btn,#mod .pnav .btn,#account .pnav .btn,#life .pnav .btn,#profile .pnav .btn,#places .pnav .btn{padding:8px 12px;font-size:13px;margin-right:0!important}
   #home,#explore,#mod,#account{padding-bottom:84px}
   #tutfoot label{flex-basis:100%}
 }
@@ -1443,10 +1483,32 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="acrow"><span class="note" id="acemail"></span></div>
       <div class="acrow"><span class="note" id="acplanline">Reading your plan...</span></div>
       <div class="acrow"><button class="btn solid" type="button" id="acplanbtn">Plan and renew</button><a class="btn" id="acmanage" href="#" target="_blank" rel="noopener noreferrer" hidden>Manage subscription</a><button class="btn" type="button" id="acsignout">Sign out</button></div>
+      <div class="acrow" style="margin-top:10px"><label class="note" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:24px"><input type="checkbox" id="acbiz" style="width:16px;height:16px;margin:0"> This is a business account (it can claim a Place)</label><span class="note" id="acbizmsg" role="status"></span></div>
       <p class="note" style="margin-top:10px">Only you see this box. Your public page starts below it.</p>
     </section>
     <div class="exgrid" id="acgrid"></div>
     <p class="exfoot" id="acfoot"></p>
+  </div>
+</div>
+<div id="places">
+  <div class="wrap">
+    <nav class="pnav">
+      <a class="brand" href="?">Persona<span>kind</span></a>
+      <span class="sp" style="flex:1"></span>
+      <a class="btn" href="?" hidden data-home>Home</a>
+      <a class="btn" href="?life" hidden data-home>Life log</a>
+      <a class="btn" href="?explore">Explore</a>
+      <a class="btn" href="?" hidden data-acct>Account</a>
+      <button class="btn solid" data-auth data-anon>Build your own</button>
+    </nav>
+    <div class="exhead" id="plhead">
+      <div class="pk-kicker" style="text-align:left">Places</div>
+      <h1 id="plh1">Places with a persona at the door</h1>
+      <p class="exlede" id="pllede">A business claims a Place, a person verifies it, and one of its personas answers from approved information only. Every link here was checked before it went live.</p>
+    </div>
+    <div class="plgrid" id="plgrid"></div>
+    <div class="plstore" id="plstore" hidden></div>
+    <p class="note">Every persona at a Place is an AI speaking for the business from approved information. It cannot take a payment or make a booking; the verified links do that.</p>
   </div>
 </div>
 <div id="life">
@@ -1469,6 +1531,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div>
         <section class="lfbox" aria-labelledby="lfqh"><h2 id="lfqh">Waiting for you</h2><div id="lfqueue"></div></section>
         <section class="lfbox" aria-labelledby="lfsh"><h2 id="lfsh">Step in</h2><div id="lfstep"></div></section>
+        <section class="lfbox" id="lfplacesbox" hidden aria-labelledby="lfplh"><h2 id="lfplh">Places</h2><p class="note">A Place is your storefront in Personakind: a name, a room, approved knowledge the staff persona may answer from, verified links (https only), and the personas on staff. It is invisible to strangers until a person verifies it. Editing the name or the knowledge asks for verification again.</p><div id="lfplaces"></div></section>
         <section class="lfbox lfkin" aria-labelledby="lfkh"><h2 id="lfkh">Kindred</h2><p class="note">Kindred is mutual. A request goes from one of your personas to another owner's public persona; they accept, decline or block. Only Kindred personas can see each other's Kindred facets or talk, and a talk costs 2 hosted messages and lands here for both owners to approve.</p><div id="lfkindred"></div></section>
         <section class="lfbox" aria-labelledby="lfsph"><h2 id="lfsph">Sparks</h2><p class="note">What visitors left. Reactions and notes are public on the persona page; a conversation is only ever visible here, and only because the visitor chose to leave it. Delete anything, block anyone.</p><div id="lfsparks"></div><div id="lfblocks"></div></section>
         <section class="lfbox" aria-labelledby="lflh"><h2 id="lflh">Life log</h2><div id="lflog"></div></section>
@@ -2000,6 +2063,7 @@ async function renderMod(){
     const mk=(label,cls,fn)=>{ const b=document.createElement('button'); b.className='mbtn'+(cls?' '+cls:''); b.textContent=label; b.onclick=()=>act(b,fn); actions.appendChild(b); };
     // 2026-09-04 (OWASP F1): a report carries the grid id and the takedown targets the grid; the old persona_id
     // branch pointed at the empty twingrid_personas table, so the button never took anything down.
+    if(r.target_kind==='place_verify'&&r.target_label){ mk('Verify Place (token on their site)','',()=>pkVerifyPlace(r.target_label,'token')); mk('Verify Place (email from their domain)','',()=>pkVerifyPlace(r.target_label,'email')); }
     if(r.grid_id){ mk(r.target_suspended?'Unsuspend persona':'Suspend persona', r.target_suspended?'':'warn', ()=>SB.rpc('twingrid_mod_suspend',{p_kind:'grid',p_id:r.grid_id,p_suspended:!r.target_suspended})); }
     else if(r.persona_id){ mk(r.target_suspended?'Unsuspend persona':'Suspend persona', r.target_suspended?'':'warn', ()=>SB.rpc('twingrid_mod_suspend',{p_kind:'persona',p_id:r.persona_id,p_suspended:!r.target_suspended})); }
     if(r.target_owner){ mk('Suspend account','warn', ()=>SB.rpc('twingrid_mod_suspend',{p_kind:'account',p_id:r.target_owner,p_suspended:true}));
@@ -2048,6 +2112,7 @@ async function resolveHandlePersona(h,name){ const a=await accountByHandle(h); i
   return {acc:a,id:(data&&data[0])?data[0].id:null}; }
 function onExploreRoute(){ return new URLSearchParams(location.search).has('explore'); }
 function onLifeRoute(){ const q=new URLSearchParams(location.search); return q.has('life')||q.has('kindred'); }
+function onPlacesRoute(){ const q=new URLSearchParams(location.search); return q.has('places')||!!q.get('place'); }
 function route(){ const twin=onProfileRoute();
   if(twin){ document.body.className='marketing route-profile'; app.style.display='none'; renderProfile(twin); return; }
   const acct=onAccountRoute();
@@ -2055,6 +2120,7 @@ function route(){ const twin=onProfileRoute();
     if(pn){ document.body.className='marketing route-profile'; resolveHandlePersona(acct,pn).then(r=>{ if(r.id) renderProfile(r.id,{handle:acct}); else renderProfile('00000000-0000-0000-0000-000000000000',{handle:acct,missingName:pn}); }); return; }
     document.body.className='marketing route-account'; renderAccount(acct); return; }
   if(onLifeRoute()){ document.body.className='marketing route-life'; app.style.display='none'; renderLife(); return; }
+  if(onPlacesRoute()){ document.body.className='marketing route-places'; app.style.display='none'; renderPlaces(); return; }
   if(onExploreRoute()){ document.body.className='marketing route-explore'; app.style.display='none'; renderExplore(); return; }
   if(onModRoute()){ document.body.className='marketing route-mod'; app.style.display='none'; renderMod(); return; }
   document.body.className='marketing route-landing'; refreshAuth(); }
@@ -2130,7 +2196,7 @@ function termsBar(session){ const bar=document.getElementById('termsbar'); if(!b
 document.getElementById('termsagree').onclick=async()=>{ try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} document.getElementById('termsbar').hidden=true;
   try{ await SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}); }catch(_){} };
 SB.auth.getSession().then(({data})=>termsBar(data&&data.session)).catch(()=>{});
-SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
+SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(onPlacesRoute()){ renderPlaces(); } else if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
   // Terms acceptance record (2026-09-02): the box was ticked in this browser before sign-in, so stamp the version on the user once.
   try{ const u=session&&session.user; const md=(u&&u.user_metadata)||{}; if(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')===TERMS_VERSION){ SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}).catch(()=>{}); } }catch(_){} });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
@@ -2670,15 +2736,16 @@ async function openChat(){ pkChatFace(); if(localStorage.getItem('tg_key')){ set
 function currentGridId(){ return curId||PK_CUR_ID||null; }
 function composeState(){ return {mode, sel:{...sel}, on:[...on], queue:[...queue]}; }
 function pushAssistant(text){ history.push({role:'assistant',content:text}); renderChat(); }
+let PK_PLACE=null; // the Place a staff persona is being talked to at, set by the storefront; forces the hosted path
 async function sendChat(){const inp=document.getElementById('chatinput');const text=inp.value.trim();if(!text)return;
-  const key=localStorage.getItem('tg_key');
+  const key=PK_PLACE?null:localStorage.getItem('tg_key');
   if(!key){
     const token=await hostedToken(); if(!token){ settings.classList.add('open'); return; }
     const gridId=currentGridId(); if(!gridId){ pushAssistant('[hosted] Save this persona first, then chat. Hosted chat reads the saved persona.'); return; }
     inp.value='';history.push({role:'user',content:text});renderChat();
     const b=document.getElementById('chatbody');const wait=document.createElement('div');wait.className='msg a';wait.textContent='...';b.appendChild(wait);b.scrollTop=b.scrollHeight;
     let msgs=history.slice(-12).map(m=>({role:m.role,content:m.content.slice(0,2000)})); while(msgs.length&&msgs[0].role!=='user') msgs.shift(); // 12 turns of 2,000 chars: the Worker refuses more (cost fix, 2026-09-02)
-    try{ const res=await fetch(HOSTED_API+'/chat',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({grid_id:gridId,messages:msgs,compose:composeState()})});
+    try{ const res=await fetch(HOSTED_API+'/chat',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(Object.assign({grid_id:gridId,messages:msgs,compose:composeState()},PK_PLACE?{place_id:PK_PLACE}:{}))});
       let j=null; try{ j=await res.json(); }catch(_){ j=null; }
       wait.remove();
       if(res.status===402){ history.pop(); inp.value=text; renderChat(); hostedRemaining=0; setCreditsLine(j&&j.cost>1 ? 'Hosted chat: this persona costs '+j.cost+' messages a reply and you have fewer left. Renew, or add your own key.' : 'Hosted chat: no messages left on your plan. Renew, or add your own key.'); showProCard(); return; }
@@ -3028,6 +3095,7 @@ function accountPanel(session){ const box=document.getElementById('acplan'); box
   refreshCredits().then(()=>{ line.textContent=document.getElementById('planline').textContent||'No hosted plan yet.'; }).catch(()=>{ line.textContent='Could not read your plan right now.'; });
   document.getElementById('acplanbtn').onclick=async()=>{ await refreshCredits(); showProCard(); };
   document.getElementById('acsignout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
+  try{ pkBizToggle(session&&session.user?session.user.id:null); }catch(_){}
   (async()=>{ try{ const p=await rcInstance(); const info=await p.getCustomerInfo(); const u=info&&info.managementURL; if(u&&/^https:\/\//.test(u)){ manage.href=u; manage.hidden=false; } }catch(_){} })(); }
 async function renderAccount(handle){
   const nameEl=document.getElementById('acname'), hEl=document.getElementById('achandle'), bioEl=document.getElementById('acbio'), av=document.getElementById('acav'),
@@ -3131,7 +3199,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cl=document.createElement('span'); cl.className='cl'; cl.textContent=cellLabel(c);
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
-  PROFILE_GRID=g; PK_CUR_ID=id; syncHideBtn();
+  PROFILE_GRID=g; PK_CUR_ID=id; PK_PLACE=null; syncHideBtn();
   pkRenderHome(g); pkRenderLately(id); pkRenderSparks(id); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner);
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
@@ -3201,7 +3269,7 @@ function lfLocalFromUtc(hUtc){ const d=new Date(); d.setUTCHours(Number(hUtc)||0
 function lfEmpty(host,text){ const p=document.createElement('p'); p.className='lfempty'; p.textContent=text; host.appendChild(p); }
 function lfBtn(label,on,solid){ const b=document.createElement('button'); b.type='button'; b.className='btn'+(solid?' solid':''); b.textContent=label; if(on) b.onclick=on; return b; }
 async function renderLife(){ document.title='Life log \u00b7 Personakind'; const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'), pick=document.getElementById('lfpick'), rules=document.getElementById('lfrules'), step=document.getElementById('lfstep');
-  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg(''); ['lfsparks','lfblocks','lfkindred'].forEach(i=>{ const e=document.getElementById(i); if(e) e.innerHTML=''; });
+  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg(''); ['lfsparks','lfblocks','lfkindred','lfplaces'].forEach(i=>{ const e=document.getElementById(i); if(e) e.innerHTML=''; });
   const {data:{session}}=await SB.auth.getSession();
   if(!session){ lfEmpty(q,'Sign in to see what your persona has been doing.'); openAuth(); return; }
   const uid=await ownerId();
@@ -3212,7 +3280,7 @@ async function renderLife(){ document.title='Life log \u00b7 Personakind'; const
   const want=new URLSearchParams(location.search).get('g'); LF_GRID=grids.find(g=>g.id===want)||grids[0]; pick.value=LF_GRID.id;
   pick.onchange=()=>{ LF_GRID=grids.find(g=>g.id===pick.value)||grids[0]; lfLoad(); };
   await lfLoad(); }
-async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); lfLoadSparks(); lfLoadKindred(); }
+async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); lfLoadSparks(); lfLoadKindred(); lfLoadPlaces(); }
 async function lfLoadActions(){ const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'); q.innerHTML=''; lg.innerHTML='';
   const {data,error}=await SB.from('twingrid_actions').select('id,kind,authorship,status,audience,body,rule_ref,refusal,created_at,decided_at,published_at').eq('grid_id',LF_GRID.id).order('created_at',{ascending:false}).limit(100);
   if(error){ lfEmpty(q,'Could not load the life log.'); return; }
@@ -3408,6 +3476,88 @@ async function pkFindKindred(id,mine){ if(!mine||!mine.length) return null; try{
 // the Kindred read: the same persona through twingrid_kindred_view(), Kindred facets included and marked
 async function pkKindredData(id){ const mine=await pkMyPublicGrids(); const pair=await pkFindKindred(id,mine); if(!pair) return null;
   try{ const {data}=await SB.rpc('twingrid_kindred_view',{p_grid:id,p_viewer_grid:pair.mine.id}); return (data&&data.kindred&&Array.isArray(data.facets))?data:null; }catch(_){ return null; } }
+
+// ---------- Places (M7, 2026-09-07). Strangers read the verified views only; the owner edits their own rows under RLS; verification
+// is a moderator's call through the Worker; counts are anonymous. Every string from the database: textContent. Links: verified https only,
+// rendered as anchors with rel noopener noreferrer nofollow, and a click counts one hit without identity. ----------
+const PLACE_KIND_LABEL={shop:'Shop',cafe:'Cafe',studio:'Studio',salon:'Salon',office:'Office',gallery:'Gallery',event_space:'Event space',other:'Place'};
+const PLACE_SLOT_LABEL={sign:'Front sign',menu:'Menu',booking:'Book',shelf:'Shelf',events:'Events',map:'Map'};
+const PLACE_SLOTS=['sign','menu','booking','shelf','events','map'];
+function plHit(placeId,kind){ try{ fetch(HOSTED_API+'/place/hit',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({place_id:placeId,kind})}).catch(()=>{}); }catch(_){} }
+async function renderPlaces(){ const grid=document.getElementById('plgrid'), store=document.getElementById('plstore'), h1=document.getElementById('plh1'), lede=document.getElementById('pllede'); if(!grid||!store) return;
+  const id=new URLSearchParams(location.search).get('place'); grid.innerHTML=''; store.innerHTML=''; store.hidden=true; grid.hidden=false;
+  if(id&&UUID_RE_PAGE.test(id)){ await renderPlace(id); return; }
+  document.title='Places \u00b7 Personakind'; h1.textContent='Places with a persona at the door'; lede.textContent='A business claims a Place, a person verifies it, and one of its personas answers from approved information only. Every link here was checked before it went live.';
+  const {data,error}=await SB.from('twingrid_places_public').select('id,kind,name,blurb,room,verified_at').order('verified_at',{ascending:false}).limit(200);
+  if(error){ const p=document.createElement('p'); p.className='plempty'; p.textContent='Could not load Places.'; grid.appendChild(p); return; }
+  const rows=data||[]; if(!rows.length){ const p=document.createElement('p'); p.className='plempty'; p.textContent='No verified Places yet. A business account can claim one from its Life log.'; grid.appendChild(p); return; }
+  let staff={}; try{ const {data:st}=await SB.from('twingrid_place_staff_public').select('place_id,persona_name').in('place_id',rows.map(r=>r.id)); (st||[]).forEach(x=>{ (staff[x.place_id]=staff[x.place_id]||[]).push(x.persona_name); }); }catch(_){}
+  rows.forEach(r=>{ const a=document.createElement('a'); a.className='plcard'; a.href='?place='+encodeURIComponent(r.id);
+    const k=document.createElement('div'); k.className='plkind'; k.textContent=PLACE_KIND_LABEL[r.kind]||'Place'; const n=document.createElement('div'); n.className='plname'; n.textContent=String(r.name||''); a.append(k,n);
+    if(r.blurb){ const p=document.createElement('p'); p.textContent=String(r.blurb); a.appendChild(p); }
+    const sp=document.createElement('p'); const names=(staff[r.id]||[]).slice(0,3); sp.textContent=names.length?('At the door: '+names.join(', ')):'No persona on staff yet.'; a.appendChild(sp); grid.appendChild(a); }); }
+const UUID_RE_PAGE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function renderPlace(id){ const grid=document.getElementById('plgrid'), store=document.getElementById('plstore'), h1=document.getElementById('plh1'), lede=document.getElementById('pllede'); grid.hidden=true; store.hidden=false;
+  const {data:pl}=await SB.from('twingrid_places_public').select('id,owner,kind,name,blurb,room,verified_at').eq('id',id).maybeSingle();
+  if(!pl){ h1.textContent='No such Place'; lede.textContent='It is not verified yet, or the link is wrong.'; document.title='Place \u00b7 Personakind'; return; }
+  document.title=String(pl.name||'Place')+' \u00b7 Personakind'; h1.textContent=String(pl.name||''); lede.textContent=(PLACE_KIND_LABEL[pl.kind]||'Place')+(pl.blurb?(' \u00b7 '+String(pl.blurb)):'')+' \u00b7 verified '+new Date(pl.verified_at).toLocaleDateString();
+  const [{data:links},{data:staff}]=await Promise.all([SB.from('twingrid_place_links_public').select('slot,url,label').eq('place_id',id), SB.from('twingrid_place_staff_public').select('grid_id,role,persona_name').eq('place_id',id)]);
+  plHit(id,'visit');
+  const h2=document.createElement('h2'); h2.textContent='Verified destinations'; store.appendChild(h2);
+  const ls=(links||[]).filter(l=>/^https:\/\//.test(String(l.url||''))); const lw=document.createElement('div'); lw.className='pllinks';
+  if(!ls.length){ const p=document.createElement('p'); p.className='plempty'; p.textContent='No verified links yet.'; store.appendChild(p); }
+  PLACE_SLOTS.forEach(slot=>{ const l=ls.find(x=>x.slot===slot); if(!l) return; const a=document.createElement('a'); a.href=l.url; a.target='_blank'; a.rel='noopener noreferrer nofollow'; const k=document.createElement('span'); k.className='plkind'; k.textContent=PLACE_SLOT_LABEL[slot]||slot; a.append(k,document.createTextNode(String(l.label||new URL(l.url).hostname))); a.addEventListener('click',()=>plHit(id,slot)); lw.appendChild(a); });
+  store.appendChild(lw);
+  const h3=document.createElement('h2'); h3.textContent='At the door'; store.appendChild(h3);
+  const sw=document.createElement('div'); sw.className='plstaff'; const st=staff||[];
+  if(!st.length){ const p=document.createElement('p'); p.className='plempty'; p.textContent='No persona on staff yet.'; store.appendChild(p); }
+  st.forEach(m=>{ const box=document.createElement('div'); box.className='lfbox'; const nm=document.createElement('h3'); nm.textContent=String(m.persona_name||'Persona'); const role=document.createElement('p'); role.className='note'; role.textContent=(m.role?String(m.role)+' \u00b7 ':'')+'AI persona speaking for '+String(pl.name||'this Place')+'. Hosted chat, 1 message a reply from your balance.';
+    const row=document.createElement('div'); row.className='lfacts'; const talk=document.createElement('button'); talk.type='button'; talk.className='btn solid'; talk.textContent='Ask it here'; talk.onclick=()=>plTalk(m.grid_id,id); const open=document.createElement('a'); open.className='btn'; open.href='?t='+encodeURIComponent(m.grid_id); open.textContent='Its own page'; row.append(talk,open); box.append(nm,role,row); sw.appendChild(box); });
+  store.appendChild(sw);
+  // the owner sees the counts here too
+  try{ const {data:{session}}=await SB.auth.getSession(); if(session&&session.user&&session.user.id===pl.owner){ const {data:c}=await SB.rpc('twingrid_place_counts',{p_place:id}); const cs=document.createElement('p'); cs.className='note'; cs.textContent='Only you see this: '+((c||[]).map(x=>x.kind+' '+x.total).join(', ')||'no visits or clicks yet')+'.'; store.appendChild(cs); } }catch(_){} }
+async function plTalk(gridId,placeId){ try{ const {data}=await SB.from('twingrid_grids_public').select('id,name,data,image_url,voice_id').eq('id',gridId).maybeSingle(); if(!data) return;
+    PROFILE_GRID=(data.data&&data.data.facets)?data.data:{facets:[]}; PK_CUR_ID=gridId; PK_PLACE=placeId; GRID=PROFILE_GRID; reindex(); rebuildKinds(); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(String(data.name||'P').trim()[0]||'P').toUpperCase();
+    pkApplyTheme(document.getElementById('chat'),pkThemeFor(PROFILE_GRID.theme)); history=[]; openChat(); }catch(_){} }
+async function pkVerifyPlace(placeId,method){ const evidence=window.prompt(method==='token'?'Paste what you saw on their site (the token line and the URL).':'Paste the sender address and date of the email from their domain.'); if(!evidence) return {error:{message:'cancelled'}};
+  const token=await hostedToken(); const r=await fetch(HOSTED_API+'/place/verify',{method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({place_id:placeId,method,evidence:evidence.slice(0,200)})}); const j=await r.json().catch(()=>({})); return r.ok?{data:j}:{error:{message:j.error||String(r.status)}}; }
+// the business toggle on the account page
+async function pkBizToggle(uid){ const ck=document.getElementById('acbiz'), msg=document.getElementById('acbizmsg'); if(!ck||!uid) return; try{ const {data}=await SB.from('twingrid_accounts').select('kind').eq('id',uid).maybeSingle(); ck.checked=!!(data&&data.kind==='business'); }catch(_){}
+  ck.onchange=async()=>{ msg.textContent='Saving...'; const {error}=await SB.from('twingrid_accounts').update({kind:ck.checked?'business':'person'}).eq('id',uid); msg.textContent=error?'Could not save.':(ck.checked?'Business account. Claim a Place from your Life log.':'Personal account.'); }; }
+// the owner's Places box on ?life (business accounts only)
+async function lfLoadPlaces(){ const box=document.getElementById('lfplacesbox'), host=document.getElementById('lfplaces'); if(!box||!host) return; host.innerHTML=''; box.hidden=true;
+  let kind='person'; try{ const {data}=await SB.from('twingrid_accounts').select('kind').eq('id',LF_GRID.owner).maybeSingle(); kind=(data&&data.kind)||'person'; }catch(_){}
+  if(kind!=='business') return; box.hidden=false;
+  const {data:places,error}=await SB.from('twingrid_places').select('id,kind,name,blurb,room,knowledge,verified_at,verification,updated_at').eq('owner',LF_GRID.owner).order('created_at',{ascending:true});
+  if(error){ lfEmpty(host,'Could not load your Places.'); return; }
+  const mine=await SB.from('twingrid_grids').select('id,name,is_public').eq('owner',LF_GRID.owner).eq('is_public',true).then(r=>r.data||[]);
+  (places||[]).forEach(pl=>host.appendChild(plForm(pl,mine)));
+  const add=lfBtn('+ Claim a new Place',async()=>{ const {error}=await SB.from('twingrid_places').insert({owner:LF_GRID.owner,name:'New Place'}); lfMsg(error?('Could not create it: '+String(error.message||'').slice(0,100)):'Created. Fill it in below.'); lfLoadPlaces(); }); add.style.marginTop='10px'; host.appendChild(add); }
+function plForm(pl,mine){ const f=document.createElement('form'); f.className='plform lfitem'; const lab=(t,el)=>{ const l=document.createElement('label'); l.textContent=t; f.append(l,el); return el; };
+  const sel=(opts,val)=>{ const e=document.createElement('select'); e.className='lfsel'; opts.forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; o.selected=v===val; e.appendChild(o); }); return e; };
+  const st=document.createElement('p'); st.className='plstatus'; const b=document.createElement('b'); b.textContent=pl.verified_at?'Verified':'Not verified'; st.append(b,document.createTextNode(pl.verified_at?(' on '+new Date(pl.verified_at).toLocaleDateString()+'. Public at ?place='+pl.id+'.'):'. Strangers cannot see it yet. Fill it in, save, then ask for verification.')); f.appendChild(st);
+  const name=lab('Name',Object.assign(document.createElement('input'),{className:'lfin',value:String(pl.name||''),maxLength:80}));
+  const kind=lab('Kind',sel(Object.entries(PLACE_KIND_LABEL),pl.kind||'other'));
+  const blurb=lab('One line about it (200 characters)',Object.assign(document.createElement('input'),{className:'lfin',value:String(pl.blurb||''),maxLength:200}));
+  const room=lab('Room',sel([['studio','Studio'],['library','Library'],['workshop','Workshop'],['porch','Porch'],['observatory','Observatory'],['kitchen','Kitchen'],['garden','Garden'],['office','Office']],pl.room||'office'));
+  const kn=pl.knowledge&&typeof pl.knowledge==='object'?pl.knowledge:{}; const cells={};
+  [['CONTEXT','What the persona may say about the Place (hours, what you sell, who you are)'],['DO','What it should do for visitors'],['DONT','What it must never do or claim'],['GATES','Hard limits (for example: no prices, send them to the menu link)'],['VOICE','How it should sound at the door']].forEach(([c,t])=>{ cells[c]=lab(t,Object.assign(document.createElement('textarea'),{className:'lfta',value:String(kn[c]||''),maxLength:4000})); });
+  const ll=document.createElement('label'); ll.textContent='Verified destinations (https only; a changed link waits for verification again)'; f.appendChild(ll);
+  const linkIn={}; PLACE_SLOTS.forEach(slot=>{ const row=document.createElement('div'); row.className='plslot'; const k=document.createElement('span'); k.className='plkind'; k.textContent=PLACE_SLOT_LABEL[slot]; const u=Object.assign(document.createElement('input'),{className:'lfin',placeholder:'https://',maxLength:500}); u.setAttribute('aria-label',PLACE_SLOT_LABEL[slot]+' link'); const l=Object.assign(document.createElement('input'),{className:'lfin',placeholder:'label',maxLength:60}); l.setAttribute('aria-label',PLACE_SLOT_LABEL[slot]+' label'); row.append(k,u,l); f.appendChild(row); linkIn[slot]={u,l}; });
+  (async()=>{ const {data}=await SB.from('twingrid_place_links').select('slot,url,label,verified_at').eq('place_id',pl.id); (data||[]).forEach(x=>{ if(linkIn[x.slot]){ linkIn[x.slot].u.value=x.url||''; linkIn[x.slot].l.value=x.label||''; linkIn[x.slot].u.title=x.verified_at?'verified':'awaiting verification'; } }); })();
+  const sl=document.createElement('label'); sl.textContent='Personas on staff (your public personas)'; f.appendChild(sl); const sp=document.createElement('div'); sp.className='plstaffpick'; const staffIn={};
+  if(!mine.length){ const n=document.createElement('span'); n.className='note'; n.textContent='Publish a persona first.'; sp.appendChild(n); }
+  mine.forEach(g=>{ const l=document.createElement('label'); const c=document.createElement('input'); c.type='checkbox'; staffIn[g.id]=c; l.append(c,document.createTextNode(g.name||'Untitled')); sp.appendChild(l); }); f.appendChild(sp);
+  (async()=>{ const {data}=await SB.from('twingrid_place_staff').select('grid_id').eq('place_id',pl.id); (data||[]).forEach(x=>{ if(staffIn[x.grid_id]) staffIn[x.grid_id].checked=true; }); })();
+  const acts=document.createElement('div'); acts.className='lfacts'; const save=lfBtn('Save Place',null,true); save.type='submit'; const ask=lfBtn('Ask for verification',async()=>{ const {data:{session}}=await SB.auth.getSession(); if(!session) return; const method=window.prompt('How should we verify? Type "token" to put a line personakind-verify='+pl.id.slice(0,8)+' on your website, or "email" to write to us from an address at your business domain.'); if(!method) return; const {error}=await SB.from('twingrid_reports').insert({reporter:session.user.id,reason:'other',note:('Place verification: '+String(method).slice(0,10)+' for '+pl.name).slice(0,600),target_kind:'place_verify',target_label:pl.id}); lfMsg(error?'Could not ask.':'Asked. A person checks it and you will see Verified here.'); });
+  const del=lfBtn('Delete Place',async()=>{ if(!window.confirm('Delete this Place and its links?')) return; await SB.from('twingrid_places').delete().eq('id',pl.id); lfLoadPlaces(); }); const msg=document.createElement('span'); msg.className='note'; msg.setAttribute('role','status'); acts.append(save,ask,del,msg); f.appendChild(acts);
+  f.onsubmit=async e=>{ e.preventDefault(); msg.textContent='Saving...'; const knowledge={}; for(const c in cells){ const v=cells[c].value.trim(); if(v) knowledge[c]=v; }
+    const {error}=await SB.from('twingrid_places').update({name:name.value.trim().slice(0,80)||'Untitled Place',kind:kind.value,blurb:blurb.value.trim().slice(0,200),room:room.value,knowledge}).eq('id',pl.id);
+    if(error){ msg.textContent='Could not save: '+String(error.message||'').slice(0,120); return; }
+    for(const slot of PLACE_SLOTS){ const u=linkIn[slot].u.value.trim(), l=linkIn[slot].l.value.trim().slice(0,60); if(!u){ await SB.from('twingrid_place_links').delete().eq('place_id',pl.id).eq('slot',slot); continue; } if(!/^https:\/\/\S+$/.test(u)){ msg.textContent=PLACE_SLOT_LABEL[slot]+' link must start with https://'; return; } const {error:le}=await SB.from('twingrid_place_links').upsert({place_id:pl.id,slot,url:u,label:l},{onConflict:'place_id,slot'}); if(le){ msg.textContent='Could not save the '+PLACE_SLOT_LABEL[slot]+' link.'; return; } }
+    for(const gid in staffIn){ if(staffIn[gid].checked) await SB.from('twingrid_place_staff').upsert({place_id:pl.id,grid_id:gid},{onConflict:'place_id,grid_id'}); else await SB.from('twingrid_place_staff').delete().eq('place_id',pl.id).eq('grid_id',gid); }
+    msg.textContent='Saved.'; lfLoadPlaces(); };
+  return f; }
 
 
 // ---------- new-persona flow (chooser + questionnaire) ----------

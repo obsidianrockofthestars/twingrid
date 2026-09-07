@@ -108,6 +108,8 @@ grant execute on function public.twingrid_visit_count(uuid) to anon, authenticat
 -- 6. The age gate (Ruled 2026-09-07, C11): 18 plus to publish, confirmed once per account; private building is not gated.
 --    The column is phase A. The trigger below is PHASE B.
 alter table public.twingrid_accounts add column if not exists adult_confirmed_at timestamptz;
+-- twingrid_accounts is COLUMN-granted (2026-08-29); a new column is invisible to the API roles until it is granted (applied as twingrid_accounts_new_column_grants)
+grant select (adult_confirmed_at), insert (adult_confirmed_at), update (adult_confirmed_at) on public.twingrid_accounts to authenticated;
 
 -- ===================== PHASE B (after the page with the checkbox is live) =====================
 create or replace function public.twingrid_publish_gate() returns trigger
