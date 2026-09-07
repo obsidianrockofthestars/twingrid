@@ -692,6 +692,17 @@ await check("sitemap handler reads public grids off the Lobby view, not the tabl
   if (calls.some((c) => c.url.includes("/rest/v1/twingrid_grids?"))) throw new Error("sitemap read the base table");
 });
 
+await check("csp-report: POST answers 204 with an empty body, GET is 405, a malformed body is still 204", async () => {
+  const good = await handleApi(new Request("https://personakind.com/api/csp-report", { method: "POST", headers: H({ "content-type": "application/csp-report" }),
+    body: JSON.stringify({ "csp-report": { "violated-directive": "script-src", "blocked-uri": "https://evil.example/x.js" } }) }), ENV);
+  eq(good.status, 204, "status");
+  eq(await good.text(), "", "empty body");
+  const bad = await handleApi(new Request("https://personakind.com/api/csp-report", { method: "POST", headers: H(), body: "not json" }), ENV);
+  eq(bad.status, 204, "malformed still 204");
+  const get = await handleApi(new Request("https://personakind.com/api/csp-report", { method: "GET", headers: H() }), ENV);
+  eq(get.status, 405, "GET is 405");
+});
+
 await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {
   for (const p of ["/@clonedylan", "/@clonedylan/My%20Coach", "/%40clonedylan", "/%40Clonedylan/x"]) if (!isHandlePath(p)) throw new Error("should be handle path: " + p);
   for (const p of ["/", "/terms", "/pricing", "/api/chat", "/mcp", "/nope", "/at@sign"]) if (isHandlePath(p)) throw new Error("should not be handle path: " + p);

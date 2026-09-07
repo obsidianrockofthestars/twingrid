@@ -1058,6 +1058,20 @@ export async function handleSitemap(env) {
   });
 }
 
+// CSP violation reports (M0, 2026-09-07). The header ships Report-Only with report-uri pointing here.
+// Log two short fields, never the whole report (it can carry the page URL with a query string).
+async function handleCspReport(request) {
+  let d = null, b = null;
+  try {
+    const j = await request.json();
+    const r = (j && (j["csp-report"] || (Array.isArray(j) && j[0] && j[0].body) || j)) || {};
+    d = String(r["violated-directive"] || r.effectiveDirective || r["effective-directive"] || "").slice(0, 60);
+    b = String(r["blocked-uri"] || r.blockedURL || "").slice(0, 120);
+  } catch (_) {}
+  console.log("csp_report " + JSON.stringify({ d, b }));
+  return new Response(null, { status: 204 });
+}
+
 export async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, "") || "/";
@@ -1073,7 +1087,8 @@ export async function handleApi(request, env) {
     if (path === "/api/rc-webhook" && method === "POST") return await handleRcWebhook(request, env);
     if (path === "/api/media/image" && method === "POST") return await handleMediaImage(request, env);
     if (path === "/api/media/voice" && method === "POST") return await handleMediaVoice(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice") {
+    if (path === "/api/csp-report" && method === "POST") return await handleCspReport(request);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });
