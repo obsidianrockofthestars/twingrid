@@ -145,6 +145,22 @@ button{font-family:inherit}
 .rrow .rn{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rseg{display:flex;gap:4px;flex-shrink:0}
 .rseg .chip{padding:3px 8px}
+/* the Home box (M1, 2026-09-07) */
+.hrow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px;color:var(--text)}
+.hrow .rn{min-width:44px;flex:none}
+.hrow .field,.hobj .field{flex:1 1 80px;min-width:0;font-size:12.5px;padding:6px 8px;margin:0;min-height:24px}
+.hrow select,.hobj select,#homefields select.hadd{font-size:12px;padding:5px 6px;min-height:24px;max-width:100%}
+.hrow select{flex:1 1 auto;min-width:0}
+.hzone{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text)}
+.hobj{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 0}
+.hobj select{flex:1 1 96px;min-width:0}
+.hico{width:22px;height:22px;flex:none;color:var(--text);--pk-obj-accent:var(--accent)}
+.hico svg{width:22px;height:22px;display:block}
+#homefields select.hadd{width:100%;margin-top:4px}
+#homefields .starter{font-size:12.5px;padding:6px 8px;margin:6px 0 0;min-height:24px}
+.hobj .chip.hx{min-width:24px;min-height:24px;padding:0 7px;font-size:14px;line-height:1}
+.hsoc{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);cursor:pointer;min-height:24px}
+.hsoc input{width:16px;height:16px;margin:0}
 .note code{font-family:"IBM Plex Mono",monospace;color:var(--text);background:var(--surface2);padding:1px 5px;border-radius:4px}
 
 /* ============ Personakind v2: tokens, landing, auth, profile ============ */
@@ -1160,6 +1176,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="persona name">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
       <details class="pk-rooms" id="roomsbox"><summary>Who sees what <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Public facets are the persona strangers, Explore and hosted chat by anyone but you can read. Private stays yours. Kindred is saved now and opens to mutual relationships when they ship. Save to apply.</p><div id="roomlist"></div></details>
+      <details class="pk-rooms" id="homebox"><summary>Home <span class="note" id="homesum"></span></summary><p class="note" style="margin:6px 0 4px">The room your persona lives in. Everyone who opens its page sees it. An object can open one of your facets; if that facet is Private or Kindred, strangers see the object and no door. Save to apply.</p><div id="homefields"></div></details>
       <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
       <div id="facemsg" aria-live="polite"></div>
       <div id="voicebox" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="facevoice" class="note" style="margin:0">Voice</label><select id="facevoice" class="tbtn" aria-label="Persona voice" style="font-size:12px;padding:6px 8px"><option value="">No voice</option><option value="browser">Browser voice (free)</option></select><span class="note" id="voicenote" style="margin:0">Gemini voices cost 2 to 6 messages a reply to hear; the browser voice is free.</span></div>
@@ -1983,6 +2000,61 @@ function pkRepaintRooms(){ const list=document.getElementById('roomlist'), sum=d
     row.appendChild(seg); list.appendChild(row); });
   sum.textContent=n.lobby+' public \u00b7 '+n.visiting+' kindred \u00b7 '+n.house+' private'; }
 
+// ---------- the Home (M1, 2026-09-07): data.house. twingrid_house_valid() in SQL is the real gate; this paints the editor. ----------
+// Objects are keys into docs/catalog/objects.json (never a URL). The catalog markup is repo data checked by tools/catalog_check.mjs;
+// it is the one thing this block sets with innerHTML, and nothing the owner typed ever goes through that path.
+const PK_HOME_ZONES=[['thinking',6],['resting',4],['memory',6]];
+let PK_CAT=null;
+function pkCatalog(){ if(!PK_CAT){ PK_CAT=fetch(location.origin+'/catalog/objects.json').then(r=>r.ok?r.json():null)
+    .then(c=>{ if(!c||!Array.isArray(c.objects)) throw new Error('catalog'); c.byId=Object.fromEntries(c.objects.map(o=>[o.id,o])); return c; })
+    .catch(()=>{ PK_CAT=null; return null; }); } return PK_CAT; }
+function pkHouse(create){ if(create&&(!GRID.house||typeof GRID.house!=='object')) GRID.house={}; return (GRID.house&&typeof GRID.house==='object')?GRID.house:{}; }
+function pkHomeIcon(host,o){ host.innerHTML=(o&&typeof o.svg==='string')?o.svg:''; }
+function pkHomeSum(){ const sum=document.getElementById('homesum'); if(!sum) return; const h=pkHouse(false), z=(h.zones&&typeof h.zones==='object')?h.zones:{};
+  const n=['thinking','resting','memory'].reduce((a,k)=>a+(Array.isArray(z[k])?z[k].length:0),0);
+  sum.textContent=(h.room?h.room+' \u00b7 ':'')+(h.mood?h.mood+' \u00b7 ':'')+n+(n===1?' object':' objects'); }
+async function pkRepaintHome(){ const box=document.getElementById('homefields'); if(!box) return; const gen=(box.__gen=(box.__gen||0)+1);
+  const cat=await pkCatalog(); if(gen!==box.__gen) return; box.innerHTML='';
+  if(!cat){ const p=document.createElement('p'); p.className='note'; p.textContent='The object catalog did not load. Try again in a moment.'; box.appendChild(p); return; }
+  const h=pkHouse(false), zones=(h.zones&&typeof h.zones==='object')?h.zones:{};
+  const opt=(sel,v,t,on)=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if(on) o.selected=true; sel.appendChild(o); };
+  const row=(label,ctl)=>{ const r=document.createElement('label'); r.className='hrow'; const sp=document.createElement('span'); sp.className='rn'; sp.textContent=label; r.append(sp,ctl); box.appendChild(r); };
+  const st=document.createElement('input'); st.className='field'; st.maxLength=80; st.placeholder='One line about today'; st.value=String(h.status||'');
+  st.oninput=()=>{ pkHouse(true).status=st.value.slice(0,80); pkHomeSum(); }; row('Status',st);
+  const md=document.createElement('select'); md.className='tbtn'; opt(md,'','No mood',!h.mood); cat.moods.forEach(m=>opt(md,m.key,m.label,h.mood===m.key));
+  md.onchange=()=>{ const x=pkHouse(true); if(md.value) x.mood=md.value; else delete x.mood; pkHomeSum(); }; row('Mood',md);
+  const rm=document.createElement('select'); rm.className='tbtn'; opt(rm,'','No room yet',!h.room); cat.rooms.forEach(r=>opt(rm,r.key,r.label,h.room===r.key));
+  rm.onchange=()=>{ const x=pkHouse(true); if(rm.value) x.room=rm.value; else delete x.room; pkHomeSum(); }; row('Room',rm);
+  const facetNames=GRID.facets.map(f=>f.name);
+  PK_HOME_ZONES.forEach(([z,cap])=>{ const list=Array.isArray(zones[z])?zones[z]:[];
+    const hd=document.createElement('div'); hd.className='hzone'; const t=document.createElement('strong'); t.textContent=(cat.zones[z]&&cat.zones[z].label)||z;
+    const n=document.createElement('span'); n.className='note'; n.textContent=list.length+' of '+cap; hd.append(t,n); box.appendChild(hd);
+    list.forEach((it,i)=>{ if(!it||typeof it!=='object') return; const o=cat.byId[it.obj]; const nm=o?o.label:String(it.obj||'object');
+      const r=document.createElement('div'); r.className='hobj';
+      const ic=document.createElement('span'); ic.className='hico'; ic.title=nm; pkHomeIcon(ic,o);
+      const lb=document.createElement('input'); lb.className='field'; lb.maxLength=40; lb.placeholder=nm; lb.value=String(it.label||''); lb.setAttribute('aria-label','Label for '+nm);
+      lb.oninput=()=>{ if(lb.value) it.label=lb.value.slice(0,40); else delete it.label; };
+      const fs=document.createElement('select'); fs.className='tbtn'; fs.setAttribute('aria-label','Facet this object opens'); opt(fs,'','Opens nothing',!it.facet);
+      facetNames.forEach(f=>opt(fs,f,'Opens '+f+(pkFacetScope(byName[f])==='lobby'?'':' (not Public, no door for strangers)'),it.facet===f));
+      fs.onchange=()=>{ if(fs.value) it.facet=fs.value; else delete it.facet; };
+      const x=document.createElement('button'); x.type='button'; x.className='chip hx'; x.textContent='×'; x.title='Remove '+nm; x.setAttribute('aria-label','Remove '+nm);
+      x.onclick=()=>{ list.splice(i,1); pkHomeSum(); pkRepaintHome(); };
+      r.append(ic,lb,fs,x); box.appendChild(r); });
+    if(list.length<cap){ const add=document.createElement('select'); add.className='tbtn hadd'; add.setAttribute('aria-label','Add an object to '+z); opt(add,'','+ Add an object',true);
+      cat.objects.filter(o=>o.zone===z).forEach(o=>opt(add,o.id,o.label,false));
+      add.onchange=()=>{ if(!add.value) return; const x=pkHouse(true); if(!x.zones||typeof x.zones!=='object') x.zones={}; if(!Array.isArray(x.zones[z])) x.zones[z]=[];
+        if(x.zones[z].length<cap) x.zones[z].push({obj:add.value}); pkHomeSum(); pkRepaintHome(); }; box.appendChild(add); } });
+  // social: open to visitors, up to three conversation starters
+  const so=(zones.social&&typeof zones.social==='object')?zones.social:{};
+  const hd=document.createElement('div'); hd.className='hzone'; const t=document.createElement('strong'); t.textContent=(cat.zones.social&&cat.zones.social.label)||'Social'; hd.appendChild(t); box.appendChild(hd);
+  const social=()=>{ const x=pkHouse(true); if(!x.zones||typeof x.zones!=='object') x.zones={}; if(!x.zones.social||typeof x.zones.social!=='object') x.zones.social={open:true,starters:[]}; return x.zones.social; };
+  const ck=document.createElement('input'); ck.type='checkbox'; ck.checked=so.open!==false; const ckl=document.createElement('label'); ckl.className='hsoc'; ckl.append(ck,'Open to visitors (they can chat here)'); box.appendChild(ckl);
+  ck.onchange=()=>{ social().open=ck.checked; };
+  const starters=Array.isArray(so.starters)?so.starters:[];
+  for(let i=0;i<3;i++){ const inp=document.createElement('input'); inp.className='field starter'; inp.maxLength=120; inp.placeholder='Conversation starter '+(i+1); inp.value=String(starters[i]||''); inp.setAttribute('aria-label','Conversation starter '+(i+1));
+    inp.oninput=()=>{ const sc=social(); const arr=[]; box.querySelectorAll('.starter').forEach(e=>arr.push(String(e.value||'').slice(0,120))); while(arr.length&&!arr[arr.length-1]) arr.pop(); sc.starters=arr.slice(0,3); }; box.appendChild(inp); }
+  pkHomeSum(); }
+
 // ---------- state ----------
 let GRID={facets:[]}, byName={}, curId=null;
 function reindex(){ byName=Object.fromEntries(GRID.facets.map(f=>[f.name,f])); }
@@ -2003,7 +2075,7 @@ async function loadClones(){ const gen=++__clonesGen;
     const nm=document.createElement('span'); nm.textContent=r.name||'Untitled'; b.appendChild(nm); if(r.is_public){ const pb=document.createElement('span'); pb.className='pub'; pb.textContent='public'; b.appendChild(pb); } b.onclick=()=>selectClone(r); list.appendChild(b); });
   if(!curId && data.length){ selectClone(data[0]); }
 }
-function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facets:[]}; reindex(); rebuildKinds(); try{ pkRepaintThemePanel(); }catch(_){}
+function selectClone(r){ curId=r.id; GRID=r.data&&r.data.facets? r.data : {facets:[]}; reindex(); rebuildKinds(); try{ pkRepaintThemePanel(); }catch(_){} try{ pkRepaintHome(); }catch(_){}
   document.getElementById('gridname').value=r.name||''; document.getElementById('ispublic').checked=!!r.is_public; faceShow(r.image_url||null); chatVoice=r.voice_id||''; const __fv=document.getElementById('facevoice'); if(__fv) __fv.value=chatVoice;
   buildBoard(); render();
   // refit whenever a different persona is loaded, not just once per page load
@@ -2610,6 +2682,7 @@ function pkThemePanel(host,opts){ if(!host) return; const label=host.querySelect
   paint(); }
 // hotfix 2026-09-03: the first paint runs here, below every const it reads (a call above PK_THEMES threw at load and stopped the module)
 pkRepaintThemePanel();
+{ const hb=document.getElementById('homebox'); if(hb) hb.addEventListener('toggle',()=>{ if(hb.open) pkRepaintHome(); }); }
 function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
 // ---------- viewer-side hiding and reporting ----------
 // A label is necessary and not sufficient. Meta shipped "AI managed by Meta" on their
