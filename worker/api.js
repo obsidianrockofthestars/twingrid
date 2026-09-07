@@ -1058,6 +1058,125 @@ export async function handleSitemap(env) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Autopilot, the engine (M3, 2026-09-07). PLAN.md sections 3.2 and 5, M3.
+// One hourly tick. For every public grid whose rules say together or autopilot at this UTC hour, under its daily
+// cap, with no action yet this hour: compose the persona from the LOBBY VIEW ONLY (a private facet cannot reach an
+// autonomous run because it never leaves the database), spend one of the owner's credits, ask for one short post,
+// run the boundary check on the draft, and write the action: proposed (together), published (autopilot) or refused.
+// Every tick writes its own receipt row, so a quiet hour and a dropped run look different.
+// ---------------------------------------------------------------------------
+const AUTOPILOT_INSTRUCTION = "Write one short public post about your day, in character and in your own voice, under 400 characters. Stay inside your topics and away from anything you avoid. Never mention your private life, never include a link or an address, never claim to sell, book or buy anything, never address or name another persona. Plain text only, no hashtags, no preamble.";
+const AUTOPILOT_MAX_CHARS = 600;
+const REFUSAL_RE = {
+  link: /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|app|co|ai)\b)/i,
+  mention: /(^|[\s(])@[a-z0-9_]{2,}/i,
+  purchase: /\b(book now|buy now|order now|reserve (a|your)|checkout|purchase|discount code|promo code|dm (me|us) to (buy|book|order))\b|\$\s?\d/i,
+};
+export function autopilotRefusal(text, rules) {
+  const t = typeof text === "string" ? text.trim() : "";
+  if (!t) return "empty";
+  if (t.length > AUTOPILOT_MAX_CHARS) return "too_long";
+  if (REFUSAL_RE.link.test(t)) return "link";
+  if (REFUSAL_RE.mention.test(t)) return "mention";
+  if (REFUSAL_RE.purchase.test(t)) return "purchase_claim";
+  const lower = t.toLowerCase();
+  const avoid = Array.isArray(rules && rules.avoid) ? rules.avoid.map((s) => String(s || "").trim().toLowerCase()).filter((s) => s.length >= 3) : [];
+  if (avoid.some((a) => lower.includes(a))) return "avoid_topic";
+  return null;
+}
+async function serviceGet(env, path) {
+  let res;
+  try { res = await fetch(sbUrl(env, path), { headers: serviceHeaders(env, { Accept: "application/json" }) }); } catch (_) { return null; }
+  if (!res.ok) return null;
+  try { const rows = await res.json(); return Array.isArray(rows) ? rows : null; } catch (_) { return null; }
+}
+async function servicePost(env, path, body) {
+  let res;
+  try {
+    res = await fetch(sbUrl(env, path), { method: "POST", headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=minimal" }), body: JSON.stringify(body) });
+  } catch (_) { return false; }
+  return res.ok;
+}
+// One model call, text out or null. handleChat keeps its own inline call with its richer error envelope.
+// ponytail: fold both into this helper when a third caller arrives.
+async function anthropicText(env, system, messages) {
+  const model = (typeof env.HOSTED_MODEL === "string" && env.HOSTED_MODEL.trim()) || DEFAULT_MODEL;
+  try {
+    const res = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": ANTHROPIC_VERSION },
+      body: JSON.stringify({ model, max_tokens: MAX_TOKENS, system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }], messages }),
+    });
+    if (!res.ok) { console.log("autopilot_upstream", res.status); return null; }
+    const j = await res.json();
+    const first = j && Array.isArray(j.content) ? j.content.find((c) => c && c.type === "text") : null;
+    return first && typeof first.text === "string" ? first.text : "";
+  } catch (_) { return null; }
+}
+export async function runAutopilotTick(env, now) {
+  const t = now instanceof Date && !isNaN(now) ? now : new Date();
+  const hour = t.getUTCHours();
+  const dayStart = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate())).toISOString();
+  const hourStart = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), hour)).toISOString();
+  const receipt = { ran_at: t.toISOString(), grids_considered: 0, proposed: 0, errors: [] };
+  const err = (code) => { if (receipt.errors.length < 50) receipt.errors.push(code); };
+  const rules = await serviceGet(env, "/rest/v1/twingrid_rules?select=grid_id,owner,mode,topics,avoid,max_per_day,hour_utc,audience&mode=in.(together,autopilot)&max_per_day=gt.0&hour_utc=eq." + hour + "&limit=500");
+  if (!rules) { err("rules_unavailable"); await servicePost(env, "/rest/v1/twingrid_action_runs", receipt); return receipt; }
+  for (const r of rules) {
+    if (!r || !UUID_RE.test(String(r.grid_id)) || !UUID_RE.test(String(r.owner))) continue;
+    receipt.grids_considered++;
+    const record = (status, authorship, extra) => servicePost(env, "/rest/v1/twingrid_actions", Object.assign({
+      grid_id: r.grid_id, owner: r.owner, kind: "post", authorship, status, audience: r.audience === "circle" ? "circle" : "public",
+      rule_ref: "rules:" + r.mode + ":" + String(hour).padStart(2, "0") + "z", body: {},
+    }, extra || {}));
+    try {
+      const todays = await serviceGet(env, "/rest/v1/twingrid_actions?select=created_at,status&grid_id=eq." + encodeURIComponent(r.grid_id) + "&created_at=gte." + encodeURIComponent(dayStart) + "&limit=50");
+      if (!todays) { err("actions_unavailable"); continue; }
+      if (todays.some((a) => a && a.created_at >= hourStart)) continue;                       // idempotent within the hour
+      if (todays.filter((a) => a && a.status !== "refused").length >= Number(r.max_per_day)) continue; // under the daily cap
+      const g = await fetchPublicGrid(env, r.grid_id, "id,owner,name,data");                  // the Lobby projection, nothing else
+      if (g.error === 404) continue;                                                           // private, suspended or gone: skip quietly
+      if (g.error) { err("grid_unavailable"); continue; }
+      const system = guardedPrompt(g.grid.data, null);
+      if (system === GUARD) { await record("refused", "AUTOPILOT", { refusal: "persona_empty" }); continue; }
+      if (system.length > MAX_SYSTEM_CHARS) { await record("refused", "AUTOPILOT", { refusal: "persona_too_large" }); continue; }
+      const topics = Array.isArray(r.topics) ? r.topics.map((s) => String(s || "").trim()).filter(Boolean).slice(0, 12) : [];
+      const avoid = Array.isArray(r.avoid) ? r.avoid.map((s) => String(s || "").trim()).filter(Boolean).slice(0, 12) : [];
+      const ask = AUTOPILOT_INSTRUCTION + (topics.length ? " Your topics: " + topics.join(", ") + "." : "") + (avoid.length ? " Avoid entirely: " + avoid.join(", ") + "." : "");
+      const micro = chatMicro(system.length, ask.length);
+      if (!(await reserveCapacity(env, "anthropic", micro))) { await record("refused", "AUTOPILOT", { refusal: "capacity" }); continue; }
+      const spend = await rpcService(env, "twingrid_use_credits", { p_user: r.owner, p_cost: 1, p_kind: "use" });
+      if (!spend.ok) { await releaseCapacity(env, "anthropic", micro); err("credits_unavailable"); continue; }
+      if (!(Number(spend.value) >= 0)) { await releaseCapacity(env, "anthropic", micro); await record("refused", "AUTOPILOT", { refusal: "no_credits" }); continue; }
+      const text = await anthropicText(env, system, [{ role: "user", content: ask }]);
+      if (text === null) {
+        await releaseCapacity(env, "anthropic", micro);
+        const rf = await rpcService(env, "twingrid_grant_credits", { p_user: r.owner, p_delta: 1, p_kind: "refund", p_ref: "refund:" + crypto.randomUUID(), p_period_end: null });
+        if (!rf.ok) console.log("refund_failed");
+        err("upstream_failed"); continue;
+      }
+      const clean = text.trim().slice(0, AUTOPILOT_MAX_CHARS + 1);
+      const reason = autopilotRefusal(clean, r);
+      let ok;
+      if (reason) ok = await record("refused", "AUTOPILOT", { refusal: reason, body: { text: clean.slice(0, AUTOPILOT_MAX_CHARS) } });
+      else if (r.mode === "autopilot") ok = await record("published", "AUTOPILOT", { body: { text: clean }, published_at: t.toISOString() });
+      else ok = await record("proposed", "SCHEDULED", { body: { text: clean } });
+      if (!ok) err("write_failed"); else if (!reason) receipt.proposed++;
+    } catch (_) { err("tick_error"); }
+  }
+  if (!(await servicePost(env, "/rest/v1/twingrid_action_runs", receipt))) console.log("receipt_failed");
+  return receipt;
+}
+// Manual trigger for the tick, for Dylan and for tests. Off unless AUTOPILOT_AUTH is set; the cron calls runAutopilotTick directly.
+async function handleAutopilotTick(request, env) {
+  const secret = typeof env.AUTOPILOT_AUTH === "string" ? env.AUTOPILOT_AUTH : "";
+  if (!secret) return json(request, 404, { error: "not_found" });
+  if (!safeEqual(bearer(request) || "", secret)) return json(request, 401, { error: "unauthorized" });
+  const receipt = await runAutopilotTick(env, new Date());
+  return json(request, 200, receipt);
+}
+
 // CSP violation reports (M0, 2026-09-07). The header ships Report-Only with report-uri pointing here.
 // Log two short fields, never the whole report (it can carry the page URL with a query string).
 async function handleCspReport(request) {
@@ -1088,7 +1207,8 @@ export async function handleApi(request, env) {
     if (path === "/api/media/image" && method === "POST") return await handleMediaImage(request, env);
     if (path === "/api/media/voice" && method === "POST") return await handleMediaVoice(request, env);
     if (path === "/api/csp-report" && method === "POST") return await handleCspReport(request);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report") {
+    if (path === "/api/autopilot/tick" && method === "POST") return await handleAutopilotTick(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });

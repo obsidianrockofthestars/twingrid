@@ -22,7 +22,10 @@
     // F7 (2026-09-05): SANDBOX webhook events grant credits only to these user ids (comma list). Empty = none.
     "RC_SANDBOX_USERS": "4760a556-7ba6-4641-a8ac-c0b20fa5b096"
   },
-  // Secrets, set once with `wrangler secret put`: ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH.
+  // Autopilot (M3, 2026-09-07): one tick an hour; each tick handles the grids whose rules name that UTC hour.
+  "triggers": { "crons": ["0 * * * *"] },
+  // Secrets, set once with `wrangler secret put`: ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH,
+  // and (optional) AUTOPILOT_AUTH, the bearer for POST /api/autopilot/tick, a manual trigger; absent means the route is 404.
   "assets": {
     // Single-page app: Cloudflare serves ./docs directly and maps "/" to index.html.
     "directory": "./docs",

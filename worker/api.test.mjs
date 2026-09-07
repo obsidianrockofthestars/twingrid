@@ -2,7 +2,7 @@
 // with a fake that answers the Supabase and Anthropic shapes the handler uses.
 // Run: node worker/api.test.mjs
 
-import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap } from "./api.js";
+import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap, runAutopilotTick, autopilotRefusal } from "./api.js";
 import { isHandlePath } from "./index.js";
 
 const ENV = {
@@ -46,6 +46,11 @@ let anthropicMode = "ok"; // "ok" | "fail"
 let capacityOk = true;    // the capacity gate answer
 let capacityCalls = [];
 let capacityReleases = []; // twingrid_capacity_unspend calls (2026-09-04)
+// Autopilot (M3, 2026-09-07): rules rows the fake serves (filtered by the hour in the query), the actions it stores, the receipts.
+let rulesRows = [];
+let actionsRows = [];
+let runsRows = [];
+let anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house.";
 
 globalThis.fetch = async (url, init) => {
   const u = String(url);
@@ -61,6 +66,21 @@ globalThis.fetch = async (url, init) => {
     if (auth === "Bearer " + GOOD_TOKEN) return respond(200, { id: USER_ID, email: "t@example.com" });
     if (auth === "Bearer " + STRANGER_TOKEN) return respond(200, { id: STRANGER_ID, email: "s@example.com" });
     return respond(401, { message: "invalid JWT" });
+  }
+  if (u.includes("/rest/v1/twingrid_rules")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("rules are read with the service key");
+    const m = /hour_utc=eq\.(\d+)/.exec(u); const hour = m ? Number(m[1]) : -1;
+    return respond(200, rulesRows.filter((r) => r.hour_utc === hour && (r.mode === "together" || r.mode === "autopilot") && r.max_per_day > 0));
+  }
+  if (u.includes("/rest/v1/twingrid_action_runs")) {
+    if (method !== "POST") throw new Error("runs are write-only from the Worker");
+    runsRows.push(body); return new Response(null, { status: 201 });
+  }
+  if (u.includes("/rest/v1/twingrid_actions")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("actions are touched with the service key");
+    if (method === "POST") { actionsRows.push(Object.assign({ created_at: new Date().toISOString() }, body)); return new Response(null, { status: 201 }); }
+    const m = /grid_id=eq\.([0-9a-f-]+)/.exec(u); const gid = m ? m[1] : "";
+    return respond(200, actionsRows.filter((a) => a.grid_id === gid));
   }
   if (u.includes("/rest/v1/twingrid_grids_public")) {
     // The Lobby view: anon key only, public rows only, data projected. Never the house.
@@ -110,7 +130,8 @@ globalThis.fetch = async (url, init) => {
     if (body.max_tokens !== 700) throw new Error("max_tokens should be 700");
     if (headers["x-api-key"] !== ENV.ANTHROPIC_API_KEY) throw new Error("x-api-key missing");
     if (headers["anthropic-version"] !== "2023-06-01") throw new Error("anthropic-version missing");
-    return respond(200, { content: [{ type: "text", text: "Hello from the persona." }], model: body.model });
+    const isTick = body.messages.length === 1 && /Write one short public post/.test(body.messages[0].content);
+    return respond(200, { content: [{ type: "text", text: isTick ? anthropicReply : "Hello from the persona." }], model: body.model });
   }
   throw new Error("unexpected fetch: " + u);
 };
@@ -700,6 +721,89 @@ await check("csp-report: POST answers 204 with an empty body, GET is 405, a malf
   const bad = await handleApi(new Request("https://personakind.com/api/csp-report", { method: "POST", headers: H(), body: "not json" }), ENV);
   eq(bad.status, 204, "malformed still 204");
   const get = await handleApi(new Request("https://personakind.com/api/csp-report", { method: "GET", headers: H() }), ENV);
+  eq(get.status, 405, "GET is 405");
+});
+
+// ---------------------------------------------------------------------------
+// Autopilot, the engine (M3, 2026-09-07)
+// ---------------------------------------------------------------------------
+const NOW = new Date("2026-09-07T15:20:00Z"); // hour 15 UTC
+const RULE = { grid_id: GRID_ID, owner: USER_ID, mode: "together", topics: ["porches", "houses"], avoid: ["politics"], max_per_day: 1, hour_utc: 15, audience: "public" };
+function resetAutopilot(rules) { rulesRows = rules; actionsRows = []; runsRows = []; balance = 3; gridPublic = true; anthropicMode = "ok"; capacityOk = true; calls.length = 0; lastSystem = ""; anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house."; }
+
+await check("autopilot tick: one grid at its hour -> exactly one proposed SCHEDULED post, one credit, composed from the Lobby view, one receipt", async () => {
+  resetAutopilot([RULE]);
+  const r = await runAutopilotTick(ENV, NOW);
+  eq(actionsRows.length, 1, "one action");
+  eq(actionsRows[0].status, "proposed", "status"); eq(actionsRows[0].authorship, "SCHEDULED", "authorship"); eq(actionsRows[0].kind, "post", "kind");
+  eq(typeof actionsRows[0].body.text, "string", "body.text"); eq(actionsRows[0].rule_ref, "rules:together:15z", "rule_ref");
+  eq(balance, 2, "one credit spent");
+  if (lastSystem.includes("Ask one question at a time")) throw new Error("HOUSE FACET LEAKED into an autonomous run");
+  if (!lastSystem.includes("I am a test persona")) throw new Error("core facet missing from the composition");
+  if (calls.some((c) => c.url.includes("/rest/v1/twingrid_grids?"))) throw new Error("the tick read the base table");
+  eq(runsRows.length, 1, "one receipt"); eq(runsRows[0].grids_considered, 1, "considered"); eq(runsRows[0].proposed, 1, "proposed"); eq(r.proposed, 1, "returned receipt");
+});
+
+await check("autopilot tick: a second tick the same day creates nothing and still writes a receipt", async () => {
+  resetAutopilot([RULE]);
+  await runAutopilotTick(ENV, NOW);
+  const later = new Date("2026-09-07T15:40:00Z");
+  await runAutopilotTick(ENV, later);
+  eq(actionsRows.length, 1, "still one action"); eq(balance, 2, "no second credit"); eq(runsRows.length, 2, "two receipts"); eq(runsRows[1].proposed, 0, "second proposed 0");
+});
+
+await check("autopilot tick: no credits -> a refused row with reason no_credits, nothing charged, no model call", async () => {
+  resetAutopilot([RULE]); balance = 0; calls.length = 0;
+  await runAutopilotTick(ENV, NOW);
+  eq(actionsRows.length, 1, "one row"); eq(actionsRows[0].status, "refused", "refused"); eq(actionsRows[0].refusal, "no_credits", "reason");
+  eq(balance, 0, "nothing charged");
+  if (calls.some((c) => c.url === "https://api.anthropic.com/v1/messages")) throw new Error("model was called with no credits");
+});
+
+await check("autopilot tick: autopilot mode publishes at once with authorship AUTOPILOT and a published_at", async () => {
+  resetAutopilot([Object.assign({}, RULE, { mode: "autopilot" })]);
+  await runAutopilotTick(ENV, NOW);
+  eq(actionsRows.length, 1, "one row"); eq(actionsRows[0].status, "published", "published"); eq(actionsRows[0].authorship, "AUTOPILOT", "authorship");
+  eq(typeof actionsRows[0].published_at, "string", "published_at"); eq(actionsRows[0].rule_ref, "rules:autopilot:15z", "rule_ref");
+});
+
+await check("autopilot tick: a draft with a link, a mention, a price or an avoided topic is refused with the rule reference", async () => {
+  for (const [reply, reason] of [["Come see it at https://example.com today", "link"], ["Thanks @someone for the tea", "mention"], ["Porch chairs, $40 each, order now", "purchase_claim"], ["Anyway, politics aside, the porch is done", "avoid_topic"]]) {
+    resetAutopilot([RULE]); anthropicReply = reply;
+    await runAutopilotTick(ENV, NOW);
+    eq(actionsRows.length, 1, "one row for " + reason); eq(actionsRows[0].status, "refused", "refused for " + reason); eq(actionsRows[0].refusal, reason, "reason");
+    eq(actionsRows[0].rule_ref, "rules:together:15z", "rule_ref kept");
+  }
+  eq(autopilotRefusal("A plain post about porches.", RULE), null, "clean draft passes");
+  eq(autopilotRefusal("", RULE), "empty", "empty");
+});
+
+await check("autopilot tick: a rule for another hour is not considered; a private grid is skipped with no credit", async () => {
+  resetAutopilot([Object.assign({}, RULE, { hour_utc: 3 })]);
+  await runAutopilotTick(ENV, NOW);
+  eq(actionsRows.length, 0, "no action"); eq(runsRows[0].grids_considered, 0, "not considered"); eq(balance, 3, "no credit");
+  resetAutopilot([RULE]); gridPublic = false;
+  await runAutopilotTick(ENV, NOW);
+  eq(actionsRows.length, 0, "private grid: no action"); eq(balance, 3, "private grid: no credit"); eq(runsRows[0].grids_considered, 1, "counted as considered");
+});
+
+await check("autopilot tick: an upstream failure refunds the credit, releases capacity and records the error on the receipt", async () => {
+  resetAutopilot([RULE]); anthropicMode = "fail"; capacityReleases = [];
+  await runAutopilotTick(ENV, NOW);
+  eq(actionsRows.length, 0, "no row"); eq(balance, 3, "credit refunded"); eq(capacityReleases.length, 1, "capacity released");
+  if (!runsRows[0].errors.includes("upstream_failed")) throw new Error("receipt missing upstream_failed");
+});
+
+await check("autopilot route: 404 without AUTOPILOT_AUTH, 401 with the wrong bearer, 200 with the right one", async () => {
+  resetAutopilot([]);
+  const off = await handleApi(req("/api/autopilot/tick", { method: "POST", headers: H({ Authorization: "Bearer x" }) }), ENV);
+  eq(off.status, 404, "off");
+  const envOn = Object.assign({}, ENV, { AUTOPILOT_AUTH: "tick-secret" });
+  const bad = await handleApi(req("/api/autopilot/tick", { method: "POST", headers: H({ Authorization: "Bearer nope" }) }), envOn);
+  eq(bad.status, 401, "wrong bearer");
+  const ok = await handleApi(req("/api/autopilot/tick", { method: "POST", headers: H({ Authorization: "Bearer tick-secret" }) }), envOn);
+  eq(ok.status, 200, "ok"); const j = await ok.json(); eq(typeof j.grids_considered, "number", "receipt shape");
+  const get = await handleApi(req("/api/autopilot/tick", { method: "GET", headers: H() }), envOn);
   eq(get.status, 405, "GET is 405");
 });
 
