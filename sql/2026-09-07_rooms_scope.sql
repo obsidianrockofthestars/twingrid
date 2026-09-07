@@ -82,13 +82,33 @@ grant select on public.twingrid_grids_public to anon, authenticated;
 drop policy if exists twingrid_select on public.twingrid_grids;
 create policy twingrid_select on public.twingrid_grids
   for select using (public.twingrid_operates(owner));
-revoke select on public.twingrid_grids from anon;
+-- anon keeps table-level SELECT on purpose: the policy above returns it zero rows, and revoking the grant
+-- instead (tried live 2026-09-07 for about a minute) made every anon read of twingrid_accounts fail 42501,
+-- because that table's select policy subqueries twingrid_grids. The policy is the gate, not the grant.
+
+-- 5. twingrid_accounts_select decided "has a public persona" by subquerying twingrid_grids under the caller's
+--    RLS; with the table operator-only that arm went dark for everyone but the owner (Explore lost its
+--    handles, the MCP connector found no accounts). The Lobby view runs as its owner and already carries the
+--    public and suspension filters, so the policy asks the view instead.
+drop policy if exists twingrid_accounts_select on public.twingrid_accounts;
+create policy twingrid_accounts_select on public.twingrid_accounts
+  for select using (
+    public.twingrid_operates(id)
+    or (is_suspended = false and (
+      exists (select 1 from public.twingrid_personas p where p.owner = twingrid_accounts.id and p.is_public and p.is_suspended = false)
+      or exists (select 1 from public.twingrid_grids_public g where g.owner = twingrid_accounts.id)
+    ))
+  );
 
 -- ---------------------------------------------------------------------------
 -- Probes (each block separately; expected result in the comment)
 -- ---------------------------------------------------------------------------
--- 13. anon reads the table. Expected: ERROR permission denied for table twingrid_grids
--- begin; set local role anon; select id from public.twingrid_grids limit 1; rollback;
+-- 13. anon reads the table. Expected: 0 rows (the grant stays, the policy returns nothing)
+--     (over HTTP: GET /rest/v1/twingrid_grids?select=id,data with the publishable key answers 200 [])
+-- begin; set local role anon; select count(*) from public.twingrid_grids; rollback;
+--
+-- 13b. anon reads accounts. Expected: every account with a public, unsuspended persona (via the view)
+-- begin; set local role anon; select handle from public.twingrid_accounts order by handle; rollback;
 --
 -- 14. authenticated stranger reads the table. Expected: 0 rows
 -- begin; set local role authenticated;
