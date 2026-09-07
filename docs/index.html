@@ -358,6 +358,30 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #profile .btn.ghost:hover{border-color:var(--pacc);color:var(--pacc-ink)}
 
 body.route-profile #chat{background:var(--psurf);color:var(--ptext);border-left-color:var(--pline)}
+/* the Home on the persona page (M2, 2026-09-07): zoned first, the isometric scene comes later and this stays as the accessible render */
+.phome{padding:0 0 40px}
+.phome h2{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
+#profile .phome h2{font-family:var(--serif);font-weight:600;color:var(--ptext)}
+#profile .phroom{margin:0 0 16px;font-size:15px;color:var(--pmuted)}
+.phzones{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+#profile .phz{background:var(--psurf);border:1px solid var(--pline);border-radius:16px;padding:16px 18px;min-width:0}
+#profile .phz h3{margin:0 0 2px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--pacc-ink)}
+#profile .phzb{margin:0 0 12px;font-size:13px;line-height:1.5;color:var(--pmuted)}
+.phobjs{display:flex;flex-wrap:wrap;gap:8px}
+#profile .phobj{display:inline-flex;align-items:center;gap:7px;min-height:32px;max-width:100%;padding:4px 11px 4px 6px;border-radius:999px;border:1px solid var(--pline);background:transparent;color:var(--ptext);font:inherit;font-size:13.5px;line-height:1.3;text-align:left}
+#profile .phobj .hico{color:var(--pacc-ink);--pk-obj-accent:var(--pacc)}
+#profile .phobj span.lb{overflow-wrap:anywhere}
+#profile button.phobj{cursor:pointer;border-color:var(--pacc)}
+#profile button.phobj span.lb{text-decoration:underline;text-underline-offset:2px}
+#profile button.phobj:hover{background:var(--pacc);color:var(--pacc-text)}
+#profile button.phobj:hover .hico{color:var(--pacc-text);--pk-obj-accent:var(--pacc-text)}
+#profile .phobj:focus-visible,#profile .phstart:focus-visible{outline:2px solid var(--pacc-ink);outline-offset:2px}
+#profile .phstart{display:block;width:100%;min-height:36px;margin:0 0 8px;padding:8px 12px;border-radius:12px;border:1px solid var(--pacc);background:transparent;color:var(--ptext);font:inherit;font-size:14px;line-height:1.4;text-align:left;cursor:pointer;overflow-wrap:anywhere}
+#profile .phstart:hover{background:var(--pacc);color:var(--pacc-text)}
+#profile .phclosed{margin:0;font-size:14px;color:var(--pmuted)}
+#profile .fcard.flash{outline:2px solid var(--pacc);outline-offset:3px}
+#profile .pstatus{margin:8px 0 0;font-size:15px;line-height:1.5;color:var(--pmuted);font-style:italic}
+#explore .exmood{font-size:13px;line-height:1.5;color:var(--ink-soft);margin-top:9px;overflow-wrap:anywhere}
 body.route-profile #chat .dhead,body.route-profile #chat .chatin{border-color:var(--pline)}
 body.route-profile #chat .msg.a{background:var(--pbg);border-color:var(--pline);color:var(--ptext)}
 body.route-profile #chat .msg.u{background:var(--pacc);color:var(--pacc-text)}
@@ -1367,6 +1391,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
             <span id="pfacetcount"></span>
           </div>
           <p class="psum" id="psummary"></p>
+          <p class="pstatus" id="pstatus" hidden></p>
         </div>
       </div>
     </div>
@@ -1400,6 +1425,11 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <span class="pctrl-msg" id="pctrlmsg" role="status"></span>
     </div>
     <p class="pdisc">This is an AI persona built on Personakind, not a real person. It only knows what its owner wrote on this page. <a href="terms.html" style="color:inherit">Terms and Privacy</a>.</p>
+    <section class="phome" id="phouse" hidden aria-labelledby="phouseh">
+      <h2 id="phouseh">Home</h2>
+      <p class="phroom" id="phroom"></p>
+      <div class="phzones" id="phzones"></div>
+    </section>
     <div class="facets">
       <h2>Everything its owner wrote</h2>
       <div class="fgrid" id="pfacets"></div>
@@ -2815,6 +2845,9 @@ async function renderExplore(){
     const snip=document.createElement('p'); snip.className='exsnip';
     snip.textContent=snipText||'This persona has not been filled in yet.';
     card.appendChild(snip);
+    // the Home's mood and status (M2): plain text from the Lobby projection
+    { const hs=(g.house&&typeof g.house==='object')?g.house:null; const line=hs?[pkMoodLabel(hs.mood),String(hs.status||'').slice(0,80)].filter(Boolean).join(' \u00b7 '):'';
+      if(line){ const mo=document.createElement('div'); mo.className='exmood'; mo.textContent=line; card.appendChild(mo); } }
 
     const by=document.createElement('div'); by.className='exby';
     const a=byOwner[r.owner];
@@ -2916,7 +2949,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     document.getElementById('pfacets').innerHTML=''; document.getElementById('pcells').textContent='';
     document.getElementById('pfacetcount').textContent=''; document.getElementById('pkind').textContent='not found';
     const __ct=document.getElementById('pctatalk'); if(__ct)__ct.style.display='none';
-    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; return; }
+    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); return; }
   const g=(data.data&&data.data.facets)?data.data:{facets:[]};
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
   nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
@@ -2945,7 +2978,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     sec.append(h,bd); pe.appendChild(sec); }); });
   if(!any){ pe.textContent='This persona has not been filled in yet.'; }
   const grid=document.getElementById('pfacets'); grid.innerHTML='';
-  g.facets.forEach(f=>{ const card=document.createElement('div'); card.className='fcard';
+  g.facets.forEach(f=>{ const card=document.createElement('div'); card.className='fcard'; card.dataset.facet=String(f.name||'');
     const fh=document.createElement('div'); fh.className='fh';
     const nmS=document.createElement('span'); nmS.className='nm'; nmS.textContent=(f.name==='core'?'The basics':f.name);
     const kd=document.createElement('span'); kd.className='kd'; kd.textContent=(f.kind==='core'?'':f.kind); fh.append(nmS,kd); card.appendChild(fh);
@@ -2954,6 +2987,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; syncHideBtn();
+  pkRenderHome(g);
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
   // Same guarded text the editor's Copy prompt hands out. No key, no account, no money: this is the door most readers take.
@@ -2967,6 +3001,46 @@ async function renderProfile(id,opts){ opts=opts||{};
     navigator.clipboard.writeText(txt).then(()=>{ b.textContent='Copied. Now open Claude or ChatGPT and paste it.'; reset(); })
       .catch(()=>{ b.textContent='Could not copy. Select the text in the box below.'; ta.value=txt; ta.hidden=false; ta.focus(); ta.select(); reset(); }); };
 }
+
+// ---------- the Home on the persona page (M2, 2026-09-07). Reads the Lobby projection only: a door to a facet that is not Public
+// never arrives here, because twingrid_house_public() already stripped it. Labels, status and starters are owner text: textContent. ----------
+function pkMoodLabel(k){ k=String(k||''); return k?k.charAt(0).toUpperCase()+k.slice(1).replace(/-/g,' '):''; }
+function pkFlashFacet(name){ const card=[...document.querySelectorAll('#pfacets .fcard')].find(c=>c.dataset.facet===name); if(!card) return;
+  card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+  card.classList.add('flash'); card.tabIndex=-1; card.focus({preventScroll:true}); setTimeout(()=>card.classList.remove('flash'),1800); }
+async function pkPrefillChat(text){ try{ await openChat(); }catch(_){} const inp=document.getElementById('chatinput'); if(!inp) return; inp.value=String(text||'').slice(0,120); inp.focus(); }
+async function pkRenderHome(g){ const sec=document.getElementById('phouse'), room=document.getElementById('phroom'), zones=document.getElementById('phzones'), st=document.getElementById('pstatus'), talk=document.getElementById('pchat');
+  if(!sec||!room||!zones) return; const gen=(sec.__gen=(sec.__gen||0)+1);
+  sec.hidden=true; zones.innerHTML=''; room.textContent=''; if(st){ st.hidden=true; st.textContent=''; } if(talk) talk.hidden=false;
+  const h=(g&&g.house&&typeof g.house==='object')?g.house:null; if(!h) return;
+  const z=(h.zones&&typeof h.zones==='object')?h.zones:{};
+  const so=(z.social&&typeof z.social==='object')?z.social:null; const closed=!!(so&&so.open===false);
+  if(talk) talk.hidden=closed;
+  if(st&&h.status){ st.textContent=String(h.status).slice(0,80); st.hidden=false; }
+  const cat=await pkCatalog(); if(gen!==sec.__gen) return;
+  const roomLabel=cat&&(cat.rooms.find(r=>r.key===h.room)||{}).label; const moodLabel=cat&&(cat.moods.find(m=>m.key===h.mood)||{}).label;
+  const bits=[]; if(roomLabel) bits.push('Lives in a '+roomLabel.toLowerCase()); if(moodLabel) bits.push((roomLabel?'feeling ':'Feeling ')+moodLabel.toLowerCase()); room.textContent=bits.join(', ')+(bits.length?'.':'');
+  const lobbyNames=new Set((g.facets||[]).map(f=>f.name));
+  let any=false;
+  ['thinking','resting','memory'].forEach(zk=>{ const list=Array.isArray(z[zk])?z[zk]:[]; if(!list.length||!cat) return;
+    const panel=document.createElement('div'); panel.className='phz'; const h3=document.createElement('h3'); h3.textContent=(cat.zones[zk]&&cat.zones[zk].label)||zk; panel.appendChild(h3);
+    const b=document.createElement('p'); b.className='phzb'; b.textContent=(cat.zones[zk]&&cat.zones[zk].blurb)||''; panel.appendChild(b);
+    const wrap=document.createElement('div'); wrap.className='phobjs';
+    list.forEach(it=>{ if(!it||typeof it!=='object') return; const o=cat.byId[it.obj]; if(!o) return;
+      const linked=typeof it.facet==='string'&&lobbyNames.has(it.facet);
+      const el=document.createElement(linked?'button':'span'); el.className='phobj'; if(linked){ el.type='button'; el.title='Opens '+it.facet; el.onclick=()=>pkFlashFacet(it.facet); }
+      const ic=document.createElement('span'); ic.className='hico'; pkHomeIcon(ic,o);
+      const lb=document.createElement('span'); lb.className='lb'; lb.textContent=String(it.label||o.label).slice(0,40);
+      el.append(ic,lb); wrap.appendChild(el); any=true; });
+    panel.appendChild(wrap); zones.appendChild(panel); });
+  if(so||closed){ const panel=document.createElement('div'); panel.className='phz'; const h3=document.createElement('h3'); h3.textContent=(cat&&cat.zones.social&&cat.zones.social.label)||'Social'; panel.appendChild(h3);
+    if(closed){ const pcl=document.createElement('p'); pcl.className='phclosed'; pcl.textContent='The door is closed. This persona is not taking visitors right now.'; panel.appendChild(pcl); any=true; }
+    else { const starters=(Array.isArray(so.starters)?so.starters:[]).map(x=>String(x||'').trim()).filter(Boolean).slice(0,3);
+      const b=document.createElement('p'); b.className='phzb'; b.textContent=starters.length?'Open to visitors. Start here:':((cat&&cat.zones.social&&cat.zones.social.blurb)||'Open to visitors.'); panel.appendChild(b);
+      starters.forEach(t=>{ const bt=document.createElement('button'); bt.type='button'; bt.className='phstart'; bt.textContent=t.slice(0,120); bt.onclick=()=>pkPrefillChat(t); panel.appendChild(bt); any=true; });
+      if(!starters.length) any=true; }
+    zones.appendChild(panel); }
+  sec.hidden=!(any||bits.length); }
 
 
 // ---------- new-persona flow (chooser + questionnaire) ----------
