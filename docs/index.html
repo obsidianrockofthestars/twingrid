@@ -137,6 +137,14 @@ button{font-family:inherit}
 .tabs button{font-size:12px;cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:8px;padding:6px 12px}
 .tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .note{font-size:12px;color:var(--muted);line-height:1.6}
+/* who sees what (rooms, 2026-09-07): one row per facet, three scopes */
+.pk-rooms{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);padding:8px 10px}
+.pk-rooms summary{cursor:pointer;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:8px;min-height:24px}
+.pk-rooms summary .note{margin:0}
+.rrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
+.rrow .rn{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rseg{display:flex;gap:4px;flex-shrink:0}
+.rseg .chip{padding:3px 8px}
 .note code{font-family:"IBM Plex Mono",monospace;color:var(--text);background:var(--surface2);padding:1px 5px;border-radius:4px}
 
 /* ============ Personakind v2: tokens, landing, auth, profile ============ */
@@ -1139,6 +1147,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <h4 style="margin-top:20px">Grid</h4>
       <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="persona name">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
+      <details class="pk-rooms" id="roomsbox"><summary>Who sees what <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Lobby is the public persona: strangers, Explore, and hosted chat by anyone but you read these facets only. House stays yours. Visiting room is saved now and opens to mutual links when they ship. Save to apply.</p><div id="roomlist"></div></details>
       <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
       <div id="facemsg" aria-live="polite"></div>
       <div id="voicebox" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="facevoice" class="note" style="margin:0">Voice</label><select id="facevoice" class="tbtn" aria-label="Persona voice" style="font-size:12px;padding:6px 8px"><option value="">No voice</option><option value="browser">Browser voice (free)</option></select><span class="note" id="voicenote" style="margin:0">Gemini voices cost 2 to 6 messages a reply to hear; the browser voice is free.</span></div>
@@ -1838,7 +1847,7 @@ function shareUrlFor(id,name,handle){ const base=location.origin+location.pathna
   if(handle&&name) return base+'?u='+encodeURIComponent(handle)+'&p='+encodeURIComponent(name);
   return base+'?t='+encodeURIComponent(id); }
 async function resolveHandlePersona(h,name){ const a=await accountByHandle(h); if(!a) return {acc:null,id:null};
-  const {data}=await SB.from('twingrid_grids').select('id,name').eq('owner',a.id).eq('is_public',true).ilike('name',ilikeEscape(name)).limit(1);
+  const {data}=await SB.from('twingrid_grids_public').select('id,name').eq('owner',a.id).eq('is_public',true).ilike('name',ilikeEscape(name)).limit(1);
   return {acc:a,id:(data&&data[0])?data[0].id:null}; }
 function onExploreRoute(){ return new URLSearchParams(location.search).has('explore'); }
 function route(){ const twin=onProfileRoute();
@@ -1934,6 +1943,20 @@ function cellBody(v){ const t=String(v==null?'':v);
   const out=t.replace(/^[ \t]*#[ \t]*[A-Za-z0-9 _.\-]+\/[ \t]*[A-Z]+[ \t]*(\r?\n)+/,'').trim();
   return out || t.trim(); }
 function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// ---------- rooms (2026-09-07): every facet has a scope. Mirrors twingrid_facet_scope() in SQL; the database's
+// twingrid_grids_public view is the real gate, this only paints the editor and keeps the two rules identical. ----------
+const PK_SCOPES=['house','visiting','lobby'], PK_SCOPE_LABEL={house:'House',visiting:'Visiting',lobby:'Lobby'};
+function pkFacetScope(f){ if(!f) return 'house'; if(PK_SCOPES.indexOf(f.scope)>=0) return f.scope; return (f.name==='core'||f.name==='vibe')?'lobby':'house'; }
+function pkRepaintRooms(){ const list=document.getElementById('roomlist'), sum=document.getElementById('roomsum'); if(!list||!sum) return;
+  list.innerHTML=''; const n={house:0,visiting:0,lobby:0};
+  GRID.facets.forEach(f=>{ const sc=pkFacetScope(f); n[sc]++;
+    const row=document.createElement('div'); row.className='rrow';
+    const nm=document.createElement('span'); nm.className='rn'; nm.textContent=f.name; nm.title=f.kind||''; row.appendChild(nm);
+    const seg=document.createElement('div'); seg.className='rseg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Who sees '+f.name);
+    PK_SCOPES.forEach(s=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=PK_SCOPE_LABEL[s]; b.setAttribute('aria-pressed',String(sc===s));
+      b.onclick=()=>{ f.scope=s; pkRepaintRooms(); }; seg.appendChild(b); });
+    row.appendChild(seg); list.appendChild(row); });
+  sum.textContent=n.lobby+' in the Lobby \u00b7 '+n.visiting+' visiting \u00b7 '+n.house+' in the House'; }
 
 // ---------- state ----------
 let GRID={facets:[]}, byName={}, curId=null;
@@ -2186,7 +2209,7 @@ function integrityOf(facets){ if(!facets.length||!byName.core) return {complete:
   let empty=0; facets.forEach(fn=>{const f=byName[fn]; if(!f)return; Object.keys(f.cells).forEach(c=>{ if(!String(f.cells[c]==null?'':f.cells[c]).trim()) empty++; }); });
   return empty? {complete:false,msg:empty+' empty cell'+(empty>1?'s':'')} : {complete:true,msg:'complete'}; }
 function render(){ if(!GRID.facets.length){document.getElementById('loadout').innerHTML='<span class="lab">no clone loaded</span>';document.getElementById('axischips').innerHTML='';return;}
-  buildAxis(); buildLoadout();
+  buildAxis(); buildLoadout(); pkRepaintRooms();
   const act=activeFacets();
   document.querySelectorAll('.node[data-name]').forEach(el=>{const n=el.dataset.name;el.classList.toggle('on',act.includes(n));const q=queue.indexOf(n);el.classList.toggle('queued',mode==='queue'&&q>=0);if(mode==='queue'&&q>=0)el.querySelector('.qbadge').textContent='#'+(q+1);});
   const cb=document.getElementById('cbig'),ci=document.getElementById('cint');
@@ -2635,7 +2658,8 @@ async function renderExplore(){
     const p=document.createElement('p'); p.textContent=msg; p.style.margin='0';
     d.append(h,p); grid.appendChild(d); };
 
-  const {data,error}=await SB.from('twingrid_grids')
+  // the Lobby view (2026-09-07): public rows only, data projected to the facets each owner put in the lobby
+  const {data,error}=await SB.from('twingrid_grids_public')
     .select('id,name,data,owner,updated_at,image_url').eq('is_public',true).order('updated_at',{ascending:false});
   if(error){ empty('Could not load the directory','Try again in a moment.'); return; }
   const all=data||[];
@@ -2755,7 +2779,7 @@ async function renderAccount(handle){
         if(error){ msg.textContent='Could not save: '+String(error.message||'').slice(0,120); return; }
         msg.textContent='Saved.'; setTimeout(()=>renderAccount(handle),500); }; }
   }catch(_){}
-  const {data:rows,error}=await SB.from('twingrid_grids').select('id,name,data,updated_at,image_url').eq('owner',acc.id).eq('is_public',true).order('updated_at',{ascending:false});
+  const {data:rows,error}=await SB.from('twingrid_grids_public').select('id,name,data,updated_at,image_url').eq('owner',acc.id).eq('is_public',true).order('updated_at',{ascending:false});
   if(error){ empty('Could not load personas','Try again in a moment.'); return; }
   if(!rows||!rows.length){ empty('No public personas yet','When '+dn+' makes one public it lands here.'); return; }
   rows.forEach(r=>{ const g=(r.data&&r.data.facets)?r.data:{facets:[]}; const nm=String(r.name||'Untitled persona');
@@ -2786,7 +2810,8 @@ function profileSummary(g){
 }
 async function renderProfile(id,opts){ opts=opts||{};
   const nameEl=document.getElementById('pname'); const pby=document.getElementById('pby'); pby.hidden=true; pby.textContent='';
-  const {data,error}=await SB.from('twingrid_grids').select('name,data,is_public,owner,image_url,voice_id').eq('id',id).maybeSingle();
+  // The persona page is the Lobby for everyone, the owner included: what a stranger sees is what you see here.
+  const {data,error}=await SB.from('twingrid_grids_public').select('name,data,is_public,owner,image_url,voice_id').eq('id',id).maybeSingle();
   if(error||!data){ nameEl.textContent='Persona not found'; document.getElementById('pavatar').textContent='?';
     document.getElementById('ppersona').textContent=opts.missingName?('@'+opts.handle+' has no public persona named "'+opts.missingName+'". It may have been renamed or made private.'):'This persona is private, or the link is wrong. Ask its owner to make it public.';
     if(opts.handle){ pby.hidden=false; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(opts.handle); a.textContent='@'+opts.handle; pby.append('See everything by ',a); }
@@ -2812,7 +2837,8 @@ async function renderProfile(id,opts){ opts=opts||{};
   pkApplyTheme(document.getElementById('profile'),thp); pkApplyTheme(document.getElementById('chat'),thp);
   const order=["CONTEXT","DO","DONT","GATES","VOICE"];
   const bn=Object.fromEntries(g.facets.map(f=>[f.name,f]));
-  const pick=["core"]; if(bn.vibe)pick.push("vibe");
+  // every facet the view handed over is a lobby facet; core leads, the rest in the owner's order
+  const pick=["core"]; g.facets.forEach(f=>{ if(f&&f.name&&f.name!=="core"&&pick.indexOf(f.name)<0) pick.push(f.name); });
   const pe=document.getElementById('ppersona'); pe.innerHTML=''; let any=false;
   pick.forEach(fn=>{ const f=bn[fn]; if(!f)return; order.filter(c=>f.cells[c]&&String(f.cells[c]).trim()).forEach(c=>{ any=true;
     const sec=document.createElement('div'); sec.className='psec';

@@ -2,7 +2,7 @@
 // with a fake that answers the Supabase and Anthropic shapes the handler uses.
 // Run: node worker/api.test.mjs
 
-import { handleApi, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap } from "./api.js";
+import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap } from "./api.js";
 import { isHandlePath } from "./index.js";
 
 const ENV = {
@@ -19,6 +19,9 @@ const ENV = {
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const GRID_ID = "22222222-2222-4222-8222-222222222222";
 const GOOD_TOKEN = "good-token";
+// A second, signed-in user who does not own GRID (2026-09-07): sees the Lobby view only.
+const STRANGER_ID = "55555555-5555-4555-8555-555555555555";
+const STRANGER_TOKEN = "stranger-token";
 
 const GRID = {
   id: GRID_ID,
@@ -31,9 +34,14 @@ const GRID = {
   },
 };
 
+// The Lobby projection of GRID, what twingrid_grids_public serves (facets scoped lobby: core and vibe by default).
+const GRID_LOBBY = { id: GRID_ID, data: { facets: GRID.data.facets.filter((f) => f.name === "core" || f.name === "vibe") } };
+
 // State the fake backend mutates so we can assert on it.
 const calls = [];
 let balance = 3;
+let gridPublic = true;  // whether the view carries GRID (2026-09-07)
+let lastSystem = "";    // the system text of the last Anthropic call (2026-09-07)
 let anthropicMode = "ok"; // "ok" | "fail"
 let capacityOk = true;    // the capacity gate answer
 let capacityCalls = [];
@@ -51,7 +59,14 @@ globalThis.fetch = async (url, init) => {
   if (u.endsWith("/auth/v1/user")) {
     const auth = headers.Authorization || "";
     if (auth === "Bearer " + GOOD_TOKEN) return respond(200, { id: USER_ID, email: "t@example.com" });
+    if (auth === "Bearer " + STRANGER_TOKEN) return respond(200, { id: STRANGER_ID, email: "s@example.com" });
     return respond(401, { message: "invalid JWT" });
+  }
+  if (u.includes("/rest/v1/twingrid_grids_public")) {
+    // The Lobby view: anon key only, public rows only, data projected. Never the house.
+    if (headers.Authorization) throw new Error("the public view must be read with the anon key, not a user token");
+    if (!gridPublic) return respond(200, []);
+    return respond(200, u.includes("id=eq." + GRID_ID) ? [GRID_LOBBY] : []);
   }
   if (u.includes("/rest/v1/twingrid_grids")) {
     // RLS stand-in: only the good token can see the grid.
@@ -91,6 +106,7 @@ globalThis.fetch = async (url, init) => {
     if (!Array.isArray(body.system) || body.system.length !== 1 || body.system[0].type !== "text") throw new Error("system must be one text block");
     if (!body.system[0].text.startsWith("You are role-playing a published Personakind persona")) throw new Error("guard preamble missing");
     if (!body.system[0].cache_control || body.system[0].cache_control.type !== "ephemeral") throw new Error("system block is not marked cacheable");
+    lastSystem = body.system[0].text;
     if (body.max_tokens !== 700) throw new Error("max_tokens should be 700");
     if (headers["x-api-key"] !== ENV.ANTHROPIC_API_KEY) throw new Error("x-api-key missing");
     if (headers["anthropic-version"] !== "2023-06-01") throw new Error("anthropic-version missing");
@@ -188,6 +204,44 @@ await check("grid not visible -> 404", async () => {
   }), ENV);
   eq(r.status, 404, "status");
   eq((await r.json()).error, "grid_not_found", "error");
+});
+
+await check("stranger chat: falls back to the Lobby view, composes lobby facets only, never a house facet", async () => {
+  balance = 3; gridPublic = true; lastSystem = "";
+  const r = await handleApi(req("/api/chat", {
+    method: "POST", headers: H({ Authorization: "Bearer " + STRANGER_TOKEN }),
+    // the client asks for the coach specialist by name; it is a house facet, so it must be ignored
+    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "hi" }], compose: { mode: "single", sel: { register: "vibe", specialist: "coach" } } }),
+  }), ENV);
+  eq(r.status, 200, "status");
+  const idxTable = calls.findIndex((c) => c.url.includes("/rest/v1/twingrid_grids?"));
+  const idxView = calls.findIndex((c) => c.url.includes("/rest/v1/twingrid_grids_public?"));
+  if (!(idxTable >= 0 && idxView > idxTable)) throw new Error("table must be tried first, then the view");
+  if (!lastSystem.includes("I am a test persona")) throw new Error("core cell missing from the composed prompt");
+  if (!lastSystem.includes("Keep it loose")) throw new Error("vibe (lobby by default) missing from the composed prompt");
+  if (lastSystem.includes("Ask one question at a time")) throw new Error("HOUSE FACET LEAKED into a stranger's chat");
+});
+
+await check("stranger chat on a private grid: the view is empty -> 404, no credit spent", async () => {
+  balance = 3; gridPublic = false;
+  const r = await handleApi(req("/api/chat", {
+    method: "POST", headers: H({ Authorization: "Bearer " + STRANGER_TOKEN }),
+    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "hi" }] }),
+  }), ENV);
+  eq(r.status, 404, "status");
+  eq(balance, 3, "balance untouched");
+  gridPublic = true;
+});
+
+await check("owner chat: reads the full grid off the table, the view is never asked", async () => {
+  balance = 3; lastSystem = ""; calls.length = 0;
+  const r = await handleApi(req("/api/chat", {
+    method: "POST", headers: H({ Authorization: "Bearer " + GOOD_TOKEN }),
+    body: JSON.stringify({ grid_id: GRID_ID, messages: [{ role: "user", content: "hi" }], compose: { mode: "single", sel: { register: "vibe", specialist: "coach" } } }),
+  }), ENV);
+  eq(r.status, 200, "status");
+  if (calls.some((c) => c.url.includes("twingrid_grids_public"))) throw new Error("owner path must not touch the view");
+  if (!lastSystem.includes("Ask one question at a time")) throw new Error("the owner's own house facet should compose");
 });
 
 await check("happy path chat: spends one credit, returns text and remaining", async () => {
@@ -628,6 +682,14 @@ await check("sitemap: static pages, public accounts by handle, public grids by i
   }
   if (xml.includes("not-a-uuid") || xml.includes("<script") || xml.includes("?u=x<")) throw new Error("bad row leaked");
   eq((xml.match(/<url>/g) || []).length, 9, "url count: 6 static + 1 account + 2 grids");
+});
+
+await check("sitemap handler reads public grids off the Lobby view, not the table", async () => {
+  calls.length = 0;
+  const r = await handleSitemap(ENV);
+  eq(r.status, 200, "status");
+  if (!calls.some((c) => c.url.includes("/rest/v1/twingrid_grids_public?select=id,updated_at&is_public=eq.true"))) throw new Error("sitemap did not read the view");
+  if (calls.some((c) => c.url.includes("/rest/v1/twingrid_grids?"))) throw new Error("sitemap read the base table");
 });
 
 await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {

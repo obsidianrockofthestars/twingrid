@@ -220,7 +220,8 @@ async function request(path, params) {
 }
 
 // ---------------------------------------------------------------------------
-// Query helpers (twingrid_accounts, twingrid_grids), same filters as live.py
+// Query helpers (twingrid_accounts, twingrid_grids_public), same filters as live.py.
+// Grids come off the Lobby view (2026-09-07): public rows only, data projected to lobby facets.
 // ---------------------------------------------------------------------------
 async function getAccountByHandle(handle) {
   const rows = await request("twingrid_accounts", {
@@ -266,7 +267,7 @@ async function searchAccountsByDisplayName(query, limit) {
 }
 
 async function countPublicPersonas(accountId) {
-  const rows = await request("twingrid_grids", {
+  const rows = await request("twingrid_grids_public", {
     select: "id",
     owner: "eq." + accountId,
     is_public: "eq.true",
@@ -275,7 +276,7 @@ async function countPublicPersonas(accountId) {
 }
 
 async function listPublicPersonas(accountId) {
-  const rows = await request("twingrid_grids", {
+  const rows = await request("twingrid_grids_public", {
     select: "id,name,updated_at",
     owner: "eq." + accountId,
     is_public: "eq.true",
@@ -285,7 +286,7 @@ async function listPublicPersonas(accountId) {
 }
 
 async function getPublicGridById(gridId) {
-  const rows = await request("twingrid_grids", {
+  const rows = await request("twingrid_grids_public", {
     select: "id,owner,name,data,updated_at",
     id: "eq." + gridId,
     is_public: "eq.true",
@@ -295,7 +296,7 @@ async function getPublicGridById(gridId) {
 }
 
 async function getPublicGridByOwnerAndName(accountId, name) {
-  const rows = await request("twingrid_grids", {
+  const rows = await request("twingrid_grids_public", {
     select: "id,owner,name,data,updated_at",
     owner: "eq." + accountId,
     is_public: "eq.true",

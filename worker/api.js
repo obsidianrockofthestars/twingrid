@@ -296,7 +296,26 @@ async function readCredits(env, userId) {
   return { balance: Number(rows[0].balance) || 0, period_end: rows[0].period_end || null };
 }
 
-// Fetch the grid AS THE CALLER so RLS decides visibility (public, or owned).
+// The Lobby view (2026-09-07). twingrid_grids_public carries public, unsuspended rows with data
+// replaced by twingrid_lobby(data): only facets scoped 'lobby' (core and vibe by default). It is
+// read with the anon key on purpose; the base table is readable by its operator only.
+async function fetchPublicGrid(env, gridId, select) {
+  const q = "/rest/v1/twingrid_grids_public?select=" + select + "&id=eq." + encodeURIComponent(gridId);
+  let res;
+  try {
+    res = await fetch(sbUrl(env, q), { headers: { apikey: env.SUPABASE_ANON_KEY, Accept: "application/json" } });
+  } catch (_) {
+    return { error: 502 };
+  }
+  if (!res.ok) return { error: 502 };
+  let rows;
+  try { rows = await res.json(); } catch (_) { return { error: 502 }; }
+  if (!Array.isArray(rows) || rows.length !== 1) return { error: 404 };
+  return { grid: rows[0] };
+}
+
+// Fetch the grid AS THE CALLER: the full grid when the caller operates it (RLS decides), else the
+// Lobby projection from the public view. A stranger chats with the lobby persona, never the house.
 async function fetchGridAsUser(env, token, gridId) {
   const q = "/rest/v1/twingrid_grids?select=id,data&id=eq." + encodeURIComponent(gridId);
   let res;
@@ -318,7 +337,7 @@ async function fetchGridAsUser(env, token, gridId) {
   } catch (_) {
     return { error: 502 };
   }
-  if (!Array.isArray(rows) || rows.length === 0) return { error: 404 };
+  if (!Array.isArray(rows) || rows.length === 0) return fetchPublicGrid(env, gridId, "id,data");
   return { grid: rows[0] };
 }
 
@@ -629,7 +648,7 @@ function creditPacks(env) {
   }
 }
 
-// Fetch name, owner and data of a grid AS THE CALLER (RLS decides visibility).
+// Fetch name, owner and data of a grid AS THE CALLER (RLS decides visibility), else the Lobby projection.
 async function fetchGridMetaAsUser(env, token, gridId) {
   const q = "/rest/v1/twingrid_grids?select=id,name,owner,data&id=eq." + encodeURIComponent(gridId);
   let res;
@@ -647,7 +666,7 @@ async function fetchGridMetaAsUser(env, token, gridId) {
   } catch (_) {
     return { error: 502 };
   }
-  if (!Array.isArray(rows) || rows.length === 0) return { error: 404 };
+  if (!Array.isArray(rows) || rows.length === 0) return fetchPublicGrid(env, gridId, "id,name,owner,data");
   return { grid: rows[0] };
 }
 
@@ -864,7 +883,7 @@ async function fetchGridVoiceAsUser(env, token, gridId) {
   if (!res.ok) return { error: res.status === 401 ? 401 : 502 };
   let rows;
   try { rows = await res.json(); } catch (_) { return { error: 502 }; }
-  if (!Array.isArray(rows) || rows.length !== 1) return { error: 404 };
+  if (!Array.isArray(rows) || rows.length !== 1) return fetchPublicGrid(env, gridId, "id,owner,voice_id");
   return { grid: rows[0] };
 }
 
@@ -1031,7 +1050,7 @@ async function anonRows(env, path) {
   }
 }
 export async function handleSitemap(env) {
-  const grids = await anonRows(env, "/rest/v1/twingrid_grids?select=id,updated_at&is_public=eq.true&order=updated_at.desc&limit=5000");
+  const grids = await anonRows(env, "/rest/v1/twingrid_grids_public?select=id,updated_at&is_public=eq.true&order=updated_at.desc&limit=5000");
   const accounts = await anonRows(env, "/rest/v1/twingrid_accounts?select=handle&is_suspended=eq.false&order=handle.asc&limit=5000");
   return new Response(buildSitemap(grids, accounts), {
     status: 200,
