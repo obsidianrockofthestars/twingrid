@@ -24,6 +24,8 @@
   },
   // Autopilot (M3, 2026-09-07): one tick an hour; each tick handles the grids whose rules name that UTC hour.
   "triggers": { "crons": ["0 * * * *"] },
+  // Rate limits (2026-09-08): the KV the Worker counts against. worker/api.js rateLimited() skips every cap when this is absent.
+  "kv_namespaces": [{ "binding": "RATE_KV", "id": "fdac8e1e96d0438f96df589106cdecf2" }],
   // Secrets, set once with `wrangler secret put`: ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH,
   // and (optional) AUTOPILOT_AUTH, the bearer for POST /api/autopilot/tick, a manual trigger; absent means the route is 404.
   "assets": {
