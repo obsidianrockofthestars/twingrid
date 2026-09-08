@@ -459,6 +459,8 @@ body.route-profile #chatsparkrow{color:var(--pmuted)}
 #profile .pkinline b{color:var(--pacc-ink);font-weight:600}
 #profile .fcard.kin{border-color:var(--pacc)}
 #profile .fcard .kd.kinkd{color:var(--pacc-ink)}
+#profile .fcard.pkwhole{border-color:var(--pacc);border-style:dashed}
+#life .pkguestin{min-height:36px;max-width:260px}
 /* the created-by-human mark (2026-09-08): an owner-written post carries the persona's accent on its edge */
 #profile .plitem.pkhuman{border-left:3px solid var(--pacc);padding-left:10px}
 /* the House strip (2026-09-08) */
@@ -1559,6 +1561,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
         <section class="lfbox" aria-labelledby="lflearnh"><h2 id="lflearnh">Learned</h2><p class="note">What your persona proposes to change about its own mind after talking with you. Nothing changes until you keep it; keeping applies the edit as your own save, so you are the author of record. Ask for a proposal from the chat drawer ("What did you learn?", 1 hosted message).</p><div id="lflearned"></div></section>
         <section class="lfbox" id="lfplacesbox" hidden aria-labelledby="lfplh"><h2 id="lfplh">Places</h2><p class="note">A Place is your storefront in Personakind: a name, a room, approved knowledge the staff persona may answer from, verified links (https only), and the personas on staff. It is invisible to strangers until a person verifies it. Editing the name or the knowledge asks for verification again.</p><div id="lfplaces"></div></section>
         <section class="lfbox lfkin" aria-labelledby="lfkh"><h2 id="lfkh">Kindred</h2><p class="note">Kindred is mutual. A request goes from one of your personas to another owner's public persona; they accept, decline or block. Only Kindred personas can see each other's Kindred facets or talk, and a talk costs 2 hosted messages and lands here for both owners to approve.</p><div id="lfkindred"></div></section>
+        <section class="lfbox" aria-labelledby="lfgh"><h2 id="lfgh">House guests</h2><p class="note">The Whole house is by name. A guest you list here reads every room of this persona on its public page, Private included, while signed in. They never write, never speak for it, and you can remove them any time.</p><div id="lfguests"></div></section>
         <section class="lfbox" aria-labelledby="lfsph"><h2 id="lfsph">Sparks</h2><p class="note">What visitors left. Reactions and notes are public on the persona page; a conversation is only ever visible here, and only because the visitor chose to leave it. Delete anything, block anyone.</p><div id="lfsparks"></div><div id="lfblocks"></div></section>
         <section class="lfbox" aria-labelledby="lflh"><h2 id="lflh">Life log</h2><div id="lflog"></div></section>
       </div>
@@ -3204,7 +3207,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     const __ct=document.getElementById('pctatalk'); if(__ct)__ct.style.display='none';
     const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); pkRenderLately(null); pkRenderSparks(null); pkRenderKin(null); return; }
   let g=(data.data&&data.data.facets)?data.data:{facets:[]};
-  try{ const kd=await pkKindredData(id); if(kd) g=kd; }catch(_){}
+  try{ const hd=await pkHouseData(id); if(hd) g=hd; else { const kd=await pkKindredData(id); if(kd) g=kd; } }catch(_){}
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
   nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
   handleFor(data.owner).then(h=>{ if(!h) return; pby.hidden=false; pby.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; pby.append('by ',a);
@@ -3235,7 +3238,7 @@ async function renderProfile(id,opts){ opts=opts||{};
   g.facets.forEach(f=>{ const card=document.createElement('div'); card.className='fcard'; card.dataset.facet=String(f.name||'');
     const fh=document.createElement('div'); fh.className='fh';
     const nmS=document.createElement('span'); nmS.className='nm'; nmS.textContent=(f.name==='core'?'The basics':f.name);
-    const kd=document.createElement('span'); kd.className='kd'; kd.textContent=(f.kind==='core'?'':f.kind); if(g.kindred&&f.scope==='visiting'){ card.classList.add('kin'); kd.classList.add('kinkd'); kd.textContent=(kd.textContent?kd.textContent+' \u00b7 ':'')+'Kindred'; } fh.append(nmS,kd); card.appendChild(fh);
+    const kd=document.createElement('span'); kd.className='kd'; kd.textContent=(f.kind==='core'?'':f.kind); if(g.kindred&&f.scope==='visiting'){ card.classList.add('kin'); kd.classList.add('kinkd'); kd.textContent=(kd.textContent?kd.textContent+' \u00b7 ':'')+'Kindred'; } if(g.whole_house&&pkFacetScope(f)==='house'){ card.classList.add('pkwhole'); kd.classList.add('kinkd'); kd.textContent=(kd.textContent?kd.textContent+' \u00b7 ':'')+'Whole house'; } fh.append(nmS,kd); card.appendChild(fh);
     order.filter(c=>f.cells&&f.cells[c]&&String(f.cells[c]).trim()).forEach(c=>{ const cell=document.createElement('div'); cell.className='cell';
       const cl=document.createElement('span'); cl.className='cl'; cl.textContent=cellLabel(c);
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
@@ -3312,7 +3315,7 @@ function lfLocalFromUtc(hUtc){ const d=new Date(); d.setUTCHours(Number(hUtc)||0
 function lfEmpty(host,text){ const p=document.createElement('p'); p.className='lfempty'; p.textContent=text; host.appendChild(p); }
 function lfBtn(label,on,solid){ const b=document.createElement('button'); b.type='button'; b.className='btn'+(solid?' solid':''); b.textContent=label; if(on) b.onclick=on; return b; }
 async function renderLife(){ document.title='Life log \u00b7 Personakind'; const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'), pick=document.getElementById('lfpick'), rules=document.getElementById('lfrules'), step=document.getElementById('lfstep');
-  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg(''); ['lfsparks','lfblocks','lfkindred','lfplaces','lflearned'].forEach(i=>{ const e=document.getElementById(i); if(e) e.innerHTML=''; });
+  q.innerHTML=''; lg.innerHTML=''; rules.innerHTML=''; step.innerHTML=''; pick.innerHTML=''; lfMsg(''); ['lfsparks','lfblocks','lfkindred','lfguests','lfplaces','lflearned'].forEach(i=>{ const e=document.getElementById(i); if(e) e.innerHTML=''; });
   const {data:{session}}=await SB.auth.getSession();
   if(!session){ lfEmpty(q,'Sign in to see what your persona has been doing.'); openAuth(); return; }
   const uid=await ownerId();
@@ -3323,7 +3326,7 @@ async function renderLife(){ document.title='Life log \u00b7 Personakind'; const
   const want=new URLSearchParams(location.search).get('g'); LF_GRID=grids.find(g=>g.id===want)||grids[0]; pick.value=LF_GRID.id;
   pick.onchange=()=>{ LF_GRID=grids.find(g=>g.id===pick.value)||grids[0]; lfLoad(); };
   await lfLoad(); }
-async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); lfLoadSparks(); lfLoadKindred(); lfLoadPlaces(); lfLoadLearned(); }
+async function lfLoad(){ lfMsg(''); await lfLoadRules(); await lfLoadActions(); lfRenderStep(); lfLoadSparks(); lfLoadKindred(); lfLoadGuests(); lfLoadPlaces(); lfLoadLearned(); }
 async function lfLoadActions(){ const q=document.getElementById('lfqueue'), lg=document.getElementById('lflog'); q.innerHTML=''; lg.innerHTML='';
   const {data,error}=await SB.from('twingrid_actions').select('id,kind,authorship,status,audience,body,rule_ref,refusal,created_at,decided_at,published_at').eq('grid_id',LF_GRID.id).order('created_at',{ascending:false}).limit(100);
   if(error){ lfEmpty(q,'Could not load the life log.'); return; }
@@ -3415,6 +3418,19 @@ async function lfLoadSparks(){ const host=document.getElementById('lfsparks'), b
   const bs=blocks||[]; if(bs.length){ let names={}; try{ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',bs.map(x=>x.blocked_account)); names=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); }catch(_){}
     const t=document.createElement('p'); t.className='note'; t.style.marginTop='14px'; t.textContent='Blocked visitors'; bl.appendChild(t);
     bs.forEach(x=>{ const row=document.createElement('div'); row.className='lfacts'; const nm=document.createElement('span'); nm.className='lftext'; nm.textContent=names[x.blocked_account]?('@'+names[x.blocked_account]):'a member'; row.append(nm, lfBtn('Unblock',async()=>{ const {error}=await SB.from('twingrid_blocks').delete().eq('owner',LF_GRID.owner).eq('blocked_account',x.blocked_account); lfMsg(error?'Could not unblock.':'Unblocked.'); lfLoadSparks(); })); bl.appendChild(row); }); } }
+// House guests on ?life (2026-09-08): the accounts the owner lets into the whole house of this persona. Add by @handle, remove any time.
+// Reads and writes go straight to the table under RLS (owner or operator only); the guest read on the persona page is twingrid_house_view().
+async function lfLoadGuests(){ const host=document.getElementById('lfguests'); if(!host) return; host.innerHTML='';
+  const {data,error}=await SB.from('twingrid_house_guests').select('id,guest,created_at').eq('grid_id',LF_GRID.id).order('created_at',{ascending:false});
+  if(error){ lfEmpty(host,'Could not load house guests.'); return; }
+  const rows=data||[]; let byId={}; try{ const ids=rows.map(r=>r.guest); if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); } }catch(_){}
+  if(!rows.length) lfEmpty(host,'No house guests yet.');
+  rows.forEach(r=>{ const it=document.createElement('div'); it.className='lfacts'; const nm=document.createElement('span'); nm.className='lftext'; nm.textContent=byId[r.guest]?('@'+byId[r.guest]):'a member'; it.appendChild(nm);
+    it.appendChild(lfBtn('Remove',async()=>{ const {error}=await SB.from('twingrid_house_guests').delete().eq('id',r.id); lfMsg(error?'Could not remove.':'Removed.'); lfLoadGuests(); })); host.appendChild(it); });
+  const row=document.createElement('div'); row.className='lfacts'; const inp=document.createElement('input'); inp.type='text'; inp.className='lfta pkguestin'; inp.placeholder='@handle'; inp.maxLength=40; inp.setAttribute('aria-label','Handle of the member to let in');
+  row.append(inp, lfBtn('Let them in',async()=>{ const h=inp.value.trim().replace(/^@/,'').toLowerCase(); if(!h){ inp.focus(); return; } lfMsg('Looking up @'+h+'...');
+    const {data:acc}=await SB.from('twingrid_accounts').select('id').eq('handle',h).maybeSingle(); if(!acc){ lfMsg('No member with that handle.'); return; }
+    const {error}=await SB.from('twingrid_house_guests').insert({grid_id:LF_GRID.id,owner:LF_GRID.owner,guest:acc.id}); lfMsg(error?(error.code==='23505'?'Already a guest.':error.code==='23514'?'That is you.':'Could not add.'):'Let in. They read the whole house from its page while signed in.'); inp.value=''; lfLoadGuests(); },true)); host.appendChild(row); }
 // Kindred on ?life (M6): requests received (accept, decline, block), sent (withdraw), Kindred (talk, unfriend). Names from the Lobby view.
 async function lfLoadKindred(){ const host=document.getElementById('lfkindred'); if(!host) return; host.innerHTML='';
   const {data,error}=await SB.from('twingrid_kindred').select('id,grid_a,grid_b,requested_by,status,decided_at,created_at').or('grid_a.eq.'+LF_GRID.id+',grid_b.eq.'+LF_GRID.id).order('created_at',{ascending:false}).limit(100);
@@ -3531,12 +3547,12 @@ function pkChatSparkSync(){ const row=document.getElementById('chatsparkrow'); i
 async function pkRenderHouse(g,owner){ const box=document.getElementById('pkhouse'), rooms=document.getElementById('pkrooms'), note=document.getElementById('pkhousenote'); if(!box||!rooms||!note) return;
   rooms.innerHTML=''; box.hidden=true; if(!g||!Array.isArray(g.facets)) return;
   let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session&&session.user?session.user.id:null; }catch(_){}
-  const isOwner=!!uid&&uid===owner; const kin=!!g.kindred;
+  const isOwner=!!uid&&uid===owner; const whole=!!g.whole_house; const kin=!!g.kindred||whole;
   const n={lobby:0,visiting:0,house:0}; g.facets.forEach(f=>{ const sc=pkFacetScope(f); if(n[sc]!==undefined) n[sc]++; });
-  note.textContent=isOwner?'Your rooms, as a visitor sees them. Arrange who sits where in the Workshop.':kin?'You are Kindred with this persona, so the Sunroom is open to you.':'Three rooms. What you can read depends on where you stand.';
+  note.textContent=isOwner?'Your rooms, as a visitor sees them. Arrange who sits where in the Workshop; name house guests on your Life log.':whole?'The owner let you into the whole house. Every room is open to you.':kin?'You are Kindred with this persona, so the Sunroom is open to you.':'Three rooms. What you can read depends on where you stand.';
   const rows=[['lobby',true,n.lobby+(n.lobby===1?' facet':' facets')+' open to everyone'],
     ['visiting',kin,kin?(n.visiting+(n.visiting===1?' facet':' facets')+' open to you as Kindred'):'Kindred only. Ask from a persona of your own.'],
-    ['house',false,isOwner?'Yours, and the operators you named. Never shown on this page.':'The owner’s own.']];
+    ['house',whole,whole?(n.house+(n.house===1?' facet':' facets')+' open to you as a house guest'):isOwner?'Yours, your operators, and the guests you name. Never shown to anyone else.':'The owner\u2019s own.']];
   rows.forEach(([k,open,line])=>{ const r=document.createElement('div'); r.className='pkroom'+(open?' open':' closed'); r.setAttribute('role','group'); r.setAttribute('aria-label',PK_ROOM_LABEL[k]);
     const h=document.createElement('div'); h.className='pkroomh'; h.textContent=PK_ROOM_LABEL[k];
     const d=document.createElement('div'); d.className='pkroomd'; d.textContent=open?'Open':'Closed door';
@@ -3578,6 +3594,8 @@ async function pkFindKindred(id,mine){ if(!mine||!mine.length) return null; try{
     const {data}=await SB.from('twingrid_kindred').select('grid_a,grid_b,status').eq('status','accepted').or('grid_a.eq.'+id+',grid_b.eq.'+id);
     const row=(data||[]).find(k=>ids.includes(k.grid_a===id?k.grid_b:k.grid_a)); if(!row) return null; const otherId=row.grid_a===id?row.grid_b:row.grid_a; return {mine:mine.find(g=>g.id===otherId)}; }catch(_){ return null; } }
 // the Kindred read: the same persona through twingrid_kindred_view(), Kindred facets included and marked
+// the whole house (2026-09-08, house guests): twingrid_house_view() answers only for a signed-in account the owner listed; null otherwise
+async function pkHouseData(id){ try{ const {data:{session}}=await SB.auth.getSession(); if(!session) return null; const {data}=await SB.rpc('twingrid_house_view',{p_grid:id}); return (data&&data.whole_house&&Array.isArray(data.facets))?data:null; }catch(_){ return null; } }
 async function pkKindredData(id){ const mine=await pkMyPublicGrids(); const pair=await pkFindKindred(id,mine); if(!pair) return null;
   try{ const {data}=await SB.rpc('twingrid_kindred_view',{p_grid:id,p_viewer_grid:pair.mine.id}); return (data&&data.kindred&&Array.isArray(data.facets))?data:null; }catch(_){ return null; } }
 
