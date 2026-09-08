@@ -8,6 +8,7 @@ Personakind, live at personakind.com. One static page (`docs/index.html`, an inl
 
 ## Working agreement
 
+- **Stacked PRs merge bottom-up without deleting the head branch until the child has retargeted, or every PR opens against `main` from the start.** GitHub closes a child PR when its base branch is deleted, and a closed PR cannot be reopened or rebased. (2026-09-07: deleting the M0 branch after its merge closed four of eight milestone PRs; production was untouched, the afternoon was not.) Ratified 2026-09-08.
 - **One builder at a time.** `git pull` first. Confirm with Dylan that no other tool (Cowork, Antigravity, another Claude Code) has the repo open. One milestone per branch, PR to `main`, Dylan merges and watches the deploy.
 - **Do one milestone.** `PLAN.md` section 5 is the order. Do not start the next one. Do not touch billing (`handleRcWebhook`, packs, offerings, RevenueCat, Stripe) without a founder ruling; it is parked.
 - **Prove from outside.** A change is done when the acceptance test in `PLAN.md` passes against the live site with `curl`, a fresh browser, or a probe with the publishable key, and the outputs are in the PR description. "It works" without output is not done.
@@ -26,6 +27,8 @@ Personakind, live at personakind.com. One static page (`docs/index.html`, an inl
 4. Attack every new object before the page reads it: with the publishable key over HTTP as anon and as a signed-in stranger (a throwaway account), and in SQL with `set local role anon` / `set local role authenticated` plus `set_config('request.jwt.claims', ...)`. Write the probes and their expected results into the migration file's footer; paste the actual outputs into the PR.
 5. Table-level grants only, never column-level against a table grant. Never revoke EXECUTE from anon on a function a SELECT policy calls. Anything that moves credits runs in a service-role-only function.
 6. A view that must expose rows the caller cannot read on the base table is owned by `postgres` with `security_invoker = false` on purpose (the Lobby view `twingrid_grids_public` is one). The Supabase advisor flags it as `security_definer_view`; that is the design, and rule 1 makes it read-only.
+7. `twingrid_accounts` is column-granted (since 2026-08-29). Every new column on it needs its own grant, or every policy that reads it fails 42501 and the symptom looks like RLS. (2026-09-07: `kind` and `adult_confirmed_at` were invisible until `twingrid_accounts_new_column_grants`.) Ratified 2026-09-08.
+8. A SECURITY DEFINER trigger sees `current_user` as its owner, so a guard that branches on the caller's role never takes the caller branch. Such a guard runs as an invoker trigger. (2026-09-07: the operator branch of the Place guards never ran until `twingrid_places_guard_invoker`.) Ratified 2026-09-08.
 
 ## Page rules (`docs/index.html`)
 
@@ -36,6 +39,7 @@ Personakind, live at personakind.com. One static page (`docs/index.html`, an inl
 5. Public pages take the public palette (`body.marketing`, the third `:root` block: paper, ink, `--accent-w`); the editor takes the first `:root` (near-black, `--accent`). Persona pages read their eight `--p*` variables set inline by `pkApplyTheme`; nothing outside `#profile` and `#chat` may.
 6. Measure every visual change at 1100x740 and 390 wide with `*{transition:none!important}` injected first, and record computed colours: 4.5 to 1 for text, 3 to 1 for non-text, against both dark and light owner bases. A reduced-motion path exists for anything animated.
 7. Keep every new public surface reachable by keyboard with a visible focus ring, and give every new control a 24 px minimum target.
+8. Every new id and class on the page gets a prefix nobody else uses (`pk`, then the feature), and the measurement in rule 6 is the check, not the eyeball. (2026-09-07: `phome` and `.who` collided with existing rules and were found only by measuring.) Ratified 2026-09-08.
 
 ## Worker rules (`worker/`)
 
