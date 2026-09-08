@@ -449,7 +449,7 @@ body.route-profile #chatsparkrow{color:var(--pmuted)}
 .lftrans{margin:6px 0 0;padding:8px 10px;border-radius:10px;background:var(--paper-2);font-size:13.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);max-height:220px;overflow:auto}
 #adultrow{display:flex;align-items:flex-start;gap:8px;margin-top:8px;font-size:12.5px;color:var(--text);cursor:pointer;line-height:1.4}
 #adultrow input{width:16px;height:16px;margin:2px 0 0;flex:none}
-/* Circle and Kindred (M6, 2026-09-07) */
+/* Kindred (M6, 2026-09-07; Circle dropped 2026-09-08, Dylan's ruling: Kindred is the only relationship word) */
 .pkin{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 0}
 #profile .pkin .btn{min-height:36px}
 #profile .pkin .note{color:var(--pmuted);font-size:13.5px;margin:0}
@@ -3328,7 +3328,7 @@ async function lfLoadRules(){ const f=document.getElementById('lfrules'); f.inne
   const per=lab('Posts a day',sel([[0,'0 (paused)'],[1,'1'],[2,'2'],[3,'3']],cur.max_per_day));
   const hours=[]; for(let h=0;h<24;h++){ const d=new Date(); d.setHours(h,0,0,0); hours.push([h,d.toLocaleTimeString([],{hour:'numeric'})]); }
   const hour=lab('When, your local time',sel(hours,lfLocalFromUtc(cur.hour_utc)));
-  const aud=lab('Audience',sel([['public','Public'],['circle','Circle only (stored now, served when Circle ships)']],cur.audience));
+  const aud=lab('Audience',sel([['public','Public']],cur.audience));
   const rep=lab('Replies to Sparks (used when Sparks ship)',sel([['act','Reply on its own'],['propose','Draft a reply for me'],['ask','Ask me first']],cur.replies));
   const lrn=lab('Learning (used when proposals ship)',sel([['propose','Propose changes for me to inspect'],['off','Off']],cur.learning));
   const row=document.createElement('div'); row.className='lfacts'; const save=lfBtn('Save rules',null,true); save.type='submit'; const msg=document.createElement('span'); msg.className='note'; msg.setAttribute('role','status'); row.append(save,msg); f.appendChild(row);
@@ -3481,7 +3481,7 @@ function pkChatSparkSync(){ const row=document.getElementById('chatsparkrow'); i
     const t=(history||[]).filter(x=>x&&(x.role==='user'||x.role==='assistant')&&typeof x.content==='string').slice(-40).map(x=>({role:x.role,content:String(x.content).slice(0,2000)}));
     const r=await pkSendSpark({grid_id:PK_CUR_ID,kind:'conversation',transcript:t}); m.textContent=r.error?pkSparkError(r.error):'Left for the owner. Only they can read it.'; }; }
 
-// ---------- Circle and Kindred on the persona page (M6, 2026-09-07). Circle is the viewer's own row under RLS. Kindred requests and
+// ---------- Kindred on the persona page (M6, 2026-09-07; Circle removed 2026-09-08, the table stays). Kindred requests and
 // persona-to-persona go through the Worker. When the viewer operates a persona that is Kindred with this one, the page re-reads this
 // persona through twingrid_kindred_view() and the Kindred facets appear, marked. Every string from the database: textContent. ----------
 let PK_MY_GRIDS=null; // the viewer's own public personas, for requests and for the Kindred read
@@ -3493,16 +3493,10 @@ const PK_KIN_ERR={signin:'Sign in first.',already_kindred:'Already Kindred.',pen
 function pkKinErr(e){ return PK_KIN_ERR[e]||'Could not do that right now.'; }
 async function pkRenderKin(id,owner){ const host=document.getElementById('pkin'), line=document.getElementById('pkinline'), out=document.getElementById('p2pout'); if(!host||!line) return; const gen=(host.__gen=(host.__gen||0)+1);
   host.innerHTML=''; line.hidden=true; line.textContent=''; if(out){ out.hidden=true; out.textContent=''; } if(!id) return;
-  const [{data:count},{data:{session}},mine]=await Promise.all([SB.rpc('twingrid_circle_count',{p_grid:id}), SB.auth.getSession(), pkMyPublicGrids()]);
+  const [{data:{session}},mine]=await Promise.all([SB.auth.getSession(), pkMyPublicGrids()]);
   if(gen!==host.__gen) return;
-  const n=Number(count)||0; const uid=session&&session.user?session.user.id:null; const isOwner=!!uid&&uid===owner;
-  const cnt=document.createElement('p'); cnt.className='note'; cnt.textContent=n+(n===1?' in its Circle':' in its Circle'); host.appendChild(cnt);
+  const uid=session&&session.user?session.user.id:null; const isOwner=!!uid&&uid===owner;
   if(!isOwner){
-    let following=false; if(uid){ try{ const {data}=await SB.from('twingrid_circle').select('grid_id').eq('follower',uid).eq('grid_id',id).maybeSingle(); following=!!data; }catch(_){} }
-    if(gen!==host.__gen) return;
-    const fb=document.createElement('button'); fb.type='button'; fb.className='btn ghost'; fb.textContent=following?'In your Circle':'Follow'; fb.setAttribute('aria-pressed',String(following));
-    fb.onclick=async()=>{ if(!uid){ openAuth(); return; } fb.disabled=true; if(following){ await SB.from('twingrid_circle').delete().eq('follower',uid).eq('grid_id',id); } else { const {error}=await SB.from('twingrid_circle').insert({follower:uid,grid_id:id}); if(error){ fb.disabled=false; return; } } pkRenderKin(id,owner); };
-    host.appendChild(fb);
     // Kindred: from one of the viewer's own public personas
     const kinPair=await pkFindKindred(id,mine); if(gen!==host.__gen) return;
     if(kinPair){ line.hidden=false; const b=document.createElement('b'); b.textContent=kinPair.mine.name||'your persona'; line.append('Kindred with ',b,'. Its Kindred facets are open to you below.');
@@ -3515,6 +3509,7 @@ async function pkRenderKin(id,owner){ const host=document.getElementById('pkin')
       rq.onclick=async()=>{ rq.disabled=true; msg.textContent='Sending...'; const r=await pkApiPost('/kindred',{action:'request',grid_id:sel.value,other_grid_id:id}); msg.textContent=r.error?pkKinErr(r.error):'Asked. They decide on their Life log.'; rq.disabled=false; };
       host.append(sel,rq,msg); }
     else if(uid){ const m=document.createElement('p'); m.className='note'; m.textContent='Publish one of your own personas to ask for Kindred.'; host.appendChild(m); }
+    else { const m=document.createElement('p'); m.className='note'; m.textContent='Kindred is mutual. Sign in and publish a persona of your own to ask.'; host.appendChild(m); }
   } }
 // the first accepted pair between this persona and one of the viewer's own; null when none
 async function pkFindKindred(id,mine){ if(!mine||!mine.length) return null; try{ const ids=mine.map(g=>g.id);
