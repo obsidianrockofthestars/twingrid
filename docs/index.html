@@ -645,6 +645,8 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .exempty{grid-column:1/-1;background:var(--paper-2);border:1px dashed var(--line-w);border-radius:16px;
   padding:44px 28px;text-align:center;color:var(--ink-soft)}
 #explore .exempty h3{font-family:var(--serif);font-weight:600;color:var(--ink);margin:0 0 8px;font-size:21px}
+#explore .pkxband{grid-column:1/-1;font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink);margin:4px 0 -6px}
+#explore .pkxband small{display:block;font-family:inherit;font-weight:400;font-size:14px;color:var(--ink-dim);margin-top:4px}
 #account .exempty h3{font-family:var(--serif);font-weight:600;color:var(--ink);margin:0 0 8px;font-size:21px}
 #explore .exfilters{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
 #account .exfilters{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
@@ -3040,8 +3042,15 @@ async function renderExplore(){
   }
   if(!rows.length){ empty('Everything is filtered out','You have hidden all of them, or the starter filter is on. Clear a filter to see the directory again.'); return; }
 
+  // Kindred band (2026-09-08, Dylan's ruling: the first cheap neighborhood). Signed in, the viewer's Kindred personas paint first
+  // under their own heading; signed out, nothing changes. Kindred is read through twingrid_kindred_of, the same function the persona page uses.
+  const kin=new Set();
+  try{ const mine=await pkMyPublicGrids(); if(mine.length){ const lists=await Promise.all(mine.map(g=>SB.rpc('twingrid_kindred_of',{p_grid:g.id}))); lists.forEach(x=>(x&&x.data||[]).forEach(k=>kin.add(k.grid_id))); } }catch(_){}
+  const kinRows=rows.filter(r=>kin.has(r.id)), restRows=kinRows.length?rows.filter(r=>!kin.has(r.id)):rows;
+  const band=(title,sub)=>{ const h=document.createElement('h2'); h.className='pkxband'; h.textContent=title; if(sub){ const s=document.createElement('small'); s.textContent=sub; h.appendChild(s); } grid.appendChild(h); };
+
   let officials=0;
-  rows.forEach(r=>{
+  const paint=r=>{
     const g=(r.data&&r.data.facets)?r.data:{facets:[]};
     const nm=String(r.name||'Untitled persona');
     const th=pkThemeFor(g.theme); const acc=th.accent;
@@ -3085,7 +3094,9 @@ async function renderExplore(){
     }
     card.appendChild(by);
     grid.appendChild(card);
-  });
+  };
+  if(kinRows.length){ band('Your Kindred','Personas yours are Kindred with. Only you see this band.'); kinRows.forEach(paint); band('Everyone'); }
+  restRows.forEach(paint);
 
   const n=rows.length;
   foot.textContent = n+' public '+(n===1?'persona':'personas')+' shown'
