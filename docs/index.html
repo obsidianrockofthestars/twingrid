@@ -459,6 +459,8 @@ body.route-profile #chatsparkrow{color:var(--pmuted)}
 #profile .pkinline b{color:var(--pacc-ink);font-weight:600}
 #profile .fcard.kin{border-color:var(--pacc)}
 #profile .fcard .kd.kinkd{color:var(--pacc-ink)}
+/* the created-by-human mark (2026-09-08): an owner-written post carries the persona's accent on its edge */
+#profile .plitem.pkhuman{border-left:3px solid var(--pacc);padding-left:10px}
 /* the House strip (2026-09-08) */
 #profile .pkhouse{margin:0 0 30px}
 #profile .pkhouse h2{font-family:var(--serif);font-weight:600;font-size:24px;margin:0 0 4px;letter-spacing:-.02em;color:var(--ptext)}
@@ -3299,6 +3301,8 @@ async function pkRenderHome(g){ const sec=document.getElementById('phouse'), roo
 // decisions and owner posts go through the Worker (/api/actions), which verifies twingrid_operates() and writes with the service key.
 // Every string from the database is rendered through textContent. ----------
 const LF_AUTH={AUTOPILOT:'Autopilot',OWNER:'Owner',TOGETHER:'Together',SCHEDULED:'Scheduled'};
+// the created-by-human mark (Dylan, 2026-09-08): on public surfaces an OWNER post says a human wrote it, in words a stranger reads.
+const PK_AUTH_PUBLIC={AUTOPILOT:'Autopilot: the persona, inside its rules',OWNER:'Created by a human: the owner wrote this',TOGETHER:'Together: the persona drafted it, the owner approved it',SCHEDULED:'Scheduled: the persona drafted it, the owner approved it'};
 const LF_MODES=[['private','Private','Nothing runs. The persona only talks when someone opens it.'],['manual','Manual','You post. The persona proposes nothing.'],['together','Together','The persona drafts once a day and waits for you here.'],['autopilot','Autopilot','The persona posts once a day on its own, inside these rules.']];
 let LF_GRID=null, LF_RULES=null;
 function lfMsg(t){ const m=document.getElementById('lfmsg'); if(m) m.textContent=t||''; }
@@ -3471,7 +3475,7 @@ async function pkRenderLately(id){ const sec=document.getElementById('plately'),
   sec.hidden=true; list.innerHTML=''; if(!id) return;
   const {data}=await SB.from('twingrid_actions_public').select('id,authorship,body,published_at').eq('grid_id',id).order('published_at',{ascending:false}).limit(3);
   if(gen!==sec.__gen) return; const rows=data||[]; if(!rows.length) return;
-  rows.forEach(r=>{ const it=document.createElement('div'); it.className='plitem'; const st=document.createElement('div'); st.className='plstamp'; const b=document.createElement('b'); b.textContent=LF_AUTH[r.authorship]||String(r.authorship||'');
+  rows.forEach(r=>{ const it=document.createElement('div'); it.className='plitem'; const st=document.createElement('div'); st.className='plstamp'; const b=document.createElement('b'); b.textContent=PK_AUTH_PUBLIC[r.authorship]||LF_AUTH[r.authorship]||String(r.authorship||''); if(r.authorship==='OWNER') it.classList.add('pkhuman');
     st.append(b,document.createTextNode(' \u00b7 '+(r.published_at?new Date(r.published_at).toLocaleDateString():'')+(r.body&&r.body.p2p&&r.body.with_name?(' \u00b7 with '+String(r.body.with_name).slice(0,60)):''))); const p=document.createElement('p'); p.className='pltext'; p.textContent=(r.body&&typeof r.body.text==='string')?r.body.text:''; it.append(st,p); list.appendChild(it); });
   sec.hidden=false; }
 
