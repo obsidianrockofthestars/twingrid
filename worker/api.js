@@ -1149,8 +1149,10 @@ export async function runAutopilotTick(env, now) {
     try {
       const todays = await serviceGet(env, "/rest/v1/twingrid_actions?select=created_at,status&grid_id=eq." + encodeURIComponent(r.grid_id) + "&created_at=gte." + encodeURIComponent(dayStart) + "&limit=50");
       if (!todays) { err("actions_unavailable"); continue; }
-      if (todays.some((a) => a && a.created_at >= hourStart)) continue;                       // idempotent within the hour
-      if (todays.filter((a) => a && a.status !== "refused").length >= Number(r.max_per_day)) continue; // under the daily cap
+      if (!todays.some((a) => a && a.kind === "invite")) { try { if (await proposeInvite(env, r, hour)) receipt.proposed++; } catch (_) { err("invite_error"); } }
+      const posts = todays.filter((a) => a && a.kind !== "invite");
+      if (posts.some((a) => a.created_at >= hourStart)) continue;                                 // idempotent within the hour
+      if (posts.filter((a) => a.status !== "refused").length >= Number(r.max_per_day)) continue;   // under the daily cap
       const g = await fetchPublicGrid(env, r.grid_id, "id,owner,name,data");                  // the Lobby projection, nothing else
       if (g.error === 404) continue;                                                           // private, suspended or gone: skip quietly
       if (g.error) { err("grid_unavailable"); continue; }
@@ -1187,6 +1189,32 @@ export async function runAutopilotTick(env, now) {
   if (!(await servicePost(env, "/rest/v1/twingrid_action_runs", receipt))) console.log("receipt_failed");
   return receipt;
 }
+// Access layer branch 2 (2026-09-08): a persona invites a visitor up from the Lobby to the Sunroom. One a day, proposed only,
+// never sent by the tick even in autopilot mode: the owner approves it from the queue and the Kindred request goes out then.
+// A candidate is the newest visitor who rated 4 or 5 or left a note, whose account owns a public persona, is not blocked, and
+// has no Kindred row with this persona yet. No model call, so no credit. Returns true when an invite was proposed.
+async function proposeInvite(env, r, hour) {
+  const sparks = await serviceGet(env, "/rest/v1/twingrid_sparks?select=from_account,kind,rating,note&grid_id=eq." + encodeURIComponent(r.grid_id) + "&from_account=not.is.null&kind=in.(rating,note)&order=created_at.desc&limit=20");
+  if (!sparks) return false;
+  const seen = new Set();
+  for (const sp of sparks) {
+    if (!sp || !UUID_RE.test(String(sp.from_account)) || seen.has(sp.from_account)) continue;
+    seen.add(sp.from_account);
+    if (sp.kind === "rating" && !(Number(sp.rating) >= 4)) continue;
+    if (sp.from_account === r.owner) continue;
+    if (await isBlocked(env, r.owner, sp.from_account)) continue;
+    const theirs = await serviceGet(env, "/rest/v1/twingrid_grids_public?select=id,name&owner=eq." + encodeURIComponent(sp.from_account) + "&is_public=eq.true&limit=1");
+    if (!theirs || !theirs.length || !UUID_RE.test(String(theirs[0].id)) || theirs[0].id === r.grid_id) continue;
+    const pair = pairOf(r.grid_id, theirs[0].id);
+    const kin = await serviceGet(env, "/rest/v1/twingrid_kindred?select=id&grid_a=eq." + pair.grid_a + "&grid_b=eq." + pair.grid_b + "&limit=1");
+    if (!kin || kin.length) continue;
+    const name = String(theirs[0].name || "their persona").slice(0, 80);
+    const why = sp.kind === "rating" ? "Their owner rated this persona " + Number(sp.rating) + " of 5." : "Their owner left a note.";
+    return servicePost(env, "/rest/v1/twingrid_actions", { grid_id: r.grid_id, owner: r.owner, kind: "invite", authorship: "AUTOPILOT", status: "proposed", audience: "public",
+      rule_ref: "invite:" + String(hour).padStart(2, "0") + "z", body: { invite: true, to_grid: theirs[0].id, to_account: sp.from_account, to_name: name, why, text: "Invite " + name + " to be Kindred. " + why + " Approve and the request goes out from this persona; their owner still decides." } });
+  }
+  return false;
+}
 // Manual trigger for the tick, for Dylan and for tests. Off unless AUTOPILOT_AUTH is set; the cron calls runAutopilotTick directly.
 async function handleAutopilotTick(request, env) {
   const secret = typeof env.AUTOPILOT_AUTH === "string" ? env.AUTOPILOT_AUTH : "";
@@ -1221,13 +1249,14 @@ async function handleActionDecide(request, env, id) {
   const b = parsed.value || {};
   const decision = b.decision;
   if (decision !== "approve" && decision !== "decline" && decision !== "edit") return json(request, 400, { error: "bad_decision" });
-  const rows = await serviceGet(env, "/rest/v1/twingrid_actions?select=id,grid_id,owner,status,body,audience&id=eq." + id);
+  const rows = await serviceGet(env, "/rest/v1/twingrid_actions?select=id,grid_id,owner,status,body,audience,kind&id=eq." + id);
   if (!rows) return json(request, 502, { error: "actions_unavailable" });
   if (rows.length !== 1) return json(request, 404, { error: "action_not_found" });
   const a = rows[0];
   if (!(await operatesAsUser(env, token, a.owner))) return json(request, 403, { error: "forbidden" });
   if (a.status !== "proposed") return json(request, 409, { error: "already_decided", status: a.status });
   const now = new Date().toISOString();
+  if (a.kind === "invite") return await decideInvite(request, env, id, a, decision, now);
   let patch;
   if (decision === "decline") patch = { status: "declined", decided_at: now };
   else if (decision === "approve") patch = { status: "published", decided_at: now, published_at: now };
@@ -1240,6 +1269,30 @@ async function handleActionDecide(request, env, id) {
   const row = await servicePatch(env, "/rest/v1/twingrid_actions?id=eq." + id + "&status=eq.proposed", patch);
   if (!row) return json(request, 409, { error: "already_decided" });
   return json(request, 200, { id: Number(id), status: row.status, authorship: row.authorship, published_at: row.published_at || null });
+}
+async function decideInvite(request, env, id, a, decision, now) {
+  if (decision === "edit") return json(request, 400, { error: "bad_decision" });
+  const mark = (patch) => servicePatch(env, "/rest/v1/twingrid_actions?id=eq." + id + "&status=eq.proposed", patch);
+  if (decision === "decline") { const row = await mark({ status: "declined", decided_at: now }); return row ? json(request, 200, { id: Number(id), status: "declined" }) : json(request, 409, { error: "already_decided" }); }
+  const to = a.body && typeof a.body.to_grid === "string" && UUID_RE.test(a.body.to_grid) ? a.body.to_grid : null;
+  if (!to || to === a.grid_id) { await mark({ status: "declined", decided_at: now, refusal: "bad_target" }); return json(request, 409, { error: "bad_target" }); }
+  const other = await fetchPublicGrid(env, to, "id,owner");
+  if (other.error === 404) { await mark({ status: "declined", decided_at: now, refusal: "other_not_public" }); return json(request, 409, { error: "other_not_public" }); }
+  if (other.error) return json(request, 502, { error: "grid_unavailable" });
+  if (other.grid.owner === a.owner) { await mark({ status: "declined", decided_at: now, refusal: "same_owner" }); return json(request, 409, { error: "same_owner" }); }
+  const pair = pairOf(a.grid_id, to);
+  const rows = await serviceGet(env, "/rest/v1/twingrid_kindred?select=id,status&grid_a=eq." + pair.grid_a + "&grid_b=eq." + pair.grid_b);
+  if (!rows) return json(request, 502, { error: "kindred_unavailable" });
+  let kindred;
+  if (!rows.length) {
+    const ok = await servicePost(env, "/rest/v1/twingrid_kindred", Object.assign({}, pair, { owner_a: pair.grid_a === a.grid_id ? a.owner : other.grid.owner, owner_b: pair.grid_b === a.grid_id ? a.owner : other.grid.owner, requested_by: a.grid_id, status: "requested" }));
+    if (!ok) return json(request, 502, { error: "write_failed" });
+    kindred = "requested";
+  } else if (rows[0].status === "accepted" || rows[0].status === "requested") kindred = rows[0].status;
+  else { await mark({ status: "declined", decided_at: now, refusal: rows[0].status === "blocked" ? "blocked" : "wait" }); return json(request, 409, { error: rows[0].status === "blocked" ? "blocked" : "wait" }); }
+  const row = await mark({ status: "approved", decided_at: now });
+  if (!row) return json(request, 409, { error: "already_decided" });
+  return json(request, 200, { id: Number(id), status: "approved", kindred });
 }
 async function handleActionPost(request, env) {
   const token = bearer(request);

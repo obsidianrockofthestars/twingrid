@@ -93,8 +93,8 @@ globalThis.fetch = async (url, init) => {
       sparksRows = sparksRows.filter((r) => !(r.kind === "rating" && r.grid_id === g[1] && r.from_account === a[1] && !r.from_grid)); return new Response(null, { status: 204 }); }
     if (method === "DELETE") { const m = /created_at=lt\.([^&]+)/.exec(u); const cut = m ? decodeURIComponent(m[1]) : null; if (!/kind=eq\.conversation/.test(u) || !cut) throw new Error("the sweep must name kind=conversation and a cutoff");
       sparksRows = sparksRows.filter((r) => !(r.kind === "conversation" && r.created_at < cut)); return new Response(null, { status: 204 }); }
-    const f = /from_account=eq\.([0-9a-f-]+)/.exec(u);
-    return respond(200, sparksRows.filter((r) => !f || r.from_account === f[1]));
+    const f = /from_account=eq\.([0-9a-f-]+)/.exec(u), gq = /grid_id=eq\.([0-9a-f-]+)/.exec(u), kq = /kind=in\.\(([a-z,]+)\)/.exec(u);
+    return respond(200, sparksRows.filter((r) => (!f || r.from_account === f[1]) && (!gq || r.grid_id === gq[1]) && (!kq || kq[1].split(",").includes(r.kind)) && (!/from_account=not\.is\.null/.test(u) || r.from_account)));
   }
   if (u.endsWith("/rest/v1/rpc/twingrid_spark_visit")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("visit counts are service role");
@@ -125,6 +125,7 @@ globalThis.fetch = async (url, init) => {
     // The Lobby view: anon key only, public rows only, data projected. Never the house.
     if (headers.Authorization) throw new Error("the public view must be read with the anon key, not a user token");
     if (u.includes("id=eq." + OTHER_ID)) return respond(200, [OTHER_LOBBY]);
+    { const om = /owner=eq\.([0-9a-f-]+)/.exec(u); if (om) return respond(200, om[1] === STRANGER_ID ? [{ id: OTHER_ID, name: OTHER_LOBBY.name }] : []); }
     if (!gridPublic) return respond(200, []);
     return respond(200, u.includes("id=eq." + GRID_ID) ? [GRID_LOBBY] : []);
   }
@@ -818,7 +819,7 @@ await check("csp-report: POST answers 204 with an empty body, GET is 405, a malf
 // ---------------------------------------------------------------------------
 const NOW = new Date("2026-09-07T15:20:00Z"); // hour 15 UTC
 const RULE = { grid_id: GRID_ID, owner: USER_ID, mode: "together", topics: ["porches", "houses"], avoid: ["politics"], max_per_day: 1, hour_utc: 15, audience: "public" };
-function resetAutopilot(rules) { rulesRows = rules; actionsRows = []; runsRows = []; balance = 3; gridPublic = true; anthropicMode = "ok"; capacityOk = true; calls.length = 0; lastSystem = ""; anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house."; }
+function resetAutopilot(rules) { rulesRows = rules; actionsRows = []; runsRows = []; sparksRows = []; balance = 3; gridPublic = true; anthropicMode = "ok"; capacityOk = true; calls.length = 0; lastSystem = ""; anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house."; }
 
 await check("autopilot tick: one grid at its hour -> exactly one proposed SCHEDULED post, one credit, composed from the Lobby view, one receipt", async () => {
   resetAutopilot([RULE]);
@@ -1007,6 +1008,33 @@ await check("spark: a rating out of five is public, one row per visitor per pers
   eq(sparksRows.length, 1, "still one row"); eq(sparksRows[0].rating, 2, "latest wins");
   for (const bad of [0, 6, 2.5, "4", null]) eq((await spark({ grid_id: GRID_ID, kind: "rating", rating: bad }, STRANGER_TOKEN)).status, 400, "refused " + String(bad));
   eq(sparksRows.length, 1, "nothing else stored");
+});
+
+await check("invite: a good Spark from a visitor with a public persona -> one invite proposed by the tick, no credit, no model call for it; never auto-sent", async () => {
+  resetAutopilot([Object.assign({}, RULE, { mode: "autopilot" })]); kindredRows = []; blocksRows = [];
+  sparksRows = [{ id: 1, grid_id: GRID_ID, from_account: STRANGER_ID, kind: "rating", rating: 5, created_at: "2026-09-07T10:00:00.000Z" }];
+  await runAutopilotTick(ENV, NOW);
+  const inv = actionsRows.filter((a) => a.kind === "invite");
+  eq(inv.length, 1, "one invite"); eq(inv[0].status, "proposed", "proposed, not sent"); eq(inv[0].authorship, "AUTOPILOT", "authorship");
+  eq(inv[0].body.to_grid, OTHER_ID, "target persona"); eq(inv[0].body.to_account, STRANGER_ID, "target account");
+  eq(actionsRows.filter((a) => a.kind === "post").length, 1, "the post still ran"); eq(balance, 2, "one credit for the post, none for the invite");
+  eq(kindredRows.length, 0, "no Kindred row until the owner approves");
+  const again = await runAutopilotTick(ENV, new Date(NOW.getTime() + 3600000));
+  eq(actionsRows.filter((a) => a.kind === "invite").length, 1, "one invite a day");
+  resetAutopilot([RULE]); sparksRows = [{ id: 1, grid_id: GRID_ID, from_account: STRANGER_ID, kind: "rating", rating: 2, created_at: "2026-09-07T10:00:00.000Z" }];
+  await runAutopilotTick(ENV, NOW); eq(actionsRows.filter((a) => a.kind === "invite").length, 0, "a 2 of 5 earns no invite");
+});
+
+await check("invite: approving from the queue sends the Kindred request and marks the action approved; decline declines; edit is refused", async () => {
+  resetAutopilot([RULE]); kindredRows = []; blocksRows = [];
+  actionsRows = [{ id: 7, grid_id: GRID_ID, owner: USER_ID, kind: "invite", authorship: "AUTOPILOT", status: "proposed", audience: "public", body: { invite: true, to_grid: OTHER_ID, to_account: STRANGER_ID, text: "Invite Other Persona to be Kindred." }, created_at: new Date().toISOString() }];
+  eq((await decide(7, { decision: "edit", text: "x" }, GOOD_TOKEN)).status, 400, "no edit on an invite");
+  const r = await decide(7, { decision: "approve" }, GOOD_TOKEN);
+  eq(r.status, 200, "approve"); const j = await r.json(); eq(j.status, "approved", "approved, not published"); eq(j.kindred, "requested", "request sent");
+  eq(kindredRows.length, 1, "one Kindred row"); eq(kindredRows[0].status, "requested", "requested"); eq(kindredRows[0].requested_by, GRID_ID, "from the inviting persona");
+  eq(actionsRows[0].status, "approved", "action approved"); if (actionsRows[0].published_at) throw new Error("an invite is never published");
+  actionsRows.push({ id: 8, grid_id: GRID_ID, owner: USER_ID, kind: "invite", authorship: "AUTOPILOT", status: "proposed", audience: "public", body: { invite: true, to_grid: OTHER_ID, to_account: STRANGER_ID }, created_at: new Date().toISOString() });
+  eq((await decide(8, { decision: "decline" }, GOOD_TOKEN)).status, 200, "decline"); eq(actionsRows[1].status, "declined", "declined");
 });
 
 await check("spark: the daily cap per visitor is 40", async () => {
