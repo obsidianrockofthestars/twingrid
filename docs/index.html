@@ -459,6 +459,19 @@ body.route-profile #chatsparkrow{color:var(--pmuted)}
 #profile .pkinline b{color:var(--pacc-ink);font-weight:600}
 #profile .fcard.kin{border-color:var(--pacc)}
 #profile .fcard .kd.kinkd{color:var(--pacc-ink)}
+/* the House strip (2026-09-08) */
+#profile .pkhouse{margin:0 0 30px}
+#profile .pkhouse h2{font-family:var(--serif);font-weight:600;font-size:24px;margin:0 0 4px;letter-spacing:-.02em;color:var(--ptext)}
+#profile .pkhousenote{margin:0 0 12px;font-size:14px;color:var(--pmuted)}
+#profile .pkrooms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch}
+#profile .pkroom{border:1px solid var(--pline);border-radius:14px;padding:14px 16px;background:var(--psurf);color:var(--ptext);min-height:44px}
+#profile .pkroom.open{border-color:var(--pacc)}
+#profile .pkroomh{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ptext)}
+#profile .pkroomd{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--pmuted);margin-top:2px}
+#profile .pkroom.open .pkroomd{color:var(--pacc-ink)}
+#profile .pkroomw{margin:8px 0 0;font-size:13.5px;line-height:1.45;color:var(--pmuted)}
+#profile .pkworkshop{grid-column:1/-1;justify-self:start;min-height:36px}
+@media (max-width:640px){ #profile .pkrooms{grid-template-columns:1fr} }
 #profile .p2pout{margin:10px 0 0;padding:12px 14px;border-radius:12px;background:var(--psurf);border:1px solid var(--pline);color:var(--ptext);font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 .lfkin .lfstamp b{text-transform:none;letter-spacing:0;font-size:14px}
 /* Places (M7, 2026-09-07) */
@@ -1328,7 +1341,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <input class="field" id="gridname" style="font-size:13px;padding:8px 10px;margin:0" placeholder="persona name">
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="ispublic"> make public (read-only to others)</label>
       <label id="adultrow" hidden><input type="checkbox" id="adultok"> I confirm I am 18 or older. Publishing a persona requires it, once per account. Building in private does not.</label>
-      <details class="pk-rooms" id="roomsbox"><summary>Who sees what <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Public facets are the persona strangers, Explore and hosted chat by anyone but you can read. Private stays yours. Kindred is saved now and opens to mutual relationships when they ship. Save to apply.</p><div id="roomlist"></div></details>
+      <details class="pk-rooms" id="roomsbox"><summary>Rooms: who sits where <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Every facet sits in one room. The Lobby is Public: strangers, Explore and hosted chat by anyone but you read it. The Sunroom is Kindred only: personas yours are Kindred with, by consent. The Whole house is Private: you and the operators you named. Move a facet with the buttons. Save to apply.</p><div id="roomlist"></div></details>
       <details class="pk-rooms" id="homebox"><summary>Home <span class="note" id="homesum"></span></summary><p class="note" style="margin:6px 0 4px">The room your persona lives in. Everyone who opens its page sees it. An object can open one of your facets; if that facet is Private or Kindred, strangers see the object and no door. Save to apply.</p><div id="homefields"></div></details>
       <a class="newbtn" href="?life" style="display:block;text-align:center;text-decoration:none;margin-top:8px">Life log and rules</a>
       <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
@@ -1629,6 +1642,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <p class="pspcount" id="pspcount"></p>
       <div class="psplist" id="psplist"></div>
     </section>
+    <div class="pkhouse" id="pkhouse" hidden aria-labelledby="pkhouseh"><h2 id="pkhouseh">The house</h2><p class="pkhousenote" id="pkhousenote"></p><div class="pkrooms" id="pkrooms"></div></div>
     <div class="facets">
       <h2>Everything its owner wrote</h2>
       <div class="fgrid" id="pfacets"></div>
@@ -2224,6 +2238,8 @@ function esc(x){ return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;'
 // twingrid_grids_public view is the real gate, this only paints the editor and keeps the two rules identical. ----------
 // keys are internal (house, visiting, lobby); the words on screen are Jennifer's (Private, Kindred, Public), ruled 2026-09-07
 const PK_SCOPES=['house','visiting','lobby'], PK_SCOPE_LABEL={house:'Private',visiting:'Kindred',lobby:'Public'};
+// the House as the permissions model (Dylan, 2026-09-08): the same three scopes as rooms. One map, so a rename is one line.
+const PK_ROOM_LABEL={lobby:'Lobby',visiting:'Sunroom',house:'Whole house'};
 function pkFacetScope(f){ if(!f) return 'house'; if(PK_SCOPES.indexOf(f.scope)>=0) return f.scope; return (f.name==='core'||f.name==='vibe')?'lobby':'house'; }
 function pkRepaintRooms(){ const list=document.getElementById('roomlist'), sum=document.getElementById('roomsum'); if(!list||!sum) return;
   list.innerHTML=''; const n={house:0,visiting:0,lobby:0};
@@ -2231,10 +2247,10 @@ function pkRepaintRooms(){ const list=document.getElementById('roomlist'), sum=d
     const row=document.createElement('div'); row.className='rrow';
     const nm=document.createElement('span'); nm.className='rn'; nm.textContent=f.name; nm.title=f.kind||''; row.appendChild(nm);
     const seg=document.createElement('div'); seg.className='rseg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Who sees '+f.name);
-    PK_SCOPES.forEach(s=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=PK_SCOPE_LABEL[s]; b.setAttribute('aria-pressed',String(sc===s));
+    PK_SCOPES.forEach(s=>{ const b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=PK_ROOM_LABEL[s]; b.title=PK_SCOPE_LABEL[s]; b.setAttribute('aria-pressed',String(sc===s));
       b.onclick=()=>{ f.scope=s; pkRepaintRooms(); }; seg.appendChild(b); });
     row.appendChild(seg); list.appendChild(row); });
-  sum.textContent=n.lobby+' public \u00b7 '+n.visiting+' kindred \u00b7 '+n.house+' private'; }
+  sum.textContent=n.lobby+' in the Lobby · '+n.visiting+' in the Sunroom · '+n.house+' in the Whole house'; }
 
 // ---------- the Home (M1, 2026-09-07): data.house. twingrid_house_valid() in SQL is the real gate; this paints the editor. ----------
 // Objects are keys into docs/catalog/objects.json (never a URL). The catalog markup is repo data checked by tools/catalog_check.mjs;
@@ -3223,7 +3239,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; PK_PLACE=null; syncHideBtn();
-  pkRenderHome(g); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner);
+  pkRenderHome(g); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner); pkRenderHouse(g,data.owner);
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
   // Same guarded text the editor's Copy prompt hands out. No key, no account, no money: this is the door most readers take.
@@ -3503,6 +3519,24 @@ function pkChatSparkSync(){ const row=document.getElementById('chatsparkrow'); i
     const t=(history||[]).filter(x=>x&&(x.role==='user'||x.role==='assistant')&&typeof x.content==='string').slice(-40).map(x=>({role:x.role,content:String(x.content).slice(0,2000)}));
     const r=await pkSendSpark({grid_id:PK_CUR_ID,kind:'conversation',transcript:t}); m.textContent=r.error?pkSparkError(r.error):'Left for the owner. Only they can read it.'; }; }
 
+// ---------- the House on the persona page (2026-09-08, Dylan: the House is the permissions model). Three rooms over the three
+// scopes that already exist. The Lobby lists what the projection handed over; the Sunroom opens only through the Kindred read
+// (g.kindred); the Whole house is a closed door for everyone but the owner. No new data, no new query. Owner text: textContent. ----------
+async function pkRenderHouse(g,owner){ const box=document.getElementById('pkhouse'), rooms=document.getElementById('pkrooms'), note=document.getElementById('pkhousenote'); if(!box||!rooms||!note) return;
+  rooms.innerHTML=''; box.hidden=true; if(!g||!Array.isArray(g.facets)) return;
+  let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session&&session.user?session.user.id:null; }catch(_){}
+  const isOwner=!!uid&&uid===owner; const kin=!!g.kindred;
+  const n={lobby:0,visiting:0,house:0}; g.facets.forEach(f=>{ const sc=pkFacetScope(f); if(n[sc]!==undefined) n[sc]++; });
+  note.textContent=isOwner?'Your rooms, as a visitor sees them. Arrange who sits where in the Workshop.':kin?'You are Kindred with this persona, so the Sunroom is open to you.':'Three rooms. What you can read depends on where you stand.';
+  const rows=[['lobby',true,n.lobby+(n.lobby===1?' facet':' facets')+' open to everyone'],
+    ['visiting',kin,kin?(n.visiting+(n.visiting===1?' facet':' facets')+' open to you as Kindred'):'Kindred only. Ask from a persona of your own.'],
+    ['house',false,isOwner?'Yours, and the operators you named. Never shown on this page.':'The owner’s own.']];
+  rows.forEach(([k,open,line])=>{ const r=document.createElement('div'); r.className='pkroom'+(open?' open':' closed'); r.setAttribute('role','group'); r.setAttribute('aria-label',PK_ROOM_LABEL[k]);
+    const h=document.createElement('div'); h.className='pkroomh'; h.textContent=PK_ROOM_LABEL[k];
+    const d=document.createElement('div'); d.className='pkroomd'; d.textContent=open?'Open':'Closed door';
+    const w=document.createElement('p'); w.className='pkroomw'; w.textContent=line; r.append(h,d,w); rooms.appendChild(r); });
+  if(isOwner){ const a=document.createElement('a'); a.className='btn ghost pkworkshop'; a.href='?editor'; a.textContent='Open the Workshop'; a.title='The advanced editor: every cell, every connection, the depth questions'; a.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',PK_CUR_ID); }catch(_){} }; rooms.appendChild(a); }
+  box.hidden=false; }
 // ---------- Kindred on the persona page (M6, 2026-09-07; Circle removed 2026-09-08, the table stays). Kindred requests and
 // persona-to-persona go through the Worker. When the viewer operates a persona that is Kindred with this one, the page re-reads this
 // persona through twingrid_kindred_view() and the Kindred facets appear, marked. Every string from the database: textContent. ----------
