@@ -89,6 +89,8 @@ globalThis.fetch = async (url, init) => {
   if (u.includes("/rest/v1/twingrid_sparks")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("sparks are touched with the service key");
     if (method === "POST") { sparksRows.push(Object.assign({ id: sparksRows.length + 1, created_at: new Date().toISOString() }, body)); return new Response(null, { status: 201 }); }
+    if (method === "DELETE" && /kind=eq\.rating/.test(u)) { const g = /grid_id=eq\.([0-9a-f-]+)/.exec(u), a = /from_account=eq\.([0-9a-f-]+)/.exec(u); if (!g || !a || !/from_grid=is\.null/.test(u)) throw new Error("a re-rate delete names grid, account and the human lane");
+      sparksRows = sparksRows.filter((r) => !(r.kind === "rating" && r.grid_id === g[1] && r.from_account === a[1] && !r.from_grid)); return new Response(null, { status: 204 }); }
     if (method === "DELETE") { const m = /created_at=lt\.([^&]+)/.exec(u); const cut = m ? decodeURIComponent(m[1]) : null; if (!/kind=eq\.conversation/.test(u) || !cut) throw new Error("the sweep must name kind=conversation and a cutoff");
       sparksRows = sparksRows.filter((r) => !(r.kind === "conversation" && r.created_at < cut)); return new Response(null, { status: 204 }); }
     const f = /from_account=eq\.([0-9a-f-]+)/.exec(u);
@@ -995,6 +997,16 @@ await check("spark retention: the hourly tick deletes opted-in conversations old
   sparksRows = [{ id: 1, kind: "conversation", from_account: STRANGER_ID, created_at: "2026-05-01T00:00:00.000Z" }, { id: 2, kind: "conversation", from_account: STRANGER_ID, created_at: "2026-09-01T00:00:00.000Z" }, { id: 3, kind: "note", from_account: STRANGER_ID, created_at: "2026-05-01T00:00:00.000Z" }];
   await runAutopilotTick(ENV, NOW);
   eq(sparksRows.map((r) => r.id).join(","), "2,3", "only the old conversation went");
+});
+
+await check("spark: a rating out of five is public, one row per visitor per persona (re-rating replaces), 0 and 6 and 2.5 refused", async () => {
+  resetSparks();
+  eq((await spark({ grid_id: GRID_ID, kind: "rating", rating: 4 }, STRANGER_TOKEN)).status, 200, "rating 4");
+  eq(sparksRows.length, 1, "one row"); eq(sparksRows[0].rating, 4, "rating stored"); eq(sparksRows[0].is_public, true, "public"); eq(sparksRows[0].kind, "rating", "kind");
+  eq((await spark({ grid_id: GRID_ID, kind: "rating", rating: 2 }, STRANGER_TOKEN)).status, 200, "re-rate");
+  eq(sparksRows.length, 1, "still one row"); eq(sparksRows[0].rating, 2, "latest wins");
+  for (const bad of [0, 6, 2.5, "4", null]) eq((await spark({ grid_id: GRID_ID, kind: "rating", rating: bad }, STRANGER_TOKEN)).status, 400, "refused " + String(bad));
+  eq(sparksRows.length, 1, "nothing else stored");
 });
 
 await check("spark: the daily cap per visitor is 40", async () => {
