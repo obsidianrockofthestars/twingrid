@@ -1268,7 +1268,9 @@ async function handleActionPost(request, env) {
 
 // ---------------------------------------------------------------------------
 // Sparks (M5, 2026-09-07). PLAN.md section 3.3.
-// POST /api/spark { grid_id, kind: visit | reaction | note | conversation, reaction?, note?, transcript? }
+// POST /api/spark { grid_id, kind: visit | reaction | note | conversation | rating, reaction?, note?, transcript?, rating? }
+//   rating (2026-09-08, Dylan: Sparks are a review out of five, like a Vibe Check): an integer 1 to 5, public, one per visitor per
+//   persona (the previous one is deleted first, so the latest counts). The persona lane (from_grid) is written by autopilot later.
 //   visit: no account, no identity stored; one counter per persona per UTC day (twingrid_spark_visit, service role).
 //   the rest: a signed-in visitor, on a public persona that is not their own, unless the owner blocked them.
 //   A conversation is stored only because the visitor asked (the button at the end of a chat) and is private to the owner.
@@ -1286,6 +1288,7 @@ function validateSpark(b) {
   if (typeof b.grid_id !== "string" || !UUID_RE.test(b.grid_id)) return "bad_grid_id";
   if (b.kind === "visit") return null;
   if (b.kind === "reaction") return SPARK_REACTIONS.has(b.reaction) ? null : "bad_reaction";
+  if (b.kind === "rating") return Number.isInteger(b.rating) && b.rating >= 1 && b.rating <= 5 ? null : "bad_rating";
   if (b.kind === "note") return typeof b.note === "string" && b.note.trim().length >= 1 && b.note.trim().length <= SPARK_NOTE_MAX ? null : "bad_note";
   if (b.kind === "conversation") {
     const t = b.transcript;
@@ -1324,6 +1327,7 @@ async function handleSpark(request, env) {
   const row = { grid_id: b.grid_id, owner: g.grid.owner, from_account: user.id, kind: b.kind, is_public: b.kind !== "conversation" };
   if (b.kind === "reaction") row.reaction = b.reaction;
   if (b.kind === "note") row.note = b.note.trim();
+  if (b.kind === "rating") { row.rating = b.rating; await serviceDelete(env, "/rest/v1/twingrid_sparks?grid_id=eq." + encodeURIComponent(b.grid_id) + "&from_account=eq." + encodeURIComponent(user.id) + "&kind=eq.rating&from_grid=is.null"); }
   if (b.kind === "conversation") row.transcript = b.transcript.map((m) => ({ role: m.role, content: m.content }));
   if (!(await servicePost(env, "/rest/v1/twingrid_sparks", row))) return json(request, 502, { error: "write_failed" });
   return json(request, 200, { ok: true, kind: b.kind, is_public: row.is_public });

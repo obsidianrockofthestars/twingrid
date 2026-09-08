@@ -433,6 +433,7 @@ body.route-life{overflow:auto;background:var(--paper)}
 #profile .phnotebtn{min-height:32px;padding:5px 12px;border-radius:999px;border:1px solid var(--pacc);background:transparent;color:var(--ptext);font:inherit;font-size:13.5px;cursor:pointer}
 #profile .phnotebtn:hover{background:var(--pacc);color:var(--pacc-text)}
 #profile .phsparkmsg{margin:6px 0 0;font-size:13px;color:var(--pmuted);min-height:18px}
+#profile .pkrate{margin-bottom:8px}
 .psparks{padding:0 0 34px}
 #profile .psparks h2{font-family:var(--serif);font-weight:600;font-size:24px;margin:0 0 4px;letter-spacing:-.02em;color:var(--ptext)}
 #profile .pspcount{margin:0 0 12px;font-size:14px;color:var(--pmuted)}
@@ -3222,7 +3223,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; PK_PLACE=null; syncHideBtn();
-  pkRenderHome(g); pkRenderLately(id); pkRenderSparks(id); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner);
+  pkRenderHome(g); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner);
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
   // Same guarded text the editor's Copy prompt hands out. No key, no account, no money: this is the door most readers take.
@@ -3274,7 +3275,7 @@ async function pkRenderHome(g){ const sec=document.getElementById('phouse'), roo
       const b=document.createElement('p'); b.className='phzb'; b.textContent=starters.length?'Open to visitors. Start here:':((cat&&cat.zones.social&&cat.zones.social.blurb)||'Open to visitors.'); panel.appendChild(b);
       starters.forEach(t=>{ const bt=document.createElement('button'); bt.type='button'; bt.className='phstart'; bt.textContent=t.slice(0,120); bt.onclick=()=>pkPrefillChat(t); panel.appendChild(bt); any=true; });
       if(!starters.length) any=true;
-      if(PK_CUR_ID) panel.appendChild(pkSparkBox(PK_CUR_ID)); }
+      }
     zones.appendChild(panel); }
   sec.hidden=!(any||bits.length); }
 
@@ -3373,7 +3374,7 @@ async function lfOwnerPost(ta){ const text=ta.value.trim(); if(!text){ lfMsg('Wr
   await lfLoadActions(); }
 // Sparks on ?life (M5): every Spark the persona received, read as the operator; delete, block the visitor, report.
 async function lfLoadSparks(){ const host=document.getElementById('lfsparks'), bl=document.getElementById('lfblocks'); if(!host||!bl) return; host.innerHTML=''; bl.innerHTML='';
-  const {data,error}=await SB.from('twingrid_sparks').select('id,from_account,kind,reaction,note,transcript,is_public,day,count,created_at').eq('grid_id',LF_GRID.id).neq('kind','visit').order('created_at',{ascending:false}).limit(100);
+  const {data,error}=await SB.from('twingrid_sparks').select('id,from_account,kind,reaction,note,rating,transcript,is_public,day,count,created_at').eq('grid_id',LF_GRID.id).neq('kind','visit').order('created_at',{ascending:false}).limit(100);
   if(error){ lfEmpty(host,'Could not load Sparks.'); return; }
   const rows=data||[]; let byId={}; try{ const ids=[...new Set(rows.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); } }catch(_){}
   const visits=await SB.rpc('twingrid_visit_count',{p_grid:LF_GRID.id}).then(r=>Number(r.data)||0).catch(()=>0);
@@ -3381,7 +3382,7 @@ async function lfLoadSparks(){ const host=document.getElementById('lfsparks'), b
   if(!rows.length) lfEmpty(host,'No Sparks yet.');
   rows.forEach(r=>{ const it=document.createElement('div'); it.className='lfitem'; const st=document.createElement('div'); st.className='lfstamp'; const b=document.createElement('b'); b.textContent=String(r.kind); st.appendChild(b);
     const h=byId[r.from_account]; [h?('@'+h):'a visitor', new Date(r.created_at).toLocaleString(), r.is_public?'public':'only you'].forEach(x=>{ const sp=document.createElement('span'); sp.textContent=x; st.appendChild(sp); }); it.appendChild(st);
-    const p=document.createElement('p'); p.className='lftext'; p.textContent=r.kind==='reaction'?((SPARK_EMOJI[r.reaction]||'')+' '+String(r.reaction||'')):r.kind==='note'?String(r.note||''):'A conversation the visitor chose to leave you:'; it.appendChild(p);
+    const p=document.createElement('p'); p.className='lftext'; p.textContent=r.kind==='rating'?('Rated '+Number(r.rating)+' of 5'):r.kind==='reaction'?((SPARK_EMOJI[r.reaction]||'')+' '+String(r.reaction||'')):r.kind==='note'?String(r.note||''):'A conversation the visitor chose to leave you:'; it.appendChild(p);
     if(r.kind==='conversation'&&Array.isArray(r.transcript)){ const pre=document.createElement('div'); pre.className='lftrans'; pre.textContent=r.transcript.map(m=>(m&&m.role==='assistant'?'Persona: ':'Visitor: ')+String((m&&m.content)||'')).join('\n\n'); it.appendChild(pre); }
     const acts=document.createElement('div'); acts.className='lfacts';
     acts.appendChild(lfBtn('Delete',async()=>{ const {error}=await SB.from('twingrid_sparks').delete().eq('id',r.id); lfMsg(error?'Could not delete.':'Deleted.'); lfLoadSparks(); }));
@@ -3465,6 +3466,11 @@ async function pkSendSpark(body){ const token=await hostedToken(); if(!token){ o
 function pkSparkError(e){ return e==='signin'?'Sign in to leave a Spark.':e==='blocked'?'This owner is not taking Sparks from you.':e==='own_persona'?'That is your own persona.':e==='rate_limited'?'That is enough Sparks for today.':e==='grid_not_found'?'This persona is not public.':'Could not leave it right now.'; }
 function pkSparkBox(gridId){ const wrap=document.createElement('div'); const msg=document.createElement('p'); msg.className='phsparkmsg'; msg.setAttribute('role','status');
   const lab=document.createElement('p'); lab.className='phzb'; lab.textContent='Leave a Spark:'; wrap.appendChild(lab);
+  // five-spark rating (2026-09-08, Dylan: a review out of five, like a Vibe Check; humans and personas rate in separate lanes)
+  const rl=document.createElement('div'); rl.className='phreact pkrate'; rl.setAttribute('role','group'); rl.setAttribute('aria-label','Rate this persona out of five sparks');
+  [1,2,3,4,5].forEach(n=>{ const b=document.createElement('button'); b.type='button'; b.className='phrbtn'; b.textContent=n+' ✨'; b.setAttribute('aria-label',n+' of 5 sparks');
+    b.onclick=async()=>{ msg.textContent='Sending...'; const r=await pkSendSpark({grid_id:gridId,kind:'rating',rating:n}); msg.textContent=r.error?pkSparkError(r.error):'Rated '+n+' of 5. Rate again any time; only your latest counts.'; if(!r.error) pkRenderSparks(gridId); }; rl.appendChild(b); });
+  wrap.appendChild(rl);
   const row=document.createElement('div'); row.className='phreact'; row.setAttribute('role','group'); row.setAttribute('aria-label','Leave a reaction');
   SPARK_KINDS.forEach(([k,e,l])=>{ const b=document.createElement('button'); b.type='button'; b.className='phrbtn'; b.textContent=e+' '+l; b.setAttribute('aria-label',l);
     b.onclick=async()=>{ msg.textContent='Sending...'; const r=await pkSendSpark({grid_id:gridId,kind:'reaction',reaction:k}); msg.textContent=r.error?pkSparkError(r.error):'Left a '+l.toLowerCase()+'.'; if(!r.error) pkRenderSparks(gridId); }; row.appendChild(b); });
@@ -3473,16 +3479,21 @@ function pkSparkBox(gridId){ const wrap=document.createElement('div'); const msg
   const nb=document.createElement('button'); nb.type='button'; nb.className='phnotebtn'; nb.textContent='Leave the note';
   nb.onclick=async()=>{ const t=ta.value.trim(); if(!t){ msg.textContent='Write the note first.'; ta.focus(); return; } msg.textContent='Sending...'; const r=await pkSendSpark({grid_id:gridId,kind:'note',note:t}); msg.textContent=r.error?pkSparkError(r.error):'Left.'; if(!r.error){ ta.value=''; pkRenderSparks(gridId); } };
   wrap.append(nb,msg); return wrap; }
-async function pkRenderSparks(id){ const sec=document.getElementById('psparks'), list=document.getElementById('psplist'), cnt=document.getElementById('pspcount'); if(!sec||!list||!cnt) return; const gen=(sec.__gen=(sec.__gen||0)+1);
-  sec.hidden=true; list.innerHTML=''; cnt.textContent=''; if(!id) return;
-  const [{data:rows},{data:visits}]=await Promise.all([SB.from('twingrid_sparks_public').select('id,from_account,kind,reaction,note,created_at').eq('grid_id',id).order('created_at',{ascending:false}).limit(24), SB.rpc('twingrid_visit_count',{p_grid:id})]);
-  if(gen!==sec.__gen) return; const items=rows||[]; const v=Number(visits)||0; if(!items.length&&!v) return;
+let PK_SPARK_OWNER=null;
+async function pkRenderSparks(id,owner){ if(owner!==undefined) PK_SPARK_OWNER=owner; const sec=document.getElementById('psparks'), list=document.getElementById('psplist'), cnt=document.getElementById('pspcount'); if(!sec||!list||!cnt) return; const gen=(sec.__gen=(sec.__gen||0)+1);
+  sec.hidden=true; list.innerHTML=''; cnt.textContent=''; { const old=document.getElementById('pksparkbox'); if(old) old.remove(); } if(!id) return;
+  const [{data:rows},{data:visits},{data:score},{data:{session}}]=await Promise.all([SB.from('twingrid_sparks_public').select('id,from_account,kind,reaction,note,rating,created_at').eq('grid_id',id).order('created_at',{ascending:false}).limit(24), SB.rpc('twingrid_visit_count',{p_grid:id}), SB.rpc('twingrid_spark_score',{p_grid:id}), SB.auth.getSession()]);
+  if(gen!==sec.__gen) return; const items=rows||[]; const v=Number(visits)||0; const sc=Array.isArray(score)?score:[];
   let byId={}; try{ const ids=[...new Set(items.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); } }catch(_){}
   if(gen!==sec.__gen) return;
-  cnt.textContent=(v?(v+(v===1?' visit':' visits')):'')+(v&&items.length?' \u00b7 ':'')+(items.length?(items.length+(items.length===1?' Spark left in public':' Sparks left in public')):'');
+  const hl=sc.find(x=>x.lane==='human'), pl=sc.find(x=>x.lane==='persona');
+  const scoreText=[hl?(hl.avg_rating+' of 5 from '+hl.n+(hl.n===1?' person':' people')):'', pl?(pl.avg_rating+' of 5 from '+pl.n+(pl.n===1?' persona':' personas')):''].filter(Boolean).join(' · ');
+  const parts=[scoreText, v?(v+(v===1?' visit':' visits')):'', items.length?(items.length+(items.length===1?' Spark left in public':' Sparks left in public')):''].filter(Boolean);
+  cnt.textContent=parts.length?parts.join(' · '):'No Sparks yet. Be the first.';
   items.forEach(r=>{ const it=document.createElement('span'); it.className='spitem'; const who=document.createElement('span'); who.className='spwho'; const h=byId[r.from_account];
     if(h){ const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; who.appendChild(a); } else who.textContent='a visitor';
-    const body=document.createElement('span'); body.className='sb'; body.textContent=r.kind==='reaction'?((SPARK_EMOJI[r.reaction]||'')+' '+String(r.reaction||'')):String(r.note||''); it.append(who,body); list.appendChild(it); });
+    const body=document.createElement('span'); body.className='sb'; body.textContent=r.kind==='rating'?('✨ '+Number(r.rating)+' of 5'):r.kind==='reaction'?((SPARK_EMOJI[r.reaction]||'')+' '+String(r.reaction||'')):String(r.note||''); it.append(who,body); list.appendChild(it); });
+  const uid=session&&session.user?session.user.id:null; if(!(uid&&PK_SPARK_OWNER&&uid===PK_SPARK_OWNER)){ const box=pkSparkBox(id); box.id='pksparkbox'; sec.insertBefore(box,list); }
   sec.hidden=false; }
 // one anonymous visit per page open, never for the owner; the Worker counts per persona per day and stores no identity
 async function pkCountVisit(id,owner){ try{ const {data:{session}}=await SB.auth.getSession(); if(session&&session.user&&session.user.id===owner) return; fetch(HOSTED_API+'/spark',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({grid_id:id,kind:'visit'})}).catch(()=>{}); }catch(_){} }
