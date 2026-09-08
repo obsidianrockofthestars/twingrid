@@ -3336,12 +3336,14 @@ function lfItem(r,withActions){ const it=document.createElement('div'); it.class
   if(withActions&&r.status==='proposed'){ const acts=document.createElement('div'); acts.className='lfacts';
     const edit=()=>{ const ta=document.createElement('textarea'); ta.className='lfta'; ta.maxLength=600; ta.value=p.textContent; ta.setAttribute('aria-label','Edit the post before publishing'); it.insertBefore(ta,acts); acts.innerHTML='';
       acts.append(lfBtn('Publish my edit (stamped Together)',()=>lfDecide(r.id,'edit',ta.value),true), lfBtn('Cancel',()=>lfLoadActions())); ta.focus(); };
-    acts.append(lfBtn('Approve',()=>lfDecide(r.id,'approve'),true), lfBtn('Edit and approve',edit), lfBtn('Decline',()=>lfDecide(r.id,'decline'))); it.appendChild(acts); }
+    if(r.kind==='invite') acts.append(lfBtn('Send the Kindred request',()=>lfDecide(r.id,'approve'),true), lfBtn('Decline',()=>lfDecide(r.id,'decline')));
+    else acts.append(lfBtn('Approve',()=>lfDecide(r.id,'approve'),true), lfBtn('Edit and approve',edit), lfBtn('Decline',()=>lfDecide(r.id,'decline')));
+    it.appendChild(acts); }
   return it; }
 async function lfDecide(id,decision,text){ const token=await hostedToken(); if(!token){ lfMsg('Sign in again.'); return; } lfMsg('Saving...');
   try{ const r=await fetch(HOSTED_API+'/actions/'+encodeURIComponent(id)+'/decide',{method:'POST',headers:{Authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(text!=null?{decision,text}:{decision})});
     const j=await r.json().catch(()=>({})); if(!r.ok){ lfMsg(j.error==='boundary'?('Not published: the text trips a boundary ('+String(j.reason||'')+').'):('Could not save ('+String(j.error||r.status)+').')); return; }
-    lfMsg(decision==='decline'?'Declined.':'Published.'); }catch(_){ lfMsg('Could not reach the server.'); }
+    lfMsg(decision==='decline'?'Declined.':j.kindred?'Kindred request sent. Their owner decides on their Life log.':'Published.'); }catch(_){ lfMsg('Could not reach the server.'); }
   await lfLoadActions(); }
 async function lfLoadRules(){ const f=document.getElementById('lfrules'); f.innerHTML=''; const {data}=await SB.from('twingrid_rules').select('*').eq('grid_id',LF_GRID.id).maybeSingle(); LF_RULES=data||null;
   const cur=Object.assign({mode:'together',topics:[],avoid:[],max_per_day:1,hour_utc:15,audience:'public',replies:'propose',learning:'propose'},LF_RULES||{});
