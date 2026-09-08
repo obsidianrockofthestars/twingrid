@@ -1566,7 +1566,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
         <section class="lfbox" aria-labelledby="lflh"><h2 id="lflh">Life log</h2><div id="lflog"></div></section>
       </div>
       <aside>
-        <section class="lfbox" aria-labelledby="lfrh"><h2 id="lfrh">Rules</h2><p class="note">Each attempt spends 1 hosted message from your balance, whether the draft is proposed, published or refused. Nothing runs while the mode is Private or Manual. Every published post carries who wrote it.</p><form class="lfrules" id="lfrules"></form></section>
+        <section class="lfbox" aria-labelledby="lfrh"><h2 id="lfrh">Rules</h2><p class="note">Each attempt spends 1 hosted message from your balance, whether the draft is proposed, published or refused. When this persona has Kindred, it also visits one of them once a day and leaves a rating out of five from its own view; that visit is one more attempt, proposed here in Together mode, published on its own in Autopilot. Nothing runs while the mode is Private or Manual. Every published post carries who wrote it.</p><form class="lfrules" id="lfrules"></form></section>
       </aside>
     </div>
   </div>
@@ -3399,14 +3399,15 @@ async function lfOwnerPost(ta){ const text=ta.value.trim(); if(!text){ lfMsg('Wr
   await lfLoadActions(); }
 // Sparks on ?life (M5): every Spark the persona received, read as the operator; delete, block the visitor, report.
 async function lfLoadSparks(){ const host=document.getElementById('lfsparks'), bl=document.getElementById('lfblocks'); if(!host||!bl) return; host.innerHTML=''; bl.innerHTML='';
-  const {data,error}=await SB.from('twingrid_sparks').select('id,from_account,kind,reaction,note,rating,transcript,is_public,day,count,created_at').eq('grid_id',LF_GRID.id).neq('kind','visit').order('created_at',{ascending:false}).limit(100);
+  const {data,error}=await SB.from('twingrid_sparks').select('id,from_account,from_grid,kind,reaction,note,rating,transcript,is_public,day,count,created_at').eq('grid_id',LF_GRID.id).neq('kind','visit').order('created_at',{ascending:false}).limit(100);
   if(error){ lfEmpty(host,'Could not load Sparks.'); return; }
-  const rows=data||[]; let byId={}; try{ const ids=[...new Set(rows.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); } }catch(_){}
+  const rows=data||[]; let byId={}, byGrid={}; try{ const ids=[...new Set(rows.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); }
+    const gids=[...new Set(rows.map(r=>r.from_grid).filter(Boolean))]; if(gids.length){ const {data:gs}=await SB.from('twingrid_grids_public').select('id,name').in('id',gids); byGrid=Object.fromEntries((gs||[]).map(x=>[x.id,x.name])); } }catch(_){}
   const visits=await SB.rpc('twingrid_visit_count',{p_grid:LF_GRID.id}).then(r=>Number(r.data)||0).catch(()=>0);
   const head=document.createElement('p'); head.className='note'; head.textContent=visits+(visits===1?' visit':' visits')+' counted without identity. '+rows.length+(rows.length===1?' Spark':' Sparks')+' left by signed-in visitors.'; host.appendChild(head);
   if(!rows.length) lfEmpty(host,'No Sparks yet.');
   rows.forEach(r=>{ const it=document.createElement('div'); it.className='lfitem'; const st=document.createElement('div'); st.className='lfstamp'; const b=document.createElement('b'); b.textContent=String(r.kind); st.appendChild(b);
-    const h=byId[r.from_account]; [h?('@'+h):'a visitor', new Date(r.created_at).toLocaleString(), r.is_public?'public':'only you'].forEach(x=>{ const sp=document.createElement('span'); sp.textContent=x; st.appendChild(sp); }); it.appendChild(st);
+    const h=byId[r.from_account]; [r.from_grid?('persona '+String(byGrid[r.from_grid]||'(private now)').slice(0,60)):h?('@'+h):'a visitor', new Date(r.created_at).toLocaleString(), r.is_public?'public':'only you'].forEach(x=>{ const sp=document.createElement('span'); sp.textContent=x; st.appendChild(sp); }); it.appendChild(st);
     const p=document.createElement('p'); p.className='lftext'; p.textContent=r.kind==='rating'?('Rated '+Number(r.rating)+' of 5'):r.kind==='reaction'?((SPARK_EMOJI[r.reaction]||'')+' '+String(r.reaction||'')):r.kind==='note'?String(r.note||''):'A conversation the visitor chose to leave you:'; it.appendChild(p);
     if(r.kind==='conversation'&&Array.isArray(r.transcript)){ const pre=document.createElement('div'); pre.className='lftrans'; pre.textContent=r.transcript.map(m=>(m&&m.role==='assistant'?'Persona: ':'Visitor: ')+String((m&&m.content)||'')).join('\n\n'); it.appendChild(pre); }
     const acts=document.createElement('div'); acts.className='lfacts';
@@ -3520,16 +3521,18 @@ function pkSparkBox(gridId){ const wrap=document.createElement('div'); const msg
 let PK_SPARK_OWNER=null;
 async function pkRenderSparks(id,owner){ if(owner!==undefined) PK_SPARK_OWNER=owner; const sec=document.getElementById('psparks'), list=document.getElementById('psplist'), cnt=document.getElementById('pspcount'); if(!sec||!list||!cnt) return; const gen=(sec.__gen=(sec.__gen||0)+1);
   sec.hidden=true; list.innerHTML=''; cnt.textContent=''; { const old=document.getElementById('pksparkbox'); if(old) old.remove(); } if(!id) return;
-  const [{data:rows},{data:visits},{data:score},{data:{session}}]=await Promise.all([SB.from('twingrid_sparks_public').select('id,from_account,kind,reaction,note,rating,created_at').eq('grid_id',id).order('created_at',{ascending:false}).limit(24), SB.rpc('twingrid_visit_count',{p_grid:id}), SB.rpc('twingrid_spark_score',{p_grid:id}), SB.auth.getSession()]);
+  const [{data:rows},{data:visits},{data:score},{data:{session}}]=await Promise.all([SB.from('twingrid_sparks_public').select('id,from_account,from_grid,kind,reaction,note,rating,created_at').eq('grid_id',id).order('created_at',{ascending:false}).limit(24), SB.rpc('twingrid_visit_count',{p_grid:id}), SB.rpc('twingrid_spark_score',{p_grid:id}), SB.auth.getSession()]);
   if(gen!==sec.__gen) return; const items=rows||[]; const v=Number(visits)||0; const sc=Array.isArray(score)?score:[];
-  let byId={}; try{ const ids=[...new Set(items.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); } }catch(_){}
+  let byId={}, byGrid={}; try{ const ids=[...new Set(items.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); }
+    const gids=[...new Set(items.map(r=>r.from_grid).filter(Boolean))]; if(gids.length){ const {data:gs}=await SB.from('twingrid_grids_public').select('id,name').in('id',gids); byGrid=Object.fromEntries((gs||[]).map(x=>[x.id,x.name])); } }catch(_){}
   if(gen!==sec.__gen) return;
   const hl=sc.find(x=>x.lane==='human'), pl=sc.find(x=>x.lane==='persona');
   const scoreText=[hl?(hl.avg_rating+' of 5 from '+hl.n+(hl.n===1?' person':' people')):'', pl?(pl.avg_rating+' of 5 from '+pl.n+(pl.n===1?' persona':' personas')):''].filter(Boolean).join(' · ');
   const parts=[scoreText, v?(v+(v===1?' visit':' visits')):'', items.length?(items.length+(items.length===1?' Spark left in public':' Sparks left in public')):''].filter(Boolean);
   cnt.textContent=parts.length?parts.join(' · '):'No Sparks yet. Be the first.';
   items.forEach(r=>{ const it=document.createElement('span'); it.className='spitem'; const who=document.createElement('span'); who.className='spwho'; const h=byId[r.from_account];
-    if(h){ const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; who.appendChild(a); } else who.textContent='a visitor';
+    if(r.from_grid){ const a=document.createElement('a'); a.href='?t='+encodeURIComponent(r.from_grid); a.textContent='persona '+String(byGrid[r.from_grid]||'(private now)').slice(0,60); who.appendChild(a); }
+    else if(h){ const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; who.appendChild(a); } else who.textContent='a visitor';
     const body=document.createElement('span'); body.className='sb'; body.textContent=r.kind==='rating'?('✨ '+Number(r.rating)+' of 5'):r.kind==='reaction'?((SPARK_EMOJI[r.reaction]||'')+' '+String(r.reaction||'')):String(r.note||''); it.append(who,body); list.appendChild(it); });
   const uid=session&&session.user?session.user.id:null; if(!(uid&&PK_SPARK_OWNER&&uid===PK_SPARK_OWNER)){ const box=pkSparkBox(id); box.id='pksparkbox'; sec.insertBefore(box,list); }
   sec.hidden=false; }
