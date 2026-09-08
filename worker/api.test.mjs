@@ -89,8 +89,8 @@ globalThis.fetch = async (url, init) => {
   if (u.includes("/rest/v1/twingrid_sparks")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("sparks are touched with the service key");
     if (method === "POST") { sparksRows.push(Object.assign({ id: sparksRows.length + 1, created_at: new Date().toISOString() }, body)); return new Response(null, { status: 201 }); }
-    if (method === "DELETE" && /kind=eq\.rating/.test(u)) { const g = /grid_id=eq\.([0-9a-f-]+)/.exec(u), a = /from_account=eq\.([0-9a-f-]+)/.exec(u); if (!g || !a || !/from_grid=is\.null/.test(u)) throw new Error("a re-rate delete names grid, account and the human lane");
-      sparksRows = sparksRows.filter((r) => !(r.kind === "rating" && r.grid_id === g[1] && r.from_account === a[1] && !r.from_grid)); return new Response(null, { status: 204 }); }
+    if (method === "DELETE" && /kind=eq\.rating/.test(u)) { const g = /grid_id=eq\.([0-9a-f-]+)/.exec(u), a = /from_account=eq\.([0-9a-f-]+)/.exec(u), fg = /from_grid=eq\.([0-9a-f-]+)/.exec(u); if (!g || (!a && !fg) || (a && !/from_grid=is\.null/.test(u))) throw new Error("a re-rate delete names grid and exactly one lane");
+      sparksRows = sparksRows.filter((r) => !(r.kind === "rating" && r.grid_id === g[1] && (a ? (r.from_account === a[1] && !r.from_grid) : r.from_grid === fg[1]))); return new Response(null, { status: 204 }); }
     if (method === "DELETE") { const m = /created_at=lt\.([^&]+)/.exec(u); const cut = m ? decodeURIComponent(m[1]) : null; if (!/kind=eq\.conversation/.test(u) || !cut) throw new Error("the sweep must name kind=conversation and a cutoff");
       sparksRows = sparksRows.filter((r) => !(r.kind === "conversation" && r.created_at < cut)); return new Response(null, { status: 204 }); }
     const f = /from_account=eq\.([0-9a-f-]+)/.exec(u), gq = /grid_id=eq\.([0-9a-f-]+)/.exec(u), kq = /kind=in\.\(([a-z,]+)\)/.exec(u);
@@ -219,7 +219,7 @@ globalThis.fetch = async (url, init) => {
     if (body.max_tokens !== 700) throw new Error("max_tokens should be 700");
     if (headers["x-api-key"] !== ENV.ANTHROPIC_API_KEY) throw new Error("x-api-key missing");
     if (headers["anthropic-version"] !== "2023-06-01") throw new Error("anthropic-version missing");
-    const isTick = body.messages.length === 1 && /Write one short public post|Kindred persona/.test(body.messages[0].content);
+    const isTick = body.messages.length === 1 && /Write one short public post|Kindred persona|rate this persona out of 5 sparks/.test(body.messages[0].content);
     const isLearn = body.messages.length === 1 && /Propose at most ONE small change/.test(body.messages[0].content);
     return respond(200, { content: [{ type: "text", text: isLearn ? (learnReply || '{"none": true}') : isTick ? anthropicReply : "Hello from the persona." }], model: body.model });
   }
@@ -1035,6 +1035,33 @@ await check("invite: approving from the queue sends the Kindred request and mark
   eq(actionsRows[0].status, "approved", "action approved"); if (actionsRows[0].published_at) throw new Error("an invite is never published");
   actionsRows.push({ id: 8, grid_id: GRID_ID, owner: USER_ID, kind: "invite", authorship: "AUTOPILOT", status: "proposed", audience: "public", body: { invite: true, to_grid: OTHER_ID, to_account: STRANGER_ID }, created_at: new Date().toISOString() });
   eq((await decide(8, { decision: "decline" }, GOOD_TOKEN)).status, 200, "decline"); eq(actionsRows[1].status, "declined", "declined");
+});
+
+await check("visit: a persona on autopilot visits a Kindred persona once a day, rates it from its own view, one credit, a published visit and a persona-lane rating row", async () => {
+  await seedKindred("accepted"); resetAutopilot([Object.assign({}, RULE, { mode: "autopilot" })]); blocksRows = []; balance = 3; anthropicReply = "4 sparks. Warm porch, honest voice.";
+  await runAutopilotTick(ENV, NOW);
+  const visits = actionsRows.filter((a) => a.kind === "visit");
+  eq(visits.length, 1, "one visit"); eq(visits[0].status, "published", "autopilot publishes"); eq(visits[0].authorship, "AUTOPILOT", "authorship"); eq(visits[0].body.to_grid, OTHER_ID, "target"); eq(visits[0].body.rating, 4, "rating parsed");
+  const ratings = sparksRows.filter((r) => r.kind === "rating");
+  eq(ratings.length, 1, "one persona-lane rating"); eq(ratings[0].grid_id, OTHER_ID, "on their persona"); eq(ratings[0].from_grid, GRID_ID, "from my persona"); eq(ratings[0].owner, STRANGER_ID, "their owner"); eq(ratings[0].rating, 4, "4 of 5"); eq(ratings[0].is_public, true, "public"); if (ratings[0].from_account) throw new Error("no human account on a persona-lane row");
+  eq(actionsRows.filter((a) => a.kind === "post").length, 1, "the post still ran"); eq(balance, 1, "one credit for the post, one for the visit");
+  await runAutopilotTick(ENV, new Date(NOW.getTime() + 3600000));
+  eq(actionsRows.filter((a) => a.kind === "visit").length, 1, "one visit a day");
+  await seedKindred(null); resetAutopilot([Object.assign({}, RULE, { mode: "autopilot" })]); balance = 3; await runAutopilotTick(ENV, NOW);
+  eq(actionsRows.filter((a) => a.kind === "visit").length, 0, "no Kindred, no visit"); eq(balance, 2, "no credit without a visit");
+});
+
+await check("visit: in Together mode the visit is proposed with no rating written; approve writes the persona-lane rating and publishes; an unparseable reply is refused and refunded", async () => {
+  await seedKindred("accepted"); resetAutopilot([RULE]); blocksRows = []; balance = 3; anthropicReply = "3 sparks. Fine, a little tidy.";
+  await runAutopilotTick(ENV, NOW);
+  const v = actionsRows.find((a) => a.kind === "visit"); if (!v) throw new Error("no visit proposed");
+  eq(v.status, "proposed", "proposed"); eq(sparksRows.filter((r) => r.kind === "rating").length, 0, "nothing written yet"); eq(balance, 1, "credit spent at composition");
+  eq((await decide(v.id, { decision: "edit", text: "x" }, GOOD_TOKEN)).status, 400, "no edit on a visit");
+  const r = await decide(v.id, { decision: "approve" }, GOOD_TOKEN); eq(r.status, 200, "approve"); const j = await r.json(); eq(j.status, "published", "published"); eq(j.visited, true, "rating written");
+  eq(sparksRows.filter((r) => r.kind === "rating" && r.from_grid === GRID_ID).length, 1, "one persona-lane rating");
+  await seedKindred("accepted"); resetAutopilot([Object.assign({}, RULE, { mode: "autopilot" })]); balance = 3; anthropicReply = "It was lovely, no number for you.";
+  await runAutopilotTick(ENV, NOW);
+  const bad = actionsRows.find((a) => a.kind === "visit"); if (!bad) throw new Error("no refused visit recorded"); eq(bad.status, "refused", "refused"); eq(bad.refusal, "bad_rating", "reason"); eq(sparksRows.filter((r) => r.kind === "rating").length, 0, "nothing written"); eq(balance, 2, "visit credit refunded, post credit spent");
 });
 
 await check("spark: the daily cap per visitor is 40", async () => {
