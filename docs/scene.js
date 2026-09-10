@@ -37,17 +37,17 @@ function sprite(ctx,sp,col,fl,accent){ var f=floorOf(fl), ox=LEFT+col*CW, bb=[1e
 var FLOOR_KEYS=['visiting','main','basement'];
 function drawHouse(ctx,rm,accent,lit){ var f0=floorOf(0), f2=floorOf(2), ground=floorOf(1).bottom;
   rect(ctx,0,0,W,H,mix(MAT.sky,PAPER,.55),null); rect(ctx,0,ground,W,H-ground,mix(MAT.stone,INK,.35),null);
-  ctx.beginPath(); ctx.moveTo(LEFT-14,f0.top); ctx.lineTo(W/2,4); ctx.lineTo(RIGHT+TOOLW+18,f0.top); ctx.closePath(); ctx.fillStyle=mix(accent,INK,.45); ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-6,f0.top); ctx.lineTo(W/2,4); ctx.lineTo(RIGHT+TOOLW+18,f0.top); ctx.closePath(); ctx.fillStyle=mix(accent,INK,.45); ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1; ctx.stroke();
   for(var i=0;i<3;i++){ var f=floorOf(i); var wallM=(i===2)?MAT.stone:(rm.wall||'paper'); var t=tones(mix(MAT[wallM]||MAT.paper,accent,.08)); var fl=(i===2)?MAT.stone:(MAT[rm.floor||'paper']||MAT.paper); var ft=tones(fl); var tr=matTones(rm.trim||'wood',accent);
-    rect(ctx,LEFT-4,f.top,RIGHT+TOOLW+8-LEFT,FH,t.mid,null);
-    rect(ctx,LEFT-4,f.top,RIGHT+TOOLW+8-LEFT,f.base-f.top,t.light,null);
-    rect(ctx,LEFT-4,f.base,RIGHT+TOOLW+8-LEFT,FH-(f.base-f.top),ft.mid,null); rect(ctx,LEFT-4,f.base,RIGHT+TOOLW+8-LEFT,3,ft.light,null);
-    rect(ctx,LEFT-4,f.base-4,RIGHT+TOOLW+8-LEFT,4,tr.mid,tr.line);
-    if(i===0){ for(var k=0;k<12;k++) rect(ctx,LEFT-4+k*(RIGHT+TOOLW+12-LEFT)/12,f.top,(RIGHT+TOOLW+12-LEFT)/12,10,(k%2)?accent:mix(accent,PAPER,.6),null); }
+    rect(ctx,4,f.top,RIGHT+TOOLW+4,FH,t.mid,null);
+    rect(ctx,4,f.top,RIGHT+TOOLW+4,f.base-f.top,t.light,null);
+    rect(ctx,4,f.base,RIGHT+TOOLW+4,FH-(f.base-f.top),ft.mid,null); rect(ctx,4,f.base,RIGHT+TOOLW+4,3,ft.light,null);
+    rect(ctx,4,f.base-4,RIGHT+TOOLW+4,4,tr.mid,tr.line);
+    if(i===0){ for(var k=0;k<12;k++) rect(ctx,4+k*(RIGHT+TOOLW+4)/12,f.top,(RIGHT+TOOLW+4)/12,10,(k%2)?accent:mix(accent,PAPER,.6),null); }
     if(i===1&&rm.window!==false){ var g=matTones('glass',accent); rect(ctx,LEFT+CW*2.6,f.top+18,CW*1.4,44,g.light,tr.line); rect(ctx,LEFT+CW*3.28,f.top+18,3,44,tr.mid,null); }
-    rect(ctx,LEFT-4,f.top,RIGHT+TOOLW+8-LEFT,FH,null,INK); }
-  rect(ctx,LEFT-6,f0.top,4,f2.bottom-f0.top,mix(accent,INK,.5),INK); rect(ctx,RIGHT+TOOLW+4,f0.top,4,f2.bottom-f0.top,mix(accent,INK,.5),INK); }
-function dimFloor(ctx,i){ var f=floorOf(i); ctx.fillStyle='rgba(27,27,34,.62)'; ctx.fillRect(LEFT-4,f.top,RIGHT+TOOLW+8-LEFT,FH);
+    rect(ctx,4,f.top,RIGHT+TOOLW+4,FH,null,INK); }
+  rect(ctx,2,f0.top,4,f2.bottom-f0.top,mix(accent,INK,.5),INK); rect(ctx,RIGHT+TOOLW+4,f0.top,4,f2.bottom-f0.top,mix(accent,INK,.5),INK); }
+function dimFloor(ctx,i){ var f=floorOf(i); ctx.fillStyle='rgba(27,27,34,.62)'; ctx.fillRect(4,f.top,RIGHT+TOOLW+4,FH);
   var cx=(LEFT+RIGHT)/2, cy=f.top+FH/2; rect(ctx,cx-10,cy-2,20,16,PAPER,INK); ctx.beginPath(); ctx.arc(cx,cy-4,7,Math.PI,0); ctx.strokeStyle=PAPER; ctx.lineWidth=3; ctx.stroke(); }
 /* facet doors: anonymous plaques on the back wall of the floor that owns the scope; the first (core) is wider */
 function drawDoors(ctx,i,names,accent,hots){ var f=floorOf(i), x=LEFT+8, y=f.top+16, lt=tones(accent);
@@ -55,7 +55,7 @@ function drawDoors(ctx,i,names,accent,hots){ var f=floorOf(i), x=LEFT+8, y=f.top
     rect(ctx,x,y,w,h,mix(accent,PAPER,.55),lt.line); rect(ctx,x+3,y+3,w-6,h-6,null,mix(accent,PAPER,.3)); ell(ctx,x+w-7,y+h/2,2,2,lt.shadow,null);
     hots.push({kind:'door',facet:names[k],floor:i,bb:[x,y,x+w,y+h]}); x+=w+8; } }
 /* tools in the right strip: the Workshop hatch (basement), the core desk and the snapshot chest (Home floor), the shelf (visiting) */
-function drawTool(ctx,i,id,accent,hots){ var f=floorOf(i), x=RIGHT+3, w=TOOLW-6, lt=tones(accent), wd=matTones('wood',accent), mt=matTones('metal',accent);
+function drawTool(ctx,i,id,accent,hots,side){ var f=floorOf(i), x=(side==='left')?8:RIGHT+3, w=TOOLW-6, lt=tones(accent), wd=matTones('wood',accent), mt=matTones('metal',accent);
   if(id==='workshop'){ rect(ctx,x,f.base-30,w,30,mix(INK,accent,.25),INK); rect(ctx,x+4,f.base-26,w-8,22,INK,lt.line); ell(ctx,x+w/2,f.base-15,5,5,null,lt.light); hots.push({kind:'tool',id:id,floor:i,bb:[x,f.base-30,x+w,f.base]}); }
   else if(id==='core'){ rect(ctx,x,f.base-34,w,6,wd.light,wd.line); rect(ctx,x+3,f.base-28,w-6,28,wd.mid,wd.line); rect(ctx,x+6,f.base-44,w-12,10,mix(accent,PAPER,.5),lt.line); hots.push({kind:'tool',id:id,floor:i,bb:[x,f.base-44,x+w,f.base]}); }
   else if(id==='obsidian'){ rect(ctx,x,f.base-22,w,22,wd.mid,wd.line); rect(ctx,x,f.base-28,w,8,wd.light,wd.line); rect(ctx,x+w/2-3,f.base-20,6,6,mt.mid,mt.line); hots.push({kind:'tool',id:id,floor:i,bb:[x,f.base-28,x+w,f.base]}); }
@@ -82,14 +82,14 @@ function scene(canvas,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRat
   function lit(i){ return !(opts.lit&&opts.lit[i]===false); }
   function draw(){ ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H); ctx.lineJoin='round'; drawHouse(ctx,rm(),opts.accent,opts.lit); var hots=[];
     var scopes=['lobby','visiting','house']; for(var i=0;i<3;i++){ if(!lit(i)) continue; var names=(opts.facets&&opts.facets[scopes[i]])||[]; drawDoors(ctx,i,names,opts.accent,hots); }
-    (opts.tools||[]).forEach(function(t){ if(lit(t.floor)) drawTool(ctx,t.floor,t.id,opts.accent,hots); });
+    (opts.tools||[]).forEach(function(t){ if(lit(t.floor)) drawTool(ctx,t.floor,t.id,opts.accent,hots,t.side); });
     var order=st.items.map(function(it,i){ return i; }).sort(function(a,b){ return sortKey(st.items[a])-sortKey(st.items[b]); });
     var selHot=st.hots[st.sel], hovHot=st.hots[st.hover];
     order.forEach(function(k){ var it=st.items[k]; if(!lit(it.y)) return; var f=floorOf(it.y); var isSel=(selHot&&selHot.item===it)||(hovHot&&hovHot.item===it);
       if(isSel) rect(ctx,LEFT+it.x*CW+1,f.base-6,it.w*CW-2,6,mix(opts.accent,PAPER,.45),opts.accent);
       it.bb=sprite(ctx,it.sp,it.x,it.y,opts.accent); hots.push({kind:'obj',item:it,floor:it.y,bb:it.bb}); });
     var av=opts.avatar; if(av&&av.img&&av.img.complete&&av.img.naturalWidth&&lit(0)){ var f0=floorOf(0), ah=av.h||64, aw=ah*2/3, ax=LEFT+(av.col||0)*CW+CW/2; ctx.drawImage(av.img,ax-aw/2,f0.base-ah+2,aw,ah); }
-    for(var j=0;j<3;j++) if(!lit(j)){ dimFloor(ctx,j); hots.push({kind:'floor',floor:j,bb:[LEFT-4,floorOf(j).top,RIGHT+TOOLW+4,floorOf(j).bottom]}); }
+    for(var j=0;j<3;j++) if(!lit(j)){ dimFloor(ctx,j); hots.push({kind:'floor',floor:j,bb:[4,floorOf(j).top,RIGHT+TOOLW+8,floorOf(j).bottom]}); }
     st.hots=hots; if(selHot){ st.sel=hots.findIndex(function(h){ return same(h,selHot); }); } if(hovHot){ st.hover=hots.findIndex(function(h){ return same(h,hovHot); }); }
     if(st.sel>=0){ var b=st.hots[st.sel].bb; rect(ctx,b[0]-3,b[1]-3,b[2]-b[0]+6,b[3]-b[1]+6,null,opts.accent); ctx.lineWidth=1; } }
   function same(a,b){ return a.kind===b.kind&&a.item===b.item&&a.facet===b.facet&&a.id===b.id&&a.floor===b.floor; }
@@ -119,5 +119,21 @@ function scene(canvas,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRat
   function setAvatar(a){ opts.avatar=a; placeAvatar(); if(a&&a.img) a.img.addEventListener('load',draw); draw(); }
   set(opts.house,opts.linked); if(opts.avatar&&opts.avatar.img) opts.avatar.img.addEventListener('load',draw);
   return {draw:draw,set:set,setAvatar:setAvatar,state:st,size:[W,H]}; }
-window.pkScene={scene:scene,place:place,tones:tones,mix:mix,materials:MAT,drawSprite:sprite,drawHouse:drawHouse,floorOf:floorOf,COLS:COLS,FLOOR_KEYS:FLOOR_KEYS};
+/* the Lobby as a street (Dylan, 2026-09-10; Jennifer's brief, version 2): one house front per Kindred persona on a strip.
+   houses: [{accent, name (never drawn), img (the Look, optional), show (the house is public)}]; returns hotspots with bboxes
+   so the page can send a click to the persona page. Decorative on screen; the cards under it are the accessible path. */
+function street(canvas,houses,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRatio||1)); var n=Math.max(1,houses.length), HW=96, GAP=14, SW=Math.max(560,n*(HW+GAP)+GAP), SH=150;
+  canvas.width=SW*dpr; canvas.height=SH*dpr; canvas.style.aspectRatio=SW+' / '+SH; var ctx=canvas.getContext('2d'); if(!ctx) return null; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineJoin='round';
+  rect(ctx,0,0,SW,SH,mix(MAT.sky,PAPER,.55),null); rect(ctx,0,SH-26,SW,26,mix(MAT.stone,INK,.2),null); rect(ctx,0,SH-26,SW,3,mix(MAT.stone,PAPER,.3),null);
+  var hots=[];
+  houses.forEach(function(hs,i){ var x=GAP+i*(HW+GAP), acc=hs.accent||'#5B45E0', wt=tones(mix(PAPER,acc,.12)), rt=tones(mix(acc,INK,.4)), base=SH-26, top=base-74;
+    rect(ctx,x,top,HW,74,wt.mid,wt.line); rect(ctx,x,top,HW,6,wt.light,null);
+    ctx.beginPath(); ctx.moveTo(x-6,top); ctx.lineTo(x+HW/2,top-28); ctx.lineTo(x+HW+6,top); ctx.closePath(); ctx.fillStyle=rt.mid; ctx.fill(); ctx.strokeStyle=rt.line; ctx.lineWidth=1; ctx.stroke();
+    rect(ctx,x+12,top+22,20,20,matTones('glass',acc).light,wt.line); rect(ctx,x+HW-32,top+22,20,20,matTones('glass',acc).light,wt.line);
+    rect(ctx,x+HW/2-13,base-44,26,44,mix(acc,INK,.25),rt.line); ell(ctx,x+HW/2+8,base-22,2,2,PAPER,null);
+    if(hs.img&&hs.img.complete&&hs.img.naturalWidth){ var ah=52, aw=ah*2/3; ctx.drawImage(hs.img,x+HW/2-aw/2,base-ah,aw,ah); }
+    if(hs.show===false){ ctx.fillStyle='rgba(27,27,34,.35)'; ctx.fillRect(x-6,top-28,HW+12,102); }
+    hots.push({i:i,bb:[x-6,top-28,x+HW+6,base]}); });
+  return {hots:hots,size:[SW,SH],hit:function(px,py){ for(var k=0;k<hots.length;k++){ var b=hots[k].bb; if(px>=b[0]&&px<=b[2]&&py>=b[1]&&py<=b[3]) return k; } return -1; }}; }
+window.pkScene={scene:scene,street:street,place:place,tones:tones,mix:mix,materials:MAT,drawSprite:sprite,drawHouse:drawHouse,floorOf:floorOf,COLS:COLS,FLOOR_KEYS:FLOOR_KEYS};
 })();
