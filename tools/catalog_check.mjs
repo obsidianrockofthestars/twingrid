@@ -265,6 +265,38 @@ if (problems.length) {
   if (problems.length) { for (const p of problems) console.log('PROBLEM: ' + p); process.exit(1); }
   console.log('SPRITES OK ' + man.sprites.length + ' sprites, ' + man.rooms.length + ' rooms');
 }
+// The avatar catalog (A4, 2026-09-10): every list key appears quoted in the SQL validator, every drawn part is a path with
+// safe path data and a known fill slot, every label is a plain string with no dash, and the words map carries Jennifer's terms.
+{
+  let av = null, sql = '';
+  try { av = JSON.parse(readFileSync(join(dir, '..', 'docs', 'catalog', 'avatar.json'), 'utf8')); } catch (e) { problems.push('avatar.json: ' + e.message); }
+  try { sql = readFileSync(join(dir, '..', 'sql', '2026-09-10_avatar.sql'), 'utf8'); } catch (e) { problems.push('sql/2026-09-10_avatar.sql: ' + e.message); }
+  const D_RE = /^[MLCQAZmlcqaz0-9 .,-]+$/; const SLOTS = new Set(['c1', 'c2', 'c3', 'skin', 'skin2', 'hair', 'hair2', 'ink', 'white', 'metal', 'wood']);
+  const HEX = /^#[0-9A-Fa-f]{6}$/;
+  const lists = ['bodies', 'heights', 'faces', 'skinDepths', 'undertones', 'eyes', 'hairColors', 'hairs', 'facialHairs', 'colors', 'tops', 'bottoms', 'onePieces', 'outers', 'shoes', 'heads', 'accessories'];
+  const parts = (where, list) => { if (list === undefined) return; if (!Array.isArray(list)) { problems.push(where + ' parts must be an array'); return; }
+    for (const p of list) { if (!p || typeof p.d !== 'string' || !D_RE.test(p.d)) problems.push(where + ' has a part with bad path data'); if (!SLOTS.has(p.f)) problems.push(where + ' has a part with unknown fill slot ' + (p && p.f)); } };
+  if (av) {
+    if (av.version !== 1 || JSON.stringify(av.frame) !== '[64,96]') problems.push('avatar.json version must be 1 and frame [64,96]');
+    for (const w of ['look', 'wardrobe', 'outfit', 'closet', 'body', 'face', 'skin', 'hair', 'eyes', 'top', 'bottom', 'onePiece', 'outer', 'shoes', 'head', 'accessories', 'fit']) if (!av.words || typeof av.words[w] !== 'string') problems.push('avatar.json words missing ' + w);
+    for (const l of lists) { const arr = av[l]; if (!Array.isArray(arr) || !arr.length) { problems.push('avatar.json ' + l + ' must be a non-empty array'); continue; }
+      const seen = new Set();
+      for (const e of arr) { const w = 'avatar ' + l + ' ' + (e && e.key);
+        if (!e || typeof e.key !== 'string' || !/^[a-zA-Z][a-zA-Z0-9]{0,30}$/.test(e.key)) { problems.push(w + ' has a bad key'); continue; }
+        if (seen.has(e.key)) problems.push(w + ' is listed twice'); seen.add(e.key);
+        if (typeof e.label !== 'string' || !e.label || e.label.length > 24 || DASH_RE.test(e.label)) problems.push(w + ' label must be 1 to 24 chars with no dash');
+        if (sql && !sql.includes("'" + e.key + "'")) problems.push(w + ' is missing from the SQL validator');
+        if (('hex' in e) && !HEX.test(e.hex)) problems.push(w + ' hex is not 6 digits'); if (('shift' in e) && !HEX.test(e.shift)) problems.push(w + ' shift is not 6 digits');
+        if ('d' in e && (typeof e.d !== 'string' || !D_RE.test(e.d))) problems.push(w + ' d is not safe path data');
+        parts(w, e.parts); parts(w + ' stand', e.stand); parts(w + ' sit', e.sit); parts(w + ' back', e.back); parts(w + ' front', e.front);
+        if (l === 'bodies' && !['stand', 'sit'].includes(e.pose)) problems.push(w + ' pose must be stand or sit');
+        if (l === 'accessories' && e.free !== true) problems.push(w + ' must be free (accessibility and identity items are never paid)');
+        if (['bottoms', 'onePieces', 'shoes'].includes(l) && (!Array.isArray(e.stand) || !Array.isArray(e.sit))) problems.push(w + ' needs stand and sit paths'); } }
+    if (av.bodies && !['standing', 'seated', 'wheelchair', 'cane', 'crutches', 'walker'].every((k) => av.bodies.some((b) => b && b.key === k))) problems.push('avatar.json bodies must include standing, seated, wheelchair, cane, crutches and walker');
+  }
+  if (problems.length) { for (const p of problems) console.log('PROBLEM: ' + p); process.exit(1); }
+  console.log('AVATAR OK ' + lists.length + ' lists');
+}
 console.log('CATALOG OK 40 objects');
   process.exit(0);
 }
