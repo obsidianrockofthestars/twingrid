@@ -229,8 +229,8 @@ if (problems.length) {
 {
   let man = null, iso = '';
   try { man = JSON.parse(readFileSync(join(dir, '..', 'docs', 'catalog', 'sprites.json'), 'utf8')); } catch (e) { problems.push('sprites.json: ' + e.message); }
-  try { iso = readFileSync(join(dir, '..', 'docs', 'iso.js'), 'utf8'); } catch (e) { problems.push('docs/iso.js: ' + e.message); }
-  const mats = new Set(['accent']); const mm = /var MAT=\{([^}]*)\}/.exec(iso); if (mm) for (const k of mm[1].split(',')) mats.add(k.split(':')[0].trim()); else problems.push('iso.js: MAT table not found');
+  try { iso = readFileSync(join(dir, '..', 'docs', 'scene.js'), 'utf8'); } catch (e) { problems.push('docs/scene.js: ' + e.message); }
+  const mats = new Set(['accent']); const mm = /var MAT=\{([^}]*)\}/.exec(iso); if (mm) for (const k of mm[1].split(',')) mats.add(k.split(':')[0].trim()); else problems.push('scene.js: MAT table not found');
   if (man) {
     if (man.version !== 1) problems.push('sprites.json version must be 1');
     if (JSON.stringify(man.tile) !== '[64,32]' || man.unit !== 32) problems.push('sprites.json tile must be [64,32] and unit 32');
