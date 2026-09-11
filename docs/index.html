@@ -1092,7 +1092,7 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 #auth .oauthbtn svg{width:18px;height:18px;flex:none}
 #auth .orline{display:flex;align-items:center;gap:12px;margin:16px 0 14px;color:var(--ink-dim);font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase}
 #auth .orline::before,#auth .orline::after{content:"";flex:1;height:1px;background:var(--line-w)}
-#auth .altlink{display:block;width:100%;margin-top:12px;background:none;border:0;color:var(--ink-dim);font-family:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
+#auth .altlink{min-height:28px;display:block;width:100%;margin-top:12px;background:none;border:0;color:var(--ink-dim);font-family:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
 #auth .altlink:hover{color:var(--accent-w-deep)}
 
 .drawer:not(.open){box-shadow:none}
@@ -1382,21 +1382,19 @@ body.route-profile #helpbtn{left:16px;right:auto}
   <div class="authcard" id="authcard">
     <button class="x" id="authx" aria-label="Close sign in">&times;</button>
     <div class="form">
-      <div class="k">Passwordless sign in</div>
-      <h2 id="authttl">Create your twin</h2>
-      <p class="lead">Enter your email and we'll send a one-time sign-in link. No password to remember, nothing to install.</p>
-      <label class="trust" style="margin:0 0 14px;cursor:pointer;align-items:center"><input type="checkbox" id="termsok" style="margin:0 2px 0 0;width:16px;height:16px;flex:none"><span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" rel="noopener" style="color:var(--accent)">Terms and Privacy Notice</a>.</span></label>
+      <div class="k" id="pkauthk">Welcome back</div>
+      <h2 id="authttl">Sign in</h2>
+      <p class="lead" id="pkauthlead">Your email and password. Nothing to install.</p>
+      <label class="trust" id="pkauthterms" style="margin:0 0 14px;cursor:pointer;align-items:center"><input type="checkbox" id="termsok" style="margin:0 2px 0 0;width:16px;height:16px;flex:none"><span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" rel="noopener" style="color:var(--accent)">Terms and Privacy Notice</a>.</span></label>
       <button class="oauthbtn" id="googlebtn" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Continue with Google</span></button>
       <div class="orline"><span>or</span></div>
       <label for="email">Email address</label>
       <input class="field" id="email" type="email" placeholder="you@email.com" autocomplete="email" inputmode="email">
-      <button class="primary" id="sendlink">Email me a sign-in link</button>
-      <div id="pwwrap" hidden>
-        <label for="password" style="margin-top:14px">Password</label>
-        <input class="field" id="password" type="password" autocomplete="current-password" placeholder="Your password">
-        <button class="primary" id="pwbtn" type="button">Sign in</button>
-      </div>
-      <button class="altlink" id="pwtoggle" type="button">I already have a password</button>
+      <label for="password" id="pkauthpwl" style="margin-top:14px">Password</label>
+      <input class="field" id="password" type="password" autocomplete="current-password" placeholder="At least 8 characters">
+      <button class="primary" id="pkauthgo" type="button">Sign in</button>
+      <button class="altlink" id="pkauthforgot" type="button">Forgot your password?</button>
+      <button class="altlink" id="pkauthswap" type="button">New here? Create an account</button>
       <div class="err" id="autherr" role="alert"></div>
       <div class="trust">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
@@ -1405,9 +1403,9 @@ body.route-profile #helpbtn{left:16px;right:auto}
     </div>
     <div class="sent">
       <div class="env" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>
-      <h3>Check your email</h3>
-      <p>We sent a sign-in link to <span class="em" id="sentto">your inbox</span>.</p>
-      <p>Open it on this device to finish. The link lasts about an hour. No email in a minute? Check spam, or <button class="btn ghost" id="resend" style="padding:6px 12px;font-size:13px;margin-top:8px">send it again</button></p>
+      <h3 id="pkauthsenth">Check your email</h3>
+      <p><span id="pkauthsentp">We sent a link to</span> <span class="em" id="sentto">your inbox</span>.</p>
+      <p>Open it on this device to finish. No email in a minute? Check spam, or <button class="btn ghost" id="resend" style="padding:6px 12px;font-size:13px;margin-top:8px">go back</button></p>
     </div>
   </div>
 </div>
@@ -2311,10 +2309,19 @@ async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
         setTimeout(()=>window.__openChooserAt&&window.__openChooserAt(__p),140); } }catch(_){} }
   else { document.body.className='marketing route-landing'; app.style.display='none'; } }
 const authEl=document.getElementById('auth'), authCard=document.getElementById('authcard');
+// Standard account login (Dylan, 2026-09-11: "It should be a standard account login, already have an account? create account? all that, no sign in link").
+// Three modes on one card: signin, signup, newpw (landing from a password reset link). The terms tick shows on signup, and on signin only until this browser has agreed once.
+let pkAuthMode='signin';
+function pkAuthSet(m){ pkAuthMode=m; const up=m==='signup', np=m==='newpw'; const T=(id,t)=>{ const e=document.getElementById(id); if(e) e.textContent=t; };
+  T('pkauthk',np?'Password reset':up?'Get started':'Welcome back'); T('authttl',np?'Set a new password':up?'Create your account':'Sign in');
+  T('pkauthlead',np?'Choose a new password for your account.':up?'An email and a password. Nothing to install.':'Your email and password. Nothing to install.');
+  T('pkauthgo',np?'Set my password':up?'Create my account':'Sign in'); T('pkauthswap',up?'Already have an account? Sign in':'New here? Create an account');
+  let agreed=false; try{ agreed=localStorage.getItem('pk_terms_ok')===TERMS_VERSION; }catch(_){}
+  document.getElementById('pkauthterms').hidden=np||(!up&&agreed); document.getElementById('pkauthforgot').hidden=up||np; document.getElementById('pkauthswap').hidden=np;
+  const em=document.getElementById('email'); em.hidden=np; em.previousElementSibling.hidden=np; const g=document.getElementById('googlebtn'); g.hidden=np; g.nextElementSibling.hidden=np;
+  const pw=document.getElementById('password'); pw.autocomplete=up||np?'new-password':'current-password'; pw.value=''; document.getElementById('autherr').textContent=''; }
 function openAuth(e){ const back = e&&e.currentTarget&&/sign in/i.test(e.currentTarget.textContent||'');
-  document.getElementById('authttl').textContent = back?'Welcome back':'Create your twin';
-  const k=document.querySelector('#authcard .k'); if(k) k.textContent = back?'Passwordless sign in':'Get started, no password';
-  authCard.classList.remove('done'); document.getElementById('autherr').textContent=''; authEl.classList.add('open'); setTimeout(()=>document.getElementById('email').focus(),40); }
+  pkAuthSet(back?'signin':'signup'); authCard.classList.remove('done'); authEl.classList.add('open'); setTimeout(()=>document.getElementById('email').focus(),40); }
 function closeAuth(){ authEl.classList.remove('open'); }
 document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',openAuth));
 // The three ways in were headline copy with nothing to click: the cards had no button,
@@ -2335,36 +2342,30 @@ authEl.addEventListener('click',e=>{ if(e.target===authEl) closeAuth(); });
 window.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAuth(); });
 const TERMS_VERSION='2026-09-07';
 function termsAgreed(){ const c=document.getElementById('termsok'); const err=document.getElementById('autherr'); if(c&&!c.checked){ err.textContent='Please tick the box to agree to the Terms and Privacy Notice first.'; c.focus(); return false; } try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} return true; }
-async function sendMagic(){ if(!termsAgreed()) return; const email=document.getElementById('email').value.trim();
-  const err=document.getElementById('autherr'), btn=document.getElementById('sendlink');
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Please enter a valid email address.'; return; }
-  err.textContent=''; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Sending...';
-  const {error}=await SB.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
-  btn.disabled=false; btn.textContent='Email me a sign-in link';
-  if(error){ err.textContent=error.message||'Could not send the link. Please try again.'; return; }
-  document.getElementById('sentto').textContent=email; authCard.classList.add('done'); }
-document.getElementById('sendlink').onclick=sendMagic;
-// --- restored sign-in paths. 3 of the existing accounts are Google, 2 are email+password. ---
 const authReturn=()=>location.origin+location.pathname;
+const pkEmailOk=v=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
+function pkAuthSent(h,p,email){ document.getElementById('pkauthsenth').textContent=h; document.getElementById('pkauthsentp').textContent=p; document.getElementById('sentto').textContent=email; authCard.classList.add('done'); }
+// --- Google stays. 3 of the existing accounts are Google, 2 are email+password. ---
 document.getElementById('googlebtn').onclick=async()=>{ const err=document.getElementById('autherr'); err.textContent=''; if(!termsAgreed()) return;
   const {error}=await SB.auth.signInWithOAuth({provider:'google',options:{redirectTo:authReturn()}});
-  if(error) err.textContent='Could not start Google sign in. Please use the email link instead.'; };
-const pwWrap=document.getElementById('pwwrap'), pwToggle=document.getElementById('pwtoggle');
-function pwReset(){ pwWrap.hidden=true; pwToggle.textContent='I already have a password'; const p=document.getElementById('password'); if(p) p.value=''; }
-pwToggle.onclick=()=>{ if(pwWrap.hidden){ pwWrap.hidden=false; pwToggle.textContent='Use a sign-in link instead'; setTimeout(()=>document.getElementById('password').focus(),40); } else pwReset(); };
-async function signInPw(){ if(!termsAgreed()) return; const email=document.getElementById('email').value.trim(), pw=document.getElementById('password').value;
-  const err=document.getElementById('autherr'), btn=document.getElementById('pwbtn');
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Please enter the email address on your account.'; return; }
-  if(!pw){ err.textContent='Please enter your password.'; return; }
-  err.textContent=''; btn.disabled=true; btn.textContent='Signing in...';
-  const {error}=await SB.auth.signInWithPassword({email,password:pw});
-  btn.disabled=false; btn.textContent='Sign in';
-  if(error){ err.textContent='That email and password did not match. Try the sign-in link instead.'; return; }
-  closeAuth(); }
-document.getElementById('pwbtn').onclick=signInPw;
-document.getElementById('password').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); signInPw(); } });
-document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',pwReset));
-document.getElementById('email').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sendMagic(); } });
+  if(error) err.textContent='Could not start Google sign in. Please use your email and password instead.'; };
+async function pkAuthGo(){ const err=document.getElementById('autherr'), btn=document.getElementById('pkauthgo'); const email=document.getElementById('email').value.trim(), pw=document.getElementById('password').value; err.textContent='';
+  if(pkAuthMode!=='newpw'&&!pkEmailOk(email)){ err.textContent='Please enter a valid email address.'; return; }
+  if(!pw||pw.length<8){ err.textContent='Your password needs at least 8 characters.'; return; }
+  const was=btn.textContent; btn.disabled=true; btn.textContent='One moment...';
+  try{
+    if(pkAuthMode==='newpw'){ const {error}=await SB.auth.updateUser({password:pw}); if(error){ err.textContent=error.message||'Could not set the password. Try the reset link again.'; return; } closeAuth(); return; }
+    if(pkAuthMode==='signup'){ if(!termsAgreed()) return; const {data,error}=await SB.auth.signUp({email,password:pw,options:{emailRedirectTo:authReturn()}}); if(error){ err.textContent=error.message||'Could not create the account.'; return; }
+      if(data&&data.session){ closeAuth(); return; } pkAuthSent('Confirm your email','We sent a confirmation to',email); return; }
+    const {error}=await SB.auth.signInWithPassword({email,password:pw}); if(error){ err.textContent='That email and password did not match.'; return; } closeAuth();
+  } finally { btn.disabled=false; btn.textContent=was; } }
+async function pkAuthForgot(){ const err=document.getElementById('autherr'); const email=document.getElementById('email').value.trim(); if(!pkEmailOk(email)){ err.textContent='Enter the email on your account first, then press Forgot your password.'; document.getElementById('email').focus(); return; }
+  err.textContent=''; const {error}=await SB.auth.resetPasswordForEmail(email,{redirectTo:authReturn()}); if(error){ err.textContent=error.message||'Could not send the reset email.'; return; } pkAuthSent('Check your email','We sent a password reset link to',email); }
+document.getElementById('pkauthgo').onclick=pkAuthGo;
+document.getElementById('pkauthforgot').onclick=pkAuthForgot;
+document.getElementById('pkauthswap').onclick=()=>{ pkAuthSet(pkAuthMode==='signup'?'signin':'signup'); document.getElementById('email').focus(); };
+['email','password'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); pkAuthGo(); } }));
+document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',()=>{ document.getElementById('password').value=''; }));
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
 document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
 function termsBar(session){ const bar=document.getElementById('termsbar'); if(!bar) return; const u=session&&session.user; const md=(u&&u.user_metadata)||{};
@@ -2372,7 +2373,7 @@ function termsBar(session){ const bar=document.getElementById('termsbar'); if(!b
 document.getElementById('termsagree').onclick=async()=>{ try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} document.getElementById('termsbar').hidden=true;
   try{ await SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}); }catch(_){} };
 SB.auth.getSession().then(({data})=>termsBar(data&&data.session)).catch(()=>{});
-SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(onPlacesRoute()){ renderPlaces(); } else if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
+SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(_ev==='PASSWORD_RECOVERY'){ pkAuthSet('newpw'); authCard.classList.remove('done'); authEl.classList.add('open'); setTimeout(()=>document.getElementById('password').focus(),40); return; } if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(onPlacesRoute()){ renderPlaces(); } else if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
   // Terms acceptance record (2026-09-02): the box was ticked in this browser before sign-in, so stamp the version on the user once.
   try{ const u=session&&session.user; const md=(u&&u.user_metadata)||{}; if(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')===TERMS_VERSION){ SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}).catch(()=>{}); } }catch(_){} });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
