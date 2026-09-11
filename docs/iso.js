@@ -84,7 +84,7 @@ function scene(canvas,opts){ var W=560,H=380, o={ox:W/2, oy:WALL*UNIT+12}; var d
     for(var k=0;k<order.length;k++){ var bb=st.items[order[k]].bb; if(bb&&px>=bb[0]&&px<=bb[2]&&py>=bb[1]&&py<=bb[3]) return order[k]; } return -1; }
   function pos(e){ var r=canvas.getBoundingClientRect(); return [(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]; }
   function say(i){ if(opts.label) opts.label(i>=0?st.items[i]:null); }
-  function move(i,x,y){ var it=st.items[i]; if(!fits(st.items.filter(function(q){ return q!==it; }),x,y,it.w,it.d)) return false; it.x=x; it.y=y; it.ref.x=x; it.ref.y=y; draw(); if(opts.onChange) opts.onChange(it); return true; }
+  function move(i,x,y){ var it=st.items[i]; if(!fits(st.items.filter(function(q){ return q!==it; }),x,y,it.w,it.d)) return false; it.x=x; it.y=y; it.ref.x=x; it.ref.y=y; if(opts.avatar&&!opts.avatar.fixed){ var t=avatarTile(); opts.avatar.x=t[0]; opts.avatar.y=t[1]; } draw(); if(opts.onChange) opts.onChange(it); return true; }
   canvas.addEventListener('pointermove',function(e){ var p=pos(e);
     if(st.drag){ var t=toTile(o,p[0],p[1]), it=st.items[st.drag.i]; var nx=Math.round(t[0]-st.drag.dx), ny=Math.round(t[1]-st.drag.dy); nx=Math.max(0,Math.min(GRID-it.w,nx)); ny=Math.max(0,Math.min(GRID-it.d,ny)); if(nx!==it.x||ny!==it.y) move(st.drag.i,nx,ny); return; }
     var h=hit(p[0],p[1]); if(h!==st.hover){ st.hover=h; canvas.style.cursor=h>=0?(opts.editable?'grab':(st.items[h].linked?'pointer':'default')):'default'; draw(); say(h>=0?h:st.sel); } });
@@ -101,8 +101,10 @@ function scene(canvas,opts){ var W=560,H=380, o={ox:W/2, oy:WALL*UNIT+12}; var d
     if((k==='Enter'||k===' ')&&st.sel>=0){ if(st.items[st.sel].linked&&opts.onOpen) opts.onOpen(st.items[st.sel]); e.preventDefault(); } });
   canvas.addEventListener('focus',function(){ if(st.sel<0&&st.items.length){ st.sel=0; draw(); } say(st.sel); });
   canvas.addEventListener('blur',function(){ say(-1); });
-  function set(house,linked){ st.items=place(house,opts.manifest||{}); st.items.forEach(function(it){ it.linked=!!(linked&&typeof it.ref.facet==='string'&&linked.has(it.ref.facet)); }); st.sel=-1; st.hover=-1; draw(); }
-  function setAvatar(a){ opts.avatar=a; if(a&&a.img) a.img.addEventListener('load',draw); draw(); }
+  /* the avatar stands on the first free tile of a short list near the front, never on an object */
+  function avatarTile(){ var pref=[[3,6],[4,6],[2,6],[5,6],[3,5],[4,5],[3,7],[4,7],[1,6],[6,6]]; for(var i=0;i<pref.length;i++) if(fits(st.items,pref[i][0],pref[i][1],1,1)) return pref[i]; return [3,7]; }
+  function set(house,linked){ st.items=place(house,opts.manifest||{}); st.items.forEach(function(it){ it.linked=!!(linked&&typeof it.ref.facet==='string'&&linked.has(it.ref.facet)); }); st.sel=-1; st.hover=-1; if(opts.avatar&&!opts.avatar.fixed){ var t=avatarTile(); opts.avatar.x=t[0]; opts.avatar.y=t[1]; } draw(); }
+  function setAvatar(a){ opts.avatar=a; if(a&&!a.fixed){ var t=avatarTile(); a.x=t[0]; a.y=t[1]; } if(a&&a.img) a.img.addEventListener('load',draw); draw(); }
   set(opts.house,opts.linked); if(opts.avatar&&opts.avatar.img) opts.avatar.img.addEventListener('load',draw);
   return {draw:draw,set:set,setAvatar:setAvatar,state:st,size:[W,H]};
 }
