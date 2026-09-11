@@ -426,12 +426,15 @@ function runs(byName, st) {
   return [{ label: "composition", facets: activeFacets(byName, st) }];
 }
 
+// One cell never contributes more than this to a composed prompt (review finding 1, 2026-09-10): the snapshot import can put
+// 40,000 characters in a cell with one click, and the per-account cap bounds calls, not the size of each.
+const CELL_MAX = 12000;
 function composeText(byName, facets) {
   return facets.map((fn) => {
     const f = byName[fn];
     return CELLORDER
       .filter((c) => f.cells[c] !== undefined && String(f.cells[c]).trim())
-      .map((c) => `# ${fn} / ${c}\n\n` + cellBody(f.cells[c]))
+      .map((c) => `# ${fn} / ${c}\n\n` + cellBody(f.cells[c]).slice(0, CELL_MAX))
       .join("\n\n");
   }).filter(Boolean).join("\n\n---\n\n");
 }

@@ -214,9 +214,11 @@ if (problems.length) {
   // The SQL validator embeds the same lists (sql/2026-09-07_home.sql). Every key must appear there, quoted.
 {
   let sql = '';
-  try { sql = readFileSync(join(dir, '..', 'sql', '2026-09-07_home.sql'), 'utf8'); } catch (e) { problems.push('cannot read sql/2026-09-07_home.sql: ' + e.message); }
+  // the newest house validator file wins: twingrid_house_valid has been redefined twice since 2026-09-07 and the live one is the last
+  let sqlName = '';
+  try { const { readdirSync } = await import('node:fs'); sqlName = readdirSync(join(dir, '..', 'sql')).filter((f) => /^\d{4}-\d{2}-\d{2}_house.*\.sql$/.test(f)).sort().pop() || '2026-09-07_home.sql'; sql = readFileSync(join(dir, '..', 'sql', sqlName), 'utf8'); } catch (e) { problems.push('cannot read the newest house validator file: ' + e.message); }
   if (sql) {
-    for (const o of (data && data.objects) || []) if (!sql.includes('"' + o.id + '"')) problems.push('object id missing from the SQL validator: ' + o.id);
+    for (const o of (data && data.objects) || []) if (!sql.includes('"' + o.id + '"')) problems.push('object id missing from the SQL validator ' + sqlName + ': ' + o.id);
     for (const m of (data && data.moods) || []) if (!sql.includes("'" + m.key + "'")) problems.push('mood missing from the SQL validator: ' + m.key);
     for (const r of (data && data.rooms) || []) if (!sql.includes("'" + r.key + "'")) problems.push('room missing from the SQL validator: ' + r.key);
   }
@@ -233,7 +235,8 @@ if (problems.length) {
   const mats = new Set(['accent']); const mm = /var MAT=\{([^}]*)\}/.exec(iso); if (mm) for (const k of mm[1].split(',')) mats.add(k.split(':')[0].trim()); else problems.push('scene.js: MAT table not found');
   if (man) {
     if (man.version !== 1) problems.push('sprites.json version must be 1');
-    if (JSON.stringify(man.tile) !== '[64,32]' || man.unit !== 32) problems.push('sprites.json tile must be [64,32] and unit 32');
+    const geo = /var W=\d+, H=\d+, COLS=\d+, CW=(\d+), UNIT=(\d+)/.exec(iso); if (!geo) problems.push('scene.js: geometry line not found');
+    else if (JSON.stringify(man.tile) !== '[' + geo[1] + ',' + geo[2] + ']' || man.unit !== Number(geo[2])) problems.push('sprites.json tile and unit must match scene.js (CW ' + geo[1] + ', UNIT ' + geo[2] + ')');
     if (typeof man.source !== 'string' || typeof man.license !== 'string') problems.push('sprites.json needs source and license strings');
     const rooms = Array.isArray(man.rooms) ? man.rooms : []; const rk = rooms.map((r) => r && r.key);
     if (JSON.stringify(rk) !== JSON.stringify(EXPECTED_ROOM_KEYS)) problems.push('sprites.json rooms must be ' + JSON.stringify(EXPECTED_ROOM_KEYS) + ', got ' + JSON.stringify(rk));

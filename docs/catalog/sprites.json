@@ -1,11 +1,11 @@
 {
  "version": 1,
  "tile": [
-  64,
-  32
+  60,
+  40
  ],
- "unit": 32,
- "source": "Personakind original, described as primitives, drawn by the site renderer",
+ "unit": 40,
+ "source": "Personakind original, described as primitives, drawn front-on by the site renderer (docs/scene.js): tile is the column width and the height unit in pixels",
  "license": "CC0 (Potions and Familiars LLC dedicates these part lists to the public domain)",
  "rooms": [
   {
