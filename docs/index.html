@@ -826,6 +826,7 @@ body.route-home{overflow:auto;background:var(--paper)}
 #home .pkhatpick p{margin:0 0 12px;color:var(--ink)}
 #home .pkhatrow{display:flex;flex-wrap:wrap;gap:8px}
 #home .pkhatwear{margin-left:auto}
+#home .pkhattwenty p{margin:0 0 14px;color:var(--ink)}
 #home .pkhatdoor,#home .pkhatwear{border-color:#86869B} /* the panel token, 3.33 to 1 on paper; the token itself is scoped to .pkhp */
 
 /* moderation (operators only) */
@@ -2065,7 +2066,7 @@ function tutOpen(i){ if(__tour) tourEnd(); tutShow(i||0); tutEl.classList.add('o
 function tutClose(){ tutSetDismissed(true); tutEl.classList.remove('open'); }
 function tutIsOpen(){ return tutEl.classList.contains('open'); }
 // First sign-in: open the tutorial once per browser on Home. Closing it marks it seen; the Tutorial pill reopens it any time.
-function tutMaybe(delay){ if(tutDismissed()) return false; setTimeout(()=>{ if(!__tour&&!tutIsOpen()) tutOpen(0); }, delay||500); return true; }
+function tutMaybe(delay){ if(tutDismissed()) return false; setTimeout(()=>{ if(!__tour&&!tutIsOpen()&&!(nfEl&&nfEl.classList.contains('open'))) tutOpen(0); }, delay||500); return true; }
 document.getElementById('tutx').onclick=tutClose;
 document.getElementById('tutclose').onclick=tutClose;
 document.getElementById('tutprev').onclick=()=>tutShow(__tutI-1);
@@ -2136,10 +2137,12 @@ async function renderHome(){ const gen=++__homeGen;
   homeHandleUi(owner,myHandle);
   if(error){ const d=document.createElement('div'); d.className='hempty'; d.textContent=error.message; grid.appendChild(d); return; }
   const twinRow=document.getElementById('pkhattwin'), hatNew=document.getElementById('pkhatnew'), hath=document.getElementById('pkhath'); twinRow.innerHTML=''; hatNew.hidden=true; hath.hidden=true;
-  if(!data||!data.length){ pkHomeScene(null); const d=document.createElement('div'); d.className='hempty'; d.textContent='No personas yet. Pick a door below and make your first one.'; grid.appendChild(d); return; }
+  // a new account lands in the twenty questions, never on an empty Home (v17.3); the button brings the quiz back if it was closed
+  if(!data||!data.length){ pkHomeScene(null); const d=document.createElement('div'); d.className='hempty pkhattwenty'; const p=document.createElement('p'); p.textContent='Twenty questions and your twin is standing in its house.'; const b=document.createElement('button'); b.type='button'; b.className='hbtn solid'; b.textContent='Start the twenty questions'; b.onclick=()=>nfTwentyStart(); d.append(p,b); grid.appendChild(d); if(!window.__pkTwentyShown){ window.__pkTwentyShown=true; nfTwentyStart(); } return; }
   // one house per owner: the twin is the grid the owner marked as theirs (data.twin, a top level key no projection carries); the rest list under it
   const twin=data.find(r=>r.data&&typeof r.data==='object'&&r.data.twin===true)||null;
   pkHomeScene(twin); if(twin) pkHatDoors(); else pkHatPicker(data,twinRow);
+  try{ const o=sessionStorage.getItem('pk_home_open'); if(o&&twin){ sessionStorage.removeItem('pk_home_open'); const sec=document.getElementById('pkhomescene'); if(sec.__open&&/^(look|desk|house|public|chest|shelf|basement)$/.test(o)) sec.__open(o); } }catch(_){}
   hath.hidden=!(twin&&data.length>1);
   data.forEach(r=>{
     const c=document.createElement('div'); c.className='hcard';
@@ -4075,7 +4078,7 @@ function plForm(pl,mine){ const f=document.createElement('form'); f.className='p
 const nfEl=document.getElementById('newflow');
 const NF_PANELS=['nfChoose','nfQuiz','nfReveal','nfTemplates','nfMcp'];
 function nfShow(id){ NF_PANELS.forEach(p=>{const e=document.getElementById(p); if(e) e.hidden=(p!==id);}); }
-function openChooser(){ nfShow('nfChoose'); nfEl.classList.add('open'); }
+function openChooser(){ nfTwenty=false; nfShow('nfChoose'); nfEl.classList.add('open'); }
 function closeNewflow(){ nfEl.classList.remove('open'); }
 document.getElementById('nfx').onclick=closeNewflow;
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && nfEl.classList.contains('open')) closeNewflow(); });
@@ -4109,6 +4112,11 @@ const QSTEPS=[
     {id:"line",cell:"GATES",q:"A line it should hold no matter what?",ph:"Never do anything that could hurt the people I love."}]}
 ];
 let nfQi=0; const nfAns={};
+// the twenty question start (v17.3): a new account answers the fourteen plus six weight three core questions from the bank, one per cell
+// and one spare, named here so tools/questions_check.mjs can assert they exist. The six land in the core cells through pkhpAppend.
+const PK_START_QS=['core.CONTEXT.01','core.DO.01','core.DONT.02','core.GATES.02','core.VOICE.01','core.CONTEXT.02'];
+let nfTwenty=false, nfExtra=null; const nfSteps=()=>(nfTwenty&&nfExtra)?QSTEPS.concat([nfExtra]):QSTEPS;
+async function nfTwentyStart(){ nfTwenty=true; nfExtra=null; const bank=await pkQuestions(); if(bank){ const byId=Object.fromEntries(bank.map(x=>[x.id,x])); const qs=PK_START_QS.map(id=>byId[id]).filter(Boolean).map(x=>({id:x.id,cell:x.cell,q:x.q,type:x.type,opts:Array.isArray(x.options)?x.options.slice(0,5).map(String):undefined,ph:String(x.hint||'')})); if(qs.length) nfExtra={title:'A little deeper',qs}; } nfEl.classList.add('open'); nfStart(); }
 // "Let your AI build it" without installing anything: the same 14 questions, answered by the user's own AI
 // from what it already remembers about them, returned as JSON keyed by question id, pasted back here.
 function nfInterviewText(){
@@ -4151,13 +4159,13 @@ function nfImportAnswers(raw){
 })();
 function nfStart(){ nfQi=0; nfShow('nfQuiz'); nfRender(); }
 function nfRender(){
-  const st=QSTEPS[nfQi];
-  document.getElementById('nfBar').style.width=Math.round((nfQi+1)/QSTEPS.length*100)+'%';
-  document.getElementById('nfKick').textContent='Step '+(nfQi+1)+' of '+QSTEPS.length;
+  const steps=nfSteps(), st=steps[nfQi];
+  document.getElementById('nfBar').style.width=Math.round((nfQi+1)/steps.length*100)+'%';
+  document.getElementById('nfKick').textContent='Step '+(nfQi+1)+' of '+steps.length;
   document.getElementById('nfTitle').textContent=st.title;
-  document.getElementById('nfCount').textContent=(nfQi+1)+' / '+QSTEPS.length;
+  document.getElementById('nfCount').textContent=(nfQi+1)+' / '+steps.length;
   document.getElementById('nfBack').disabled=(nfQi===0);
-  document.getElementById('nfNext').textContent=(nfQi===QSTEPS.length-1)?'Build my persona':'Next';
+  document.getElementById('nfNext').textContent=(nfQi===steps.length-1)?'Build my persona':'Next';
   const wrap=document.getElementById('nfStep'); wrap.innerHTML='';
   st.qs.forEach(q=>{
     const d=document.createElement('div'); d.className='nf-q';
@@ -4179,7 +4187,7 @@ function nfRender(){
   });
 }
 document.getElementById('nfBack').onclick=()=>{ if(nfQi>0){ nfQi--; nfRender(); } };
-document.getElementById('nfNext').onclick=()=>{ if(nfQi<QSTEPS.length-1){ nfQi++; nfRender(); } else { nfReveal(); } };
+document.getElementById('nfNext').onclick=()=>{ if(nfQi<nfSteps().length-1){ nfQi++; nfRender(); } else { nfReveal(); } };
 
 // --- the reveal (2026-09-07): meet the persona before the editor. Built from the answers alone, no model call,
 // so a free account gets the same moment as a paid one. Every value lands through textContent. ---
@@ -4223,8 +4231,10 @@ async function nfFinish(){
   const core=grid.facets.find(f=>f.name==='core'); if(!core){ closeNewflow(); return; }
   Object.assign(core.cells,nfCompose(nfA));
   const nm=nfA('name')||'My persona';
+  if(nfTwenty){ const done=[]; (nfExtra?nfExtra.qs:[]).forEach(q=>{ const v=nfA(q.id); if(!v) return; const sent=q.type==='choice'?v:(/[.!?]$/.test(v)?v:v+'.'); core.cells[q.cell]=pkhpAppend(core.cells[q.cell],sent); done.push(q.id); }); grid.depth={done}; grid.twin=true; }
   closeNewflow();
   await newClone(grid, nm);
+  if(nfTwenty){ nfTwenty=false; try{ sessionStorage.setItem('pk_home_open','look'); }catch(_){} if(/route-home/.test(document.body.className)) await renderHome(); }
 }
 
 // --- templates ---
