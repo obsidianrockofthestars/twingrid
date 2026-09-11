@@ -708,6 +708,9 @@ body.route-account{overflow:auto;background:var(--paper)}
 #explore .exempty h3{font-family:var(--serif);font-weight:600;color:var(--ink);margin:0 0 8px;font-size:21px}
 #explore .pkxband{grid-column:1/-1;font-family:var(--serif);font-weight:600;font-size:21px;color:var(--ink);margin:4px 0 -6px}
 #explore .pkxband small{display:block;font-family:inherit;font-weight:400;font-size:14px;color:var(--ink-dim);margin-top:4px}
+#explore .pkstreet{grid-column:1/-1;margin:8px 0 2px;overflow-x:auto;overflow-y:hidden;border-radius:14px;border:1px solid var(--line-w);background:var(--card-w)}
+#explore .pkstreet canvas{display:block;height:150px;width:auto;max-width:none;cursor:pointer}
+#explore .pkstreetnote{grid-column:1/-1;margin:0 0 6px;font-size:13px;color:var(--ink-dim)}
 #account .exempty h3{font-family:var(--serif);font-weight:600;color:var(--ink);margin:0 0 8px;font-size:21px}
 #explore .exfilters{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
 #account .exfilters{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:18px}
@@ -3182,6 +3185,13 @@ function syncHideBtn(){
   t.checked=!!lsGet(PK_HIDEOFF,false);
   t.onchange=()=>{ lsSet(PK_HIDEOFF,t.checked); renderExplore(); };
 })();
+// the Lobby as a street (Dylan, 2026-09-10; Jennifer's brief v2): one house front per Kindred persona, its accent, its Look in the doorway
+async function pkStreet(grid,rows){ if(!window.pkScene||!rows.length) return; const wrap=document.createElement('div'); wrap.className='pkstreet'; const cv=document.createElement('canvas'); cv.setAttribute('aria-hidden','true'); wrap.appendChild(cv); grid.appendChild(wrap);
+  const note=document.createElement('p'); note.className='pkstreetnote'; note.textContent='The Lobby: your Kindred, one house each. Click a house to visit; the cards below are the same doors.'; grid.appendChild(note);
+  const acat=rows.some(r=>r.data&&r.data.avatar)?await pkAvatarCat():null;
+  const houses=rows.map(r=>{ const d=(r.data&&typeof r.data==='object')?r.data:{}; const h={accent:pkThemeFor(d.theme).accent,show:!!(d.house&&d.house.show===true)}; if(d.avatar&&acat&&window.pkAvatar) h.img=window.pkAvatar.img(pkAvatarSvg(d.avatar,acat,64)); return h; });
+  const draw=()=>window.pkScene.street(cv,houses,{minWidth:wrap.clientWidth}); let st=draw(); houses.forEach(h=>{ if(h.img) h.img.addEventListener('load',()=>{ st=draw(); }); });
+  cv.addEventListener('click',e=>{ const rc=cv.getBoundingClientRect(); const px=(e.clientX-rc.left)*st.size[0]/rc.width, py=(e.clientY-rc.top)*st.size[1]/rc.height; const k=st.hit(px,py); if(k>=0&&rows[k]) location.href='?t='+encodeURIComponent(rows[k].id); }); }
 async function renderExplore(){
   const grid=document.getElementById('exgrid'), foot=document.getElementById('exfoot');
   document.title='Explore \u00b7 Personakind';
@@ -3278,7 +3288,7 @@ async function renderExplore(){
     card.appendChild(by);
     grid.appendChild(card);
   };
-  if(kinRows.length){ band('Your Kindred','Personas yours are Kindred with. Only you see this band.'); kinRows.forEach(paint); band('Everyone'); }
+  if(kinRows.length){ band('Your Kindred','Personas yours are Kindred with. Only you see this band.'); pkStreet(grid,kinRows); kinRows.forEach(paint); band('Everyone'); }
   restRows.forEach(paint);
 
   const n=rows.length;

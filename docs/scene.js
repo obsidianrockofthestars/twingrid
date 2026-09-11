@@ -122,7 +122,7 @@ function scene(canvas,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRat
 /* the Lobby as a street (Dylan, 2026-09-10; Jennifer's brief, version 2): one house front per Kindred persona on a strip.
    houses: [{accent, name (never drawn), img (the Look, optional), show (the house is public)}]; returns hotspots with bboxes
    so the page can send a click to the persona page. Decorative on screen; the cards under it are the accessible path. */
-function street(canvas,houses,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRatio||1)); var n=Math.max(1,houses.length), HW=96, GAP=14, SW=Math.max(560,n*(HW+GAP)+GAP), SH=150;
+function street(canvas,houses,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRatio||1)); var n=Math.max(1,houses.length), HW=96, GAP=14, SW=Math.max(560,(opts&&opts.minWidth)||0,n*(HW+GAP)+GAP), SH=150;
   canvas.width=SW*dpr; canvas.height=SH*dpr; canvas.style.aspectRatio=SW+' / '+SH; var ctx=canvas.getContext('2d'); if(!ctx) return null; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineJoin='round';
   rect(ctx,0,0,SW,SH,mix(MAT.sky,PAPER,.55),null); rect(ctx,0,SH-26,SW,26,mix(MAT.stone,INK,.2),null); rect(ctx,0,SH-26,SW,3,mix(MAT.stone,PAPER,.3),null);
   var hots=[];
