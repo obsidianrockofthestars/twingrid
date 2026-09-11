@@ -171,6 +171,49 @@ button{font-family:inherit}
 #home .pkhsave{align-self:flex-start;margin-top:4px}
 #home .pkhshow{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);cursor:pointer;min-height:24px;margin-top:6px}
 #home .pkhshow input{width:16px;height:16px;margin:0}
+/* the Home acts in place (v16, 2026-09-11; Dylan's beta test: "when you click on any of those pictures, all it does is just take you to the editor page"): one panel under the house, every id and class prefixed pkhp; the public palette only */
+#home .pkhp{grid-column:1/-1;background:var(--paper);border:1px solid var(--line-w);border-radius:14px;padding:16px 18px;color:var(--ink);min-width:0;--pkhp-line:#86869B}
+#home .pkhphead{display:flex;align-items:flex-start;gap:12px;margin:0 0 10px}
+#home .pkhphead h3{font-family:var(--serif);font-weight:600;font-size:20px;margin:0;flex:1;color:var(--ink);overflow-wrap:anywhere}
+#home .pkhphead h3:focus{outline:none}
+#home .pkhpx{flex:none;width:32px;height:32px;border-radius:8px;border:1px solid var(--pkhp-line);background:var(--card-w);color:var(--ink);font-size:20px;line-height:1;cursor:pointer;padding:0}
+#home .pkhp button:focus-visible,#home .pkhp select:focus-visible,#home .pkhp textarea:focus-visible,#home .pkhp input:focus-visible,#home .pkhp a:focus-visible{outline:2px solid var(--accent-w-deep);outline-offset:2px}
+#home .pkhpnote{margin:0 0 10px;font-size:14px;line-height:1.5;color:var(--ink-dim)}
+#home .pkhpnote a,#home .pkhp .note a{color:var(--ink);text-decoration:underline}
+#home .pkhpstep{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);margin:14px 0 6px}
+#home .pkhpq{display:block;margin:0 0 10px}
+#home .pkhpq>span{display:block;font-size:14.5px;font-weight:600;color:var(--ink);margin:0 0 4px}
+#home .pkhpta,#home .pkhpsel,#home .pkhpin{font:inherit;font-size:14px;color:var(--ink);background:var(--card-w);border:1px solid var(--pkhp-line);border-radius:10px;padding:8px 10px;min-height:36px;width:100%;max-width:100%;box-sizing:border-box}
+#home .pkhpta{min-height:72px;resize:vertical;line-height:1.5;display:block}
+#home .pkhpta.pkhpcell{min-height:120px;font-family:"IBM Plex Mono",monospace;font-size:13px}
+#home .pkhpchoices{display:flex;flex-wrap:wrap;gap:6px}
+#home .pkhpchoice{font:inherit;font-size:13.5px;min-height:32px;padding:6px 12px;border-radius:999px;border:1px solid var(--pkhp-line);background:var(--card-w);color:var(--ink);cursor:pointer}
+#home .pkhpchoice[aria-pressed="true"]{background:var(--accent-w-deep);border-color:var(--accent-w-deep);color:#fff}
+#home .pkhpprev{margin:6px 0 0;padding:8px 10px;border-radius:8px;background:var(--card-w);border:1px dashed var(--pkhp-line);font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink-dim);max-height:180px;overflow:auto}
+#home .pkhpprev b{color:var(--ink)}
+#home .pkhpfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+#home .pkhpmsg{font-size:13.5px;color:var(--ink-dim)}
+#home .pkhprow{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:14px;color:var(--ink)}
+#home .pkhprow>span{flex:none;min-width:64px}
+#home .pkhpobj{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:14px;color:var(--ink)}
+#home .pkhpobj>span{flex:1;min-width:0;overflow-wrap:anywhere}
+#home .pkhpobj .pkhpsel{flex:1 1 140px;width:auto}
+#home .pkhpobj .pkhpx{width:28px;height:28px;font-size:16px}
+#home .pkhpdoors{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+#home .pkhpdoor{font:inherit;font-size:14px;min-height:36px;padding:6px 14px;border-radius:10px;border:1px solid var(--accent-w);background:var(--card-w);color:var(--ink);cursor:pointer;font-weight:600;overflow-wrap:anywhere}
+#home .pkhp .plitem{padding:8px 0;border-top:1px solid var(--line-w)}
+#home .pkhp .plstamp{font-size:12.5px;color:var(--ink-dim)}
+#home .pkhp .pltext{margin:4px 0 0;font-size:14.5px;line-height:1.5;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+/* the Look and Snapshot boxes render into the panel with the editor's classes; on this page they take the public palette */
+#home .pkhp .hrow,#home .pkhp .hzone,#home .pkhp .pklookck,#home .pkhp .note{color:var(--ink);font-size:14px}
+#home .pkhp .note{color:var(--ink-dim);font-size:13.5px}
+#home .pkhp .hzone{border-top-color:var(--line-w)}
+#home .pkhp .tbtn,#home .pkhp select,#home .pkhp .newbtn{font-size:14px;color:var(--ink);background:var(--card-w);border:1px solid var(--pkhp-line);min-height:32px;border-radius:10px}
+#home .pkhp .newbtn{border-style:dashed;color:var(--ink)}
+#home .pkhp .pklookprev,#home .pkhp .pksnapprev{background:var(--card-w);border-color:var(--pkhp-line);color:var(--ink)}
+#home .pkhp .pksnapin{color:var(--ink);font-size:14px}
+#home .pkhp .pklookck input,#home .pkhp .pkhshow input{width:18px;height:18px}
+#home .pkhp .chip{font-size:13.5px;min-height:32px;color:var(--ink);background:var(--card-w);border:1px solid var(--pkhp-line);border-radius:999px;padding:6px 12px;cursor:pointer}
 @media (max-width:760px){ #home .pkhomescene{grid-template-columns:1fr} }
 /* the Look (A4, 2026-09-10): a paper doll from docs/catalog/avatar.json, drawn by /avatar.js, beside the portrait and inside the Home scene */
 #profile .pkav{flex:none;width:56px;margin:0 0 0 -4px;align-self:flex-end}
@@ -1495,6 +1538,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
     <section class="pkhomescene" id="pkhomescene" hidden aria-labelledby="pkhomesceneh">
       <div><h2 id="pkhomesceneh">Your Home</h2><div class="pkscene" id="pkhscene"><canvas id="pkhscenecv" tabindex="0" role="img" aria-label="Your persona's Home, drawn as a house in cutaway"></canvas><p class="pkscenelbl" id="pkhscenelbl" role="status" aria-live="polite"></p><p class="pkscenekeys" id="pkhscenekeys"></p></div></div>
       <div class="pkguide" id="pkguide"></div>
+      <div class="pkhp" id="pkhomepanel" hidden role="region" aria-labelledby="pkhptitle"><div class="pkhphead"><h3 id="pkhptitle" tabindex="-1"></h3><button type="button" class="pkhpx" id="pkhpx" aria-label="Close">&times;</button></div><div id="pkhpbody"></div></div>
     </section>
     <div class="hgrid" id="hgrid"></div>
     <div class="hnew">
@@ -2341,21 +2385,21 @@ function pkAvatarCat(){ if(!PK_AVC){ PK_AVC=fetch(location.origin+'/catalog/avat
 function pkAvatarSvg(av,cat,size){ return (window.pkAvatar&&cat&&av&&typeof av==='object')?window.pkAvatar.svg(av,cat,size||64):''; }
 async function pkRenderAvatar(g){ const host=document.getElementById('pkav'); if(!host) return; const gen=(host.__gen=(host.__gen||0)+1); host.hidden=true; host.innerHTML='';
   const av=(g&&g.avatar&&typeof g.avatar==='object')?g.avatar:null; if(!av) return; const cat=await pkAvatarCat(); if(gen!==host.__gen||!cat) return; host.innerHTML=pkAvatarSvg(av,cat,56); host.hidden=false; }
-function pkLookSum(cat){ const sum=document.getElementById('pklooksum'); if(!sum) return; const av=GRID.avatar; if(!av||typeof av!=='object'||!cat||!window.pkAvatar){ sum.textContent=av?'':'not set'; return; }
+function pkLookSum(cat,g,sum){ if(!sum) return; const av=g.avatar; if(!av||typeof av!=='object'||!cat||!window.pkAvatar){ sum.textContent=av?'':'not set'; return; }
   const f=window.pkAvatar.find, n=window.pkAvatar.norm(av,cat); sum.textContent=[f(cat.bodies,n.body),f(cat.hairs,n.hair.style),n.look.onePiece?f(cat.onePieces,n.look.onePiece):f(cat.tops,n.look.top)].filter(Boolean).map(x=>x.label.toLowerCase()).join(' \u00b7 '); }
-async function pkRepaintLook(){ const box=document.getElementById('pklookfields'); if(!box) return; const gen=(box.__gen=(box.__gen||0)+1);
+async function pkRepaintLook(host,g,onChange){ const box=host||document.getElementById('pklookfields'); if(!box) return; g=g||GRID; onChange=onChange||pkRepaintHome; const sum=(box.id==='pklookfields')?document.getElementById('pklooksum'):null; const gen=(box.__gen=(box.__gen||0)+1);
   const cat=await pkAvatarCat(); if(gen!==box.__gen) return; box.innerHTML='';
   if(!cat||!window.pkAvatar){ const p=document.createElement('p'); p.className='note'; p.textContent='The look catalog did not load. Try again in a moment.'; box.appendChild(p); return; }
-  const W=cat.words||{}; const word=k=>String(W[k]||k); const lw=document.getElementById('pklookword'); if(lw) lw.textContent=word('look');
-  if(!GRID.avatar||typeof GRID.avatar!=='object'){ const b=document.createElement('button'); b.type='button'; b.className='newbtn'; b.textContent='Start a '+word('look').toLowerCase(); b.onclick=()=>{ GRID.avatar=window.pkAvatar.defaults(cat); pkRepaintLook(); pkRepaintHome(); }; box.appendChild(b); pkLookSum(cat); return; }
-  const av=GRID.avatar=window.pkAvatar.norm(GRID.avatar,cat);
+  const W=cat.words||{}; const word=k=>String(W[k]||k); const lw=sum?document.getElementById('pklookword'):null; if(lw) lw.textContent=word('look');
+  if(!g.avatar||typeof g.avatar!=='object'){ const b=document.createElement('button'); b.type='button'; b.className='newbtn'; b.textContent='Start a '+word('look').toLowerCase(); b.onclick=()=>{ g.avatar=window.pkAvatar.defaults(cat); pkRepaintLook(box,g,onChange); onChange(); }; box.appendChild(b); pkLookSum(cat,g,sum); return; }
+  const av=g.avatar=window.pkAvatar.norm(g.avatar,cat);
   const head=document.createElement('div'); head.className='pklookhead'; const prev=document.createElement('div'); prev.className='pklookprev'; prev.setAttribute('aria-hidden','true');
-  const rm=document.createElement('button'); rm.type='button'; rm.className='chip'; rm.textContent='Remove the '+word('look').toLowerCase(); rm.onclick=()=>{ delete GRID.avatar; pkRepaintLook(); pkRepaintHome(); }; head.append(prev,rm); box.appendChild(head);
-  const paint=()=>{ prev.innerHTML=pkAvatarSvg(av,cat,56); pkLookSum(cat); };
+  const rm=document.createElement('button'); rm.type='button'; rm.className='chip'; rm.textContent='Remove the '+word('look').toLowerCase(); rm.onclick=()=>{ delete g.avatar; pkRepaintLook(box,g,onChange); onChange(); }; head.append(prev,rm); box.appendChild(head);
+  const paint=()=>{ prev.innerHTML=pkAvatarSvg(av,cat,56); pkLookSum(cat,g,sum); };
   const opt=(sel,v,t,on)=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if(on) o.selected=true; sel.appendChild(o); };
   const row=(label,list,get,set,none)=>{ const r=document.createElement('label'); r.className='hrow'; const sp=document.createElement('span'); sp.className='rn'; sp.textContent=label; const sel=document.createElement('select'); sel.className='tbtn'; if(none) opt(sel,'',none,!get()); list.forEach(x=>opt(sel,x.key,x.label,get()===x.key)); sel.onchange=()=>{ set(sel.value); paint(); }; r.append(sp,sel); box.appendChild(r); };
   const hd=t=>{ const d=document.createElement('div'); d.className='hzone'; const b=document.createElement('strong'); b.textContent=t; d.appendChild(b); box.appendChild(d); };
-  hd(word('body')); row(word('body'),cat.bodies,()=>av.body,v=>{ av.body=v; pkRepaintHome(); }); row('Height',cat.heights,()=>av.height,v=>av.height=v);
+  hd(word('body')); row(word('body'),cat.bodies,()=>av.body,v=>{ av.body=v; onChange(); }); row('Height',cat.heights,()=>av.height,v=>av.height=v);
   hd(word('face')); row(word('face'),cat.faces,()=>av.face,v=>av.face=v); row(word('skin'),cat.skinDepths,()=>av.skin.depth,v=>av.skin.depth=v); row('Undertone',cat.undertones,()=>av.skin.undertone,v=>av.skin.undertone=v); row(word('eyes'),cat.eyes,()=>av.eyes,v=>av.eyes=v);
   hd(word('hair')); row('Style',cat.hairs,()=>av.hair.style,v=>av.hair.style=v); row('Colour',cat.hairColors,()=>av.hair.color,v=>av.hair.color=v); row('Facial hair',cat.facialHairs,()=>av.facialHair,v=>av.facialHair=v);
   hd(word('outfit')); const L=av.look, C=L.colors;
@@ -2375,7 +2419,7 @@ async function pkSceneMount(host,house,o){ if(!host) return null; let cv=host.qu
   const fresh=cv.cloneNode(false); cv.replaceWith(fresh); cv=fresh; // a fresh canvas each mount, so listeners never stack
   const facets=o.facets||{lobby:[],visiting:[],house:[]}; const floorName=i=>PK_ROOM_LABEL[PK_FLOOR_SCOPE[i]]||'';
   const label=h=>{ if(!lbl) return; if(!h){ lbl.textContent=''; return; } let t='';
-    if(h.kind==='obj'){ const oc=cat.byId[h.item.id]; t=String(h.item.ref.label||(oc&&oc.label)||h.item.id).slice(0,40)+' \u00b7 '+floorName(h.item.y)+', column '+(h.item.x+1)+(o.editable?'. Drag it, or use the arrow keys.':''); }
+    if(h.kind==='obj'){ const oc=cat.byId[h.item.id]; t=String(h.item.ref.label||(oc&&oc.label)||h.item.id).slice(0,40)+' \u00b7 '+floorName(h.item.y)+', column '+(h.item.x+1)+(o.editable?'. Drag it, or use the arrow keys.':'')+(o.objOpen?' Enter opens it.':''); }
     else if(h.kind==='door'){ const open=!!(o.linked&&o.linked.has(h.facet)); t=(h.facet==='core'?'The basics':String(h.facet).slice(0,40))+' \u00b7 a door on the '+floorName(h.floor)+(open?'. Enter opens it.':'.'); }
     else if(h.kind==='floor'){ t=floorName(h.floor)+': '+(h.floor===1?'Kindred only. Ask from a persona of your own.':'the owner\u2019s own, and the house guests they name.'); }
     else if(h.kind==='tool'){ t=(o.toolText&&o.toolText[h.id])||''; }
@@ -2384,15 +2428,15 @@ async function pkSceneMount(host,house,o){ if(!host) return null; let cv=host.qu
   if(!sc){ host.hidden=true; return null; } host.hidden=false; host.__scene=sc; return sc; }
 // facets by scope, names only (the scene draws anonymous plaques; the name reaches the reader through textContent above)
 function pkFacetsByScope(list){ const out={lobby:[],visiting:[],house:[]}; (Array.isArray(list)?list:[]).forEach(f=>{ if(!f||typeof f.name!=='string') return; const sc=pkFacetScope(f); if(out[sc]) out[sc].push(f.name); }); ['lobby','visiting','house'].forEach(k=>{ const i=out[k].indexOf('core'); if(i>0){ out[k].splice(i,1); out[k].unshift('core'); } }); return out; }
-function pkSnapText(){ return 'The snapshot chest: bring in an Obsidian note as text. Enter opens the Snapshots box.'; }
-function pkCoreText(){ return 'The core desk: the base questions that make the core identity. Enter opens the core cells.'; }
+function pkSnapText(){ return 'The snapshot chest: bring in an Obsidian note as text. Enter opens it.'; }
+function pkCoreText(){ return 'The core desk: the fourteen base questions that make the core identity. Enter opens them.'; }
 const PK_SNAP_MAX=40000;
-function pkRepaintSnap(){ const box=document.getElementById('pksnapfields'); if(!box) return; box.innerHTML=''; const sum=document.getElementById('pksnapsum'); if(sum) sum.textContent='';
+function pkRepaintSnap(host,g,names,onPlaced){ const box=host||document.getElementById('pksnapfields'); if(!box) return; g=g||GRID; names=names||byName; onPlaced=onPlaced||render; box.innerHTML=''; const sum=(box.id==='pksnapfields')?document.getElementById('pksnapsum'):null; if(sum) sum.textContent='';
   const row=(label,ctl)=>{ const r=document.createElement('label'); r.className='hrow'; const sp=document.createElement('span'); sp.className='rn'; sp.textContent=label; r.append(sp,ctl); box.appendChild(r); return r; };
   const opt=(sel,v,t,on)=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if(on) o.selected=true; sel.appendChild(o); };
   const file=document.createElement('input'); file.type='file'; file.accept='.md,.txt,text/markdown,text/plain'; file.className='pksnapin'; file.setAttribute('aria-label','Choose a snapshot file'); box.appendChild(file);
   const prev=document.createElement('div'); prev.className='pksnapprev'; prev.hidden=true; box.appendChild(prev);
-  const fs=document.createElement('select'); fs.className='tbtn'; GRID.facets.forEach(f=>opt(fs,f.name,f.name==='core'?'The basics':f.name,f.name==='core')); const fr=row('Facet',fs); fr.hidden=true;
+  const fs=document.createElement('select'); fs.className='tbtn'; g.facets.forEach(f=>opt(fs,f.name,f.name==='core'?'The basics':f.name,f.name==='core')); const fr=row('Facet',fs); fr.hidden=true;
   const cs=document.createElement('select'); cs.className='tbtn'; ['CONTEXT','DO','DONT','GATES','VOICE'].forEach(c=>opt(cs,c,cellLabel(c),c==='CONTEXT')); const cr=row('Cell',cs); cr.hidden=true;
   const how=document.createElement('select'); how.className='tbtn'; opt(how,'append','Add to the end of the cell',true); opt(how,'replace','Replace the cell',false); const hr=row('How',how); hr.hidden=true;
   const go=document.createElement('button'); go.type='button'; go.className='newbtn'; go.textContent='Place it (then Save)'; go.hidden=true; box.appendChild(go);
@@ -2403,29 +2447,112 @@ function pkRepaintSnap(){ const box=document.getElementById('pksnapfields'); if(
     const rd=new FileReader(); rd.onload=()=>{ text=String(rd.result||'').replace(/\r\n/g,'\n'); if(text.length>PK_SNAP_MAX){ msg.textContent='That note is '+text.length.toLocaleString()+' characters; the most a snapshot can carry is 40,000. Split it.'; text=''; return; }
       if(!text.trim()){ msg.textContent='That file is empty.'; return; } prev.textContent=text.slice(0,2000)+(text.length>2000?'\n\u2026':''); prev.hidden=false; fr.hidden=cr.hidden=hr.hidden=false; go.hidden=false; msg.textContent=text.length.toLocaleString()+' characters read from '+String(f.name||'the file').slice(0,60)+'. Nothing has been saved yet.'; };
     rd.onerror=()=>{ msg.textContent='Could not read that file.'; }; rd.readAsText(f); };
-  go.onclick=()=>{ if(!text) return; const f=byName[fs.value]; if(!f){ msg.textContent='Pick a facet.'; return; } f.cells=f.cells||{}; const c=cs.value; const old=String(f.cells[c]||'');
+  go.onclick=()=>{ if(!text) return; const f=names[fs.value]; if(!f){ msg.textContent='Pick a facet.'; return; } f.cells=f.cells||{}; const c=cs.value; const old=String(f.cells[c]||'');
     if(how.value!=='replace'&&old.trim()&&old.length+text.length>PK_SNAP_MAX){ msg.textContent='That cell would pass 40,000 characters. Replace it, or pick another cell.'; return; }
-    f.cells[c]=(how.value==='replace'||!old.trim())?text:(old.replace(/\s+$/,'')+'\n\n'+text); render(); if(sum) sum.textContent='placed in '+fs.value+' / '+cellLabel(c); msg.textContent='Placed in '+(fs.value==='core'?'The basics':fs.value)+' / '+cellLabel(c)+'. Press Save to keep it.'; }; }
+    f.cells[c]=(how.value==='replace'||!old.trim())?text:(old.replace(/\s+$/,'')+'\n\n'+text); onPlaced(fs.value); if(sum) sum.textContent='placed in '+fs.value+' / '+cellLabel(c); msg.textContent='Placed in '+(fs.value==='core'?'The basics':fs.value)+' / '+cellLabel(c)+'. Press Save to keep it.'; }; }
 async function pkShelfCounts(id){ try{ const [a,b]=await Promise.all([SB.from('twingrid_actions_public').select('id',{count:'exact',head:true}).eq('grid_id',id), SB.from('twingrid_sparks_public').select('id',{count:'exact',head:true}).eq('grid_id',id)]); if(a.error||b.error) return null; return {posts:a.count||0,sparks:b.count||0}; }catch(_){ return null; } }
 function pkShelfText(c){ if(c===undefined) return 'The shelf: what the persona has made and earned. Counting.'; if(c===null) return 'The shelf: what the persona has made and earned. The counts did not load.'; return 'The shelf: what the persona has made and earned. '+c.posts+(c.posts===1?' post':' posts')+' of its own and '+c.sparks+(c.sparks===1?' Spark':' Sparks')+'.'+(c.posts?' Enter opens Lately.':''); }
 function pkDepthText(list){ const hs=(Array.isArray(list)?list:[]).filter(f=>f&&pkFacetScope(f)==='house'); const cells=hs.reduce((a,f)=>a+Object.keys((f&&f.cells)||{}).length,0); return 'The Workshop hatch: the depth. '+hs.length+(hs.length===1?' facet':' facets')+' and '+cells+(cells===1?' cell':' cells')+' in the '+PK_ROOM_LABEL.house+'.'; }
-// the signed-in Home: the newest persona's house plus the three-step build guide (Dylan, 2026-09-10: the house is where the how-to lives)
-async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'), guide=document.getElementById('pkguide'), keys=document.getElementById('pkhscenekeys'), hd=document.getElementById('pkhomesceneh'); if(!sec||!guide||!hd) return; if(!r){ sec.hidden=true; return; }
-  const d=(r.data&&typeof r.data==='object')?r.data:{}; const h=(d.house&&typeof d.house==='object')?d.house:{}; const z=(h.zones&&typeof h.zones==='object')?h.zones:{};
-  const n=['thinking','resting','memory'].reduce((a,k)=>a+(Array.isArray(z[k])?z[k].length:0),0);
+// ---------- the Home acts in place (v16, 2026-09-11). Every save re-reads the row and replaces only what it owns (the 2026-09-10 review, finding 2):
+// mutate(dd) edits the fresh copy and may return extra columns ({name} or {is_public}) or {error}. ----------
+async function pkhpSave(id,mutate){ const {data:fresh,error:e0}=await SB.from('twingrid_grids').select('data').eq('id',id).maybeSingle(); if(e0||!fresh) return {error:'Could not read the persona back. Try again.'};
+  const dd=Object.assign({facets:[]},(fresh.data&&typeof fresh.data==='object')?fresh.data:{}); if(!Array.isArray(dd.facets)) dd.facets=[]; const cols=mutate(dd)||{}; if(cols.error) return {error:cols.error};
+  const {error}=await SB.from('twingrid_grids').update(Object.assign({data:dd},cols)).eq('id',id); if(error) return {error:'Could not save: '+String(error.message||'').slice(0,80)}; return {data:dd}; }
+function pkhpClose(){ const p=document.getElementById('pkhomepanel'); if(!p||p.hidden) return; p.hidden=true; const body=document.getElementById('pkhpbody'); if(body) body.innerHTML=''; const cv=document.querySelector('#pkhscene canvas'); if(cv){ try{ cv.focus({preventScroll:true}); }catch(_){} } }
+const PK_CORE_HDR=/^# core \/ [A-Z]+\s*/, PK_CORE_PREFIX=/^(I spend my days: |What matters most to me: |How I decide: |Be \w+ with me\.$|Speak in a \w+ tone\.$|Phrases I use: |Humor: )/i;
+function pkhpFilled(core){ return !!(core&&core.cells&&['CONTEXT','DO','DONT','GATES','VOICE'].some(c=>{ const s=String(core.cells[c]||'').replace(PK_CORE_HDR,'').trim(); return s&&s!=='(add your own here)'; })); }
+// the fourteen answers read back out of the core cells nfCompose wrote. ok[c] means the cell is fully explained by answers (or empty), so Save
+// may rebuild it; a cell with the owner's own writing keeps it, and the answers land under it (pkhpWriteBack).
+function pkhpInvert(cells){ const a={}, ok={};
+  const parts=c=>{ let s=String((cells&&cells[c])||'').replace(PK_CORE_HDR,'').trim(); if(s==='(add your own here)') s=''; return s?s.split(/\n\n+/).map(x=>x.trim()).filter(Boolean):[]; };
+  const take=(list,prefix,id)=>{ const i=list.findIndex(x=>x.slice(0,prefix.length).toLowerCase()===prefix.toLowerCase()); if(i<0) return; a[id]=list[i].slice(prefix.length).trim(); list.splice(i,1); };
+  const pick=(list,re,id,opts)=>{ const i=list.findIndex(x=>re.test(x)); if(i<0) return; const m=re.exec(list[i])[1].toLowerCase(); a[id]=opts.find(o=>o.toLowerCase()===m)||''; list.splice(i,1); };
+  const free=(list,ids)=>{ if(list.length>ids.length) return false; ids.forEach((id,i)=>{ if(list[i]) a[id]=list[i]; }); return true; };
+  let p=parts('CONTEXT'); take(p,'I spend my days: ','days'); take(p,'What matters most to me: ','values'); ok.CONTEXT=free(p,['who']);
+  p=parts('DO'); take(p,'How I decide: ','decide'); pick(p,/^Be (\w+) with me\.$/i,'direct',['Gentle','Balanced','Blunt']); ok.DO=free(p,['help']);
+  p=parts('DONT'); ok.DONT=free(p,['never','peeves']);
+  p=parts('VOICE'); pick(p,/^Speak in a (\w+) tone\.$/i,'formality',['Casual','Conversational','Professional','Formal']); take(p,'Phrases I use: ','phrases'); take(p,'Humor: ','humor'); ok.VOICE=free(p,[]);
+  p=parts('GATES'); ok.GATES=free(p,['rule','line']);
+  return {a,ok}; }
+function pkhpWriteBack(cells,ans,ok){ const out=Object.assign({},cells); const made=nfCompose(id=>String(ans[id]||'').trim());
+  Object.keys(made).forEach(c=>{ if(ok[c]){ out[c]=made[c]; return; } const old=String(cells[c]||''); const body=made[c].replace(PK_CORE_HDR,'').trim(); if(!body||body==='(add your own here)') return;
+    const keep=old.replace(PK_CORE_HDR,'').split(/\n\n+/).map(x=>x.trim()).filter(x=>x&&!PK_CORE_PREFIX.test(x)); const hm=old.match(PK_CORE_HDR);
+    out[c]=(hm?hm[0].trim()+'\n\n':'')+keep.concat([body]).join('\n\n'); });
+  return out; }
+// the signed-in Home: the newest persona's house, the build guide, and one panel that acts in place. Nothing here bounces to the Workshop
+// (Dylan's beta test, 2026-09-11). Every save goes through pkhpSave; after a save the section repaints and the same panel reopens.
+async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'), guide=document.getElementById('pkguide'), keys=document.getElementById('pkhscenekeys'), hd=document.getElementById('pkhomesceneh'), panel=document.getElementById('pkhomepanel'), pbody=document.getElementById('pkhpbody'), ptitle=document.getElementById('pkhptitle'); if(!sec||!guide||!hd||!panel||!pbody||!ptitle) return; if(!r){ sec.hidden=true; pkhpClose(); return; }
+  if(panel.dataset.gid!==r.id){ pkhpClose(); panel.dataset.gid=r.id; }
+  const d=(r.data&&typeof r.data==='object')?r.data:(r.data={}); if(!Array.isArray(d.facets)) d.facets=[]; const h=(d.house&&typeof d.house==='object')?d.house:{}; const zones=()=>{ if(!h.zones||typeof h.zones!=='object') h.zones={}; return h.zones; };
+  const count=()=>{ const z=(h.zones&&typeof h.zones==='object')?h.zones:{}; return ['thinking','resting','memory'].reduce((a,k)=>a+(Array.isArray(z[k])?z[k].length:0),0); };
+  const n=count(); const names=d.facets.map(f=>f&&f.name).filter(x=>typeof x==='string'); const byNameL=Object.fromEntries(d.facets.filter(f=>f&&typeof f.name==='string').map(f=>[f.name,f])); const hasLook=!!(d.avatar&&typeof d.avatar==='object'); const answered=pkhpFilled(byNameL.core);
   hd.textContent=String(r.name||'Untitled').slice(0,80)+(n?': the Home':': build the Home');
-  guide.innerHTML=''; const p=document.createElement('p'); p.textContent=n?'This is the room a visitor walks into. Change it in the Workshop.':'Every persona lives in a Home. Three steps and it is standing.'; guide.appendChild(p);
-  const steps=[['Pick a room and a mood',!!h.room,'Studio, library, porch: the room sets the floor and the walls.'],['Put three things in it',n>=3,Math.min(n,3)+' of 3 so far. Each object can open one of your facets.'],['Open the door',!!r.is_public,r.is_public?'Public. Anyone can visit.':'Private until you tick make public in the Workshop.'],['Give it a look',!!(d.avatar&&typeof d.avatar==='object'),(d.avatar&&typeof d.avatar==='object')?'It has a look. Change it in the Workshop.':'Body, face, hair and clothes. Every choice is a preset.']];
-  steps.forEach(([t,done,x],i)=>{ const b=document.createElement('button'); b.type='button'; b.className='pkstep'+(done?' done':''); const num=document.createElement('span'); num.className='pkn'; num.textContent=done?'\u2713':String(i+1);
+  guide.innerHTML=''; const p=document.createElement('p'); p.textContent=n?'This is the house a visitor walks into. Click anything in it to change it right here.':'Every persona lives in a Home. Five steps and it is standing; each one opens right here.'; guide.appendChild(p);
+  let sc=null;
+  const steps=[['Pick a room and a mood',!!h.room,'Studio, library, porch: the room sets the floor and the walls.','house'],['Put three things in it',n>=3,Math.min(n,3)+' of 3 so far. Each object can open one of your facets.','house'],['Answer the questions',answered,answered?'The desk holds the fourteen base questions. Change any answer there.':'Fourteen questions at the desk make the core identity.','desk'],['Give it a look',hasLook,hasLook?'It has a look. Click the figure or the step to change it.':'Body, face, hair and clothes. Every choice is a preset.','look'],['Open the door',!!r.is_public,r.is_public?'Public. Anyone can visit.':'Private until you open it. Needs the 18 or older confirmation.','public']];
+  steps.forEach(([t,done,x,kind],i)=>{ const b=document.createElement('button'); b.type='button'; b.className='pkstep'+(done?' done':''); const num=document.createElement('span'); num.className='pkn'; num.textContent=done?'✓':String(i+1);
     const wrap=document.createElement('span'); const bx=document.createElement('b'); bx.textContent=t; const sp=document.createElement('span'); sp.className='pkx'; sp.textContent=x; wrap.append(bx,sp); b.append(num,wrap);
-    b.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); sessionStorage.setItem('pk_open_home',i===2?'public':i===3?'look':'home'); }catch(_){} location.href='?editor'; }; guide.appendChild(b); });
-  if(keys) keys.textContent=n?'Drag any object to a floor and a column, then save. Keyboard: comma and period pick, arrow keys move.':'';
+    b.onclick=()=>open(kind); guide.appendChild(b); });
+  if(keys) keys.textContent='Click a door, the desk, the chest, the shelf or the hatch and it opens under the house. Drag any object to a floor and a column, then save. Keyboard: comma and period pick, Enter opens, arrow keys move.';
   const shl=document.createElement('label'); shl.className='pkhshow'; const sh=document.createElement('input'); sh.type='checkbox'; sh.checked=h.show===true; shl.append(sh,'Show the drawn house to visitors'); if(n) guide.appendChild(shl);
   const save=document.createElement('button'); save.type='button'; save.className='hbtn solid pkhsave'; save.textContent='Save the layout'; save.hidden=true; const msg=document.createElement('span'); msg.className='hrenmsg'; msg.setAttribute('role','status'); guide.append(save,msg);
-  sh.onchange=()=>{ if(sh.checked) h.show=true; else delete h.show; save.hidden=false; msg.textContent=''; };
-  save.onclick=async()=>{ save.disabled=true; msg.textContent='Saving...'; const {data:fresh,error:e0}=await SB.from('twingrid_grids').select('data').eq('id',r.id).maybeSingle(); if(e0||!fresh){ save.disabled=false; msg.textContent='Could not read the persona back. Try again.'; return; } const dd=Object.assign({facets:[]},(fresh.data&&typeof fresh.data==='object')?fresh.data:{}); dd.house=h; const {error}=await SB.from('twingrid_grids').update({data:dd}).eq('id',r.id); save.disabled=false; if(error){ msg.textContent='Could not save: '+String(error.message||'').slice(0,80); return; } r.data=dd; save.hidden=true; msg.textContent='Saved.'; setTimeout(()=>{ if(msg.textContent==='Saved.') msg.textContent=''; },2000); };
-  const toEditor=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); }catch(_){} location.href='?editor'; };
-  const sc=await pkSceneMount(document.getElementById('pkhscene'),h,{accent:pkThemeFor(d.theme).accent,room:h.room,linked:new Set((d.facets||[]).map(f=>f&&f.name)),avatarData:d.avatar,editable:n>0,lit:[true,true,true],facets:pkFacetsByScope(d.facets),tools:[{floor:2,id:'workshop'},{floor:1,id:'core'},{floor:1,id:'obsidian',side:'left'},{floor:0,id:'shelf'}],toolText:(()=>{ const tt={workshop:pkDepthText(d.facets)+' Enter opens the Workshop.',core:pkCoreText(),obsidian:pkSnapText(),shelf:pkShelfText(undefined)}; pkShelfCounts(r.id).then(c=>{ tt.shelf=pkShelfText(c).replace(' Enter opens Lately.',''); }); return tt; })(),onOpen:hs=>{ if(hs.kind==='tool'){ try{ sessionStorage.setItem('pk_open_home',hs.id==='core'?'core':hs.id==='obsidian'?'snap':'home'); }catch(_){} } if(hs.kind==='tool'||hs.kind==='door') toEditor(); },onChange:()=>{ save.hidden=false; msg.textContent=''; }}); sec.hidden=!sc; }
+  const dirty=()=>{ d.house=h; save.hidden=false; msg.textContent=''; };
+  sh.onchange=()=>{ if(sh.checked) h.show=true; else delete h.show; dirty(); };
+  save.onclick=async()=>{ save.disabled=true; msg.textContent='Saving...'; const res=await pkhpSave(r.id,dd=>{ dd.house=h; }); save.disabled=false; if(res.error){ msg.textContent=res.error; return; } Object.assign(d,res.data); r.data=d; save.hidden=true; msg.textContent='Saved.'; setTimeout(()=>{ if(msg.textContent==='Saved.') msg.textContent=''; },2000); };
+  const CELLS=['CONTEXT','DO','DONT','GATES','VOICE'];
+  const open=(kind,arg)=>{ pbody.innerHTML=''; panel.hidden=false; panel.dataset.kind=kind; panel.__msg=null; const T=t=>{ ptitle.textContent=t; };
+    const note=t=>{ const q=document.createElement('p'); q.className='pkhpnote'; q.textContent=t; pbody.appendChild(q); return q; };
+    const foot=(label,onSave)=>{ const f=document.createElement('div'); f.className='pkhpfoot'; const b=document.createElement('button'); b.type='button'; b.className='hbtn solid'; b.textContent=label; const m=document.createElement('span'); m.className='pkhpmsg'; m.setAttribute('role','status'); f.append(b,m); pbody.appendChild(f); panel.__msg=m;
+      b.onclick=async()=>{ b.disabled=true; m.textContent='Saving...'; const res=await onSave(); b.disabled=false; if(!res||res.error){ m.textContent=(res&&res.error)||'Could not save.'; return; }
+        r.data=res.data; if(res.name!==undefined) r.name=res.name; if(res.is_public!==undefined) r.is_public=res.is_public; await pkHomeScene(r); if(sec.__open) sec.__open(kind,arg,'Saved.'); }; return m; };
+    const facetSave=(name,cells)=>pkhpSave(r.id,dd=>{ const g=dd.facets.find(x=>x&&x.name===name); if(!g) return {error:'That facet is gone from the saved persona. Reload the page.'}; g.cells=Object.assign({},g.cells||{},cells); });
+    if(kind==='door'){ const f=byNameL[arg]; if(!f){ T('That door is not on this persona.'); return; } T((arg==='core'?'The basics':String(arg).slice(0,40))+': its five cells'); note('Plain text, in your own words. Everyone who can see this floor reads these cells.'); f.cells=(f.cells&&typeof f.cells==='object')?f.cells:{}; const tas={};
+      CELLS.forEach(c=>{ const l=document.createElement('label'); l.className='pkhpq'; const s=document.createElement('span'); s.textContent=cellLabel(c)+' ('+c+')'; const ta=document.createElement('textarea'); ta.className='pkhpta pkhpcell'; ta.maxLength=PK_SNAP_MAX; ta.value=String(f.cells[c]||''); tas[c]=ta; l.append(s,ta); pbody.appendChild(l); });
+      foot('Save the cells',()=>{ const v={}; CELLS.forEach(c=>{ v[c]=tas[c].value; }); return facetSave(arg,v); }); }
+    else if(kind==='desk'){ const core=byNameL.core; T('The desk: the questions for this persona'); note(core?'The fourteen questions that make the core identity, filled in from what is there now. Change any answer; the preview under them shows exactly what lands in each cell when you save.':'This persona has no core facet, so the desk has nothing to write into. Open the Workshop to add one.'); if(!core) return;
+      const inv=pkhpInvert(core.cells||{}); const ans=Object.assign({},inv.a); ans.name=String(r.name||''); const prev={};
+      const paint=()=>{ const made=pkhpWriteBack(core.cells||{},ans,inv.ok); CELLS.forEach(c=>{ const pv=prev[c]; if(!pv) return; pv.textContent=''; const b=document.createElement('b'); b.textContent=cellLabel(c)+'\n'; pv.append(b,document.createTextNode(made[c]||'')); }); };
+      QSTEPS.forEach(st=>{ const shd=document.createElement('div'); shd.className='pkhpstep'; shd.textContent=st.title; pbody.appendChild(shd);
+        st.qs.forEach(q=>{ const l=document.createElement(q.type==='choice'?'div':'label'); l.className='pkhpq'; const s=document.createElement('span'); s.textContent=q.q; l.appendChild(s);
+          if(q.type==='choice'){ const row=document.createElement('div'); row.className='pkhpchoices'; row.setAttribute('role','group'); row.setAttribute('aria-label',q.q); q.opts.forEach(o=>{ const b=document.createElement('button'); b.type='button'; b.className='pkhpchoice'; b.textContent=o; b.setAttribute('aria-pressed',String(ans[q.id]===o)); b.onclick=()=>{ ans[q.id]=(ans[q.id]===o)?'':o; row.querySelectorAll('.pkhpchoice').forEach(x=>x.setAttribute('aria-pressed',String(x.textContent===ans[q.id]))); paint(); }; row.appendChild(b); }); l.appendChild(row); }
+          else { const ta=document.createElement(q.id==='name'?'input':'textarea'); if(q.id==='name') ta.type='text'; ta.className=q.id==='name'?'pkhpin':'pkhpta'; ta.placeholder=q.ph||''; ta.value=ans[q.id]||''; ta.maxLength=q.id==='name'?80:600; ta.oninput=()=>{ ans[q.id]=ta.value; paint(); }; l.appendChild(ta); }
+          pbody.appendChild(l); }); });
+      const ph=document.createElement('div'); ph.className='pkhpstep'; ph.textContent='What lands in the cells'; pbody.appendChild(ph);
+      CELLS.forEach(c=>{ if(!inv.ok[c]){ const nt=document.createElement('p'); nt.className='pkhpnote'; nt.textContent=cellLabel(c)+' has your own writing in it. It stays; new answers land under it.'; pbody.appendChild(nt); } const pv=document.createElement('div'); pv.className='pkhpprev'; prev[c]=pv; pbody.appendChild(pv); }); paint();
+      foot('Save the answers',()=>{ const nm=String(ans.name||'').trim().slice(0,80); return pkhpSave(r.id,dd=>{ const g=dd.facets.find(x=>x&&x.name==='core'); if(!g) return {error:'The core facet is gone from the saved persona. Reload the page.'}; g.cells=pkhpWriteBack(g.cells||{},ans,inv.ok); return nm?{name:nm}:{}; }).then(res=>{ if(res.data&&nm) res.name=nm; return res; }); }); }
+    else if(kind==='chest'){ T('The chest: bring in a snapshot'); const q=note('An Obsidian snapshot is one note from your vault, a plain text file ending in .md. Nothing in it runs and nothing is uploaded; the page reads it here in your browser, you pick the facet and the cell it lands in, and Save keeps it. Up to 40,000 characters a file. '); const a=document.createElement('a'); a.href='/templates/snapshot-sample.md'; a.target='_blank'; a.rel='noopener'; a.textContent='See a sample snapshot.'; q.appendChild(a);
+      const host=document.createElement('div'); host.id='pkhpsnap'; pbody.appendChild(host); let placed=''; pkRepaintSnap(host,d,byNameL,fn=>{ placed=fn; });
+      foot('Save the snapshot',()=>{ if(!placed||!byNameL[placed]) return Promise.resolve({error:'Choose a file and place it first.'}); return facetSave(placed,Object.assign({},byNameL[placed].cells||{})); }); }
+    else if(kind==='look'){ T('The look'); note('Body, face, hair and what it wears, drawn on its page and standing in its Home. Every choice is a preset; adaptive and accessibility items are in the main lists and never cost anything.'); const host=document.createElement('div'); host.id='pkhplook'; pbody.appendChild(host);
+      const rel=()=>{ pkAvatarCat().then(cat=>{ if(sc) sc.setAvatar((d.avatar&&typeof d.avatar==='object'&&cat&&window.pkAvatar)?{img:window.pkAvatar.img(pkAvatarSvg(d.avatar,cat,64)),h:64}:null); }); }; pkRepaintLook(host,d,rel);
+      foot('Save the look',()=>pkhpSave(r.id,dd=>{ if(d.avatar&&typeof d.avatar==='object') dd.avatar=d.avatar; else delete dd.avatar; })); }
+    else if(kind==='shelf'){ T('The shelf: lately'); const q=note('Reading the shelf.'); const host=document.createElement('div'); host.id='pkhplately'; const list=document.createElement('div'); host.appendChild(list); pbody.appendChild(host);
+      pkRenderLately(r.id,host,list).then(k=>{ q.textContent=k?(k+(k===1?' public post':' public posts')+', newest first. Anyone can read these on its page.'):'Nothing on the shelf yet. When this persona posts, on its own or with you, the newest three show here and on its page.'; }); }
+    else if(kind==='basement'){ T('The '+PK_ROOM_LABEL.house+': the depth'); const hs=d.facets.filter(f=>f&&typeof f.name==='string'&&pkFacetScope(f)==='house'); note(hs.length?'These facets live on this floor: you, the operators you named and your house guests read them. Open one to write its cells.':'No facet lives on this floor yet. Move one here in the Workshop, under Rooms.');
+      const row=document.createElement('div'); row.className='pkhpdoors'; hs.forEach(f=>{ const b=document.createElement('button'); b.type='button'; b.className='pkhpdoor'; b.textContent=String(f.name).slice(0,40); b.onclick=()=>open('door',f.name); row.appendChild(b); }); pbody.appendChild(row);
+      const w=document.createElement('p'); w.className='pkhpnote'; const a=document.createElement('a'); a.href='?editor'; a.textContent='Open the Workshop'; a.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); }catch(_){} }; w.append('The advanced door: ',a,', every cell and connection on one board.'); pbody.appendChild(w); }
+    else if(kind==='house'){ T(n?'The house: room, mood and objects':'Build the house'); note('Pick the room and the mood, then put things on the floors. Drag them where you like in the picture, then press Save the layout.');
+      pkCatalog().then(cat=>{ if(!cat||panel.dataset.kind!=='house') return; const linked=new Set(names); const redraw=()=>{ if(sc) sc.set(h,linked); };
+        const sel=(label,opts,get,set,none)=>{ const l=document.createElement('label'); l.className='pkhprow'; const s=document.createElement('span'); s.textContent=label; const se=document.createElement('select'); se.className='pkhpsel'; const o0=document.createElement('option'); o0.value=''; o0.textContent=none; se.appendChild(o0); opts.forEach(x=>{ const o=document.createElement('option'); o.value=x.key; o.textContent=x.label; if(get()===x.key) o.selected=true; se.appendChild(o); }); se.onchange=()=>set(se.value); l.append(s,se); return l; };
+        pbody.appendChild(sel('Room',cat.rooms,()=>h.room,v=>{ if(v) h.room=v; else delete h.room; dirty(); redraw(); },'No room yet'));
+        pbody.appendChild(sel('Mood',cat.moods,()=>h.mood,v=>{ if(v) h.mood=v; else delete h.mood; dirty(); },'No mood'));
+        const zw=document.createElement('div'); pbody.appendChild(zw);
+        const paintZones=()=>{ zw.innerHTML=''; PK_HOME_ZONES.forEach(([zk,cap])=>{ const z=(h.zones&&typeof h.zones==='object')?h.zones:{}; const list=Array.isArray(z[zk])?z[zk]:[]; const shd=document.createElement('div'); shd.className='pkhpstep'; shd.textContent=((cat.zones[zk]&&cat.zones[zk].label)||zk)+', '+list.length+' of '+cap; zw.appendChild(shd);
+          list.forEach((it,i)=>{ if(!it||typeof it!=='object') return; const o=cat.byId[it.obj]; const nm=o?o.label:String(it.obj||'object'); const row=document.createElement('div'); row.className='pkhpobj'; const s=document.createElement('span'); s.textContent=it.label?(String(it.label).slice(0,40)+' ('+nm+')'):nm;
+            const fs=document.createElement('select'); fs.className='pkhpsel'; fs.setAttribute('aria-label','Facet '+nm+' opens'); [['','Opens nothing']].concat(names.map(f=>[f,'Opens '+f])).forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if((it.facet||'')===v) o.selected=true; fs.appendChild(o); }); fs.onchange=()=>{ if(fs.value) it.facet=fs.value; else delete it.facet; dirty(); };
+            const x=document.createElement('button'); x.type='button'; x.className='pkhpx'; x.textContent='×'; x.setAttribute('aria-label','Remove '+nm); x.onclick=()=>{ list.splice(i,1); dirty(); redraw(); paintZones(); }; row.append(s,fs,x); zw.appendChild(row); });
+          if(list.length<cap){ const add=document.createElement('select'); add.className='pkhpsel'; add.setAttribute('aria-label','Add an object to '+zk); const o0=document.createElement('option'); o0.value=''; o0.textContent='+ Add an object'; add.appendChild(o0); cat.objects.filter(o=>o.zone===zk).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.label; add.appendChild(op); });
+            add.onchange=()=>{ if(!add.value) return; const zs=zones(); if(!Array.isArray(zs[zk])) zs[zk]=[]; if(zs[zk].length<cap) zs[zk].push({obj:add.value}); dirty(); redraw(); paintZones(); }; zw.appendChild(add); } }); };
+        paintZones(); }); }
+    else if(kind==='public'){ T('Open the door'); note(r.is_public?'This persona is public: anyone can visit its page and talk to it. Untick to take it private.':'Private until you open the door. Public means anyone can visit its page and talk to it, and it needs the 18 or older confirmation on your account.'); const l=document.createElement('label'); l.className='pkhshow'; const ck=document.createElement('input'); ck.type='checkbox'; ck.checked=!!r.is_public; l.append(ck,'Make it public'); pbody.appendChild(l);
+      foot('Save',()=>pkhpSave(r.id,()=>({is_public:ck.checked})).then(res=>{ if(res.error&&/adult_confirmation_required/.test(res.error)) res.error='Publishing needs the 18 or older confirmation. Tick it once in the Workshop, then open the door here.'; if(res.data) res.is_public=ck.checked; return res; })); }
+    const rmo=matchMedia('(prefers-reduced-motion: reduce)').matches; try{ panel.scrollIntoView({block:'nearest',behavior:rmo?'auto':'smooth'}); }catch(_){} try{ ptitle.focus({preventScroll:true}); }catch(_){} };
+  sec.__open=(kind,arg,txt)=>{ open(kind,arg); if(txt&&panel.__msg) panel.__msg.textContent=txt; };
+  const tt={workshop:pkDepthText(d.facets)+' Enter opens the '+PK_ROOM_LABEL.house+'.',core:pkCoreText(),obsidian:pkSnapText(),shelf:pkShelfText(undefined)}; pkShelfCounts(r.id).then(c=>{ tt.shelf=pkShelfText(c); });
+  sc=await pkSceneMount(document.getElementById('pkhscene'),h,{accent:pkThemeFor(d.theme).accent,room:h.room,linked:new Set(names),avatarData:d.avatar,editable:true,objOpen:true,lit:[true,true,true],facets:pkFacetsByScope(d.facets),tools:[{floor:2,id:'workshop'},{floor:1,id:'core'},{floor:1,id:'obsidian',side:'left'},{floor:0,id:'shelf'}],toolText:tt,
+    onOpen:hs=>{ if(hs.kind==='door') open('door',hs.facet); else if(hs.kind==='tool') open(hs.id==='core'?'desk':hs.id==='obsidian'?'chest':hs.id==='shelf'?'shelf':'basement'); else if(hs.kind==='obj'){ const fn=hs.item.ref.facet; if(fn&&byNameL[fn]) open('door',fn); else open('house'); } },onChange:dirty}); sec.hidden=!sc; }
+document.getElementById('pkhpx').onclick=pkhpClose;
+window.addEventListener('keydown',e=>{ if(e.key==='Escape') pkhpClose(); });
 function pkHomeSum(){ const sum=document.getElementById('homesum'); if(!sum) return; const h=pkHouse(false), z=(h.zones&&typeof h.zones==='object')?h.zones:{};
   const n=['thinking','resting','memory'].reduce((a,k)=>a+(Array.isArray(z[k])?z[k].length:0),0);
   sum.textContent=(h.room?h.room+' \u00b7 ':'')+(h.mood?h.mood+' \u00b7 ':'')+n+(n===1?' object':' objects'); }
@@ -3458,7 +3585,7 @@ async function pkRenderHome(g,owner){ const sec=document.getElementById('phouse'
   let showScene=(h.show===true); if(!showScene&&owner){ try{ const {data:{session}}=await SB.auth.getSession(); showScene=!!(session&&session.user&&session.user.id===owner); }catch(_){} } if(gen!==sec.__gen) return;
   if(showScene){ const acc=(getComputedStyle(document.getElementById('profile')).getPropertyValue('--pacc')||'').trim(); const whole=!!g.whole_house, kin=!!g.kindred||whole; const allNames=new Set((g.facets||[]).map(f=>f.name));
     const tt={workshop:pkDepthText(g.facets),shelf:pkShelfText(undefined)}; const tools=[{floor:0,id:'shelf'}]; if(whole) tools.push({floor:2,id:'workshop'});
-    pkSceneMount(scn,h,{accent:PK_HEX_RE.test(acc)?acc:'#5B45E0',room:h.room,linked:allNames,avatarData:g.avatar,lit:[true,kin,whole],facets:pkFacetsByScope(g.facets),tools,toolText:tt,onOpen:hs=>{ if(hs.kind==='door') pkFlashFacet(hs.facet); if(hs.kind==='tool'&&hs.id==='shelf'){ const l=document.getElementById('plately'); if(l&&!l.hidden) l.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); } }}).then(sc=>{ if(sc&&gen===sec.__gen) sec.hidden=false; }); pkShelfCounts(PK_CUR_ID).then(c=>{ tt.shelf=pkShelfText(c); }); }
+    pkSceneMount(scn,h,{accent:PK_HEX_RE.test(acc)?acc:'#5B45E0',room:h.room,linked:allNames,avatarData:g.avatar,lit:[true,kin,whole],facets:pkFacetsByScope(g.facets),tools,toolText:tt,onOpen:hs=>{ if(hs.kind==='door') pkFlashFacet(hs.facet); if(hs.kind==='obj'&&hs.item.ref.facet&&allNames.has(hs.item.ref.facet)) pkFlashFacet(hs.item.ref.facet); if(hs.kind==='tool'&&hs.id==='shelf'){ const l=document.getElementById('plately'); if(l&&!l.hidden) l.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); } }}).then(sc=>{ if(sc&&gen===sec.__gen) sec.hidden=false; }); pkShelfCounts(PK_CUR_ID).then(c=>{ tt.shelf=pkShelfText(c); }); }
   ['thinking','resting','memory'].forEach(zk=>{ const list=Array.isArray(z[zk])?z[zk]:[]; if(!list.length||!cat) return;
     const panel=document.createElement('div'); panel.className='phz'; const h3=document.createElement('h3'); h3.textContent=(cat.zones[zk]&&cat.zones[zk].label)||zk; panel.appendChild(h3);
     const b=document.createElement('p'); b.className='phzb'; b.textContent=(cat.zones[zk]&&cat.zones[zk].blurb)||''; panel.appendChild(b);
@@ -3668,13 +3795,13 @@ function lfProposal(r,open){ const it=document.createElement('div'); it.classNam
     it.appendChild(acts); }
   return it; }
 // Lately (M4): the last three published actions on the persona page, from the public feed view, with their authorship stamps.
-async function pkRenderLately(id){ const sec=document.getElementById('plately'), list=document.getElementById('platelylist'); if(!sec||!list) return; const gen=(sec.__gen=(sec.__gen||0)+1);
-  sec.hidden=true; list.innerHTML=''; if(!id) return;
+async function pkRenderLately(id,secIn,listIn){ const sec=secIn||document.getElementById('plately'), list=listIn||document.getElementById('platelylist'); if(!sec||!list) return 0; const gen=(sec.__gen=(sec.__gen||0)+1);
+  sec.hidden=true; list.innerHTML=''; if(!id) return 0;
   const {data}=await SB.from('twingrid_actions_public').select('id,authorship,body,published_at').eq('grid_id',id).order('published_at',{ascending:false}).limit(3);
-  if(gen!==sec.__gen) return; const rows=data||[]; if(!rows.length) return;
+  if(gen!==sec.__gen) return 0; const rows=data||[]; if(!rows.length) return 0;
   rows.forEach(r=>{ const it=document.createElement('div'); it.className='plitem'; const st=document.createElement('div'); st.className='plstamp'; const b=document.createElement('b'); b.textContent=PK_AUTH_PUBLIC[r.authorship]||LF_AUTH[r.authorship]||String(r.authorship||''); if(r.authorship==='OWNER') it.classList.add('pkhuman');
     st.append(b,document.createTextNode(' \u00b7 '+(r.published_at?new Date(r.published_at).toLocaleDateString():'')+(r.body&&r.body.p2p&&r.body.with_name?(' \u00b7 with '+String(r.body.with_name).slice(0,60)):''))); const p=document.createElement('p'); p.className='pltext'; p.textContent=(r.body&&typeof r.body.text==='string')?r.body.text:''; it.append(st,p); list.appendChild(it); });
-  sec.hidden=false; }
+  sec.hidden=false; return rows.length; }
 
 // ---------- Sparks (M5, 2026-09-07). Visitors leave a reaction, a note, or (only by choice) a conversation through /api/spark;
 // the page reads the public ones off twingrid_sparks_public and the visit total off twingrid_visit_count(). Owner text: textContent. ----------
@@ -4005,16 +4132,17 @@ document.getElementById('nfRvAdjust').onclick=()=>{ nfQi=0; nfShow('nfQuiz'); nf
 
 function nfCell(name,parts){ const body=parts.filter(Boolean).join("\n\n"); return "# core / "+name+"\n\n"+(body||"(add your own here)"); }
 function nfA(id){ return (nfAns[id]||'').trim(); }
+// the five core cells from the fourteen answers; A(id) returns a trimmed answer. The desk panel on the Home inverts this shape (pkhpInvert).
+function nfCompose(A){ const dir=A('direct'), f=A('formality'); return {
+  CONTEXT:nfCell('CONTEXT',[A('who'), A('days')&&('I spend my days: '+A('days')), A('values')&&('What matters most to me: '+A('values'))]),
+  DO:nfCell('DO',[A('help'), A('decide')&&('How I decide: '+A('decide')), dir&&('Be '+dir.toLowerCase()+' with me.')]),
+  DONT:nfCell('DONT',[A('never'), A('peeves')]),
+  VOICE:nfCell('VOICE',[f&&('Speak in a '+f.toLowerCase()+' tone.'), A('phrases')&&('Phrases I use: '+A('phrases')), A('humor')&&('Humor: '+A('humor'))]),
+  GATES:nfCell('GATES',[A('rule'), A('line')]) }; }
 async function nfFinish(){
   const grid=JSON.parse(JSON.stringify(BLANK));
   const core=grid.facets.find(f=>f.name==='core'); if(!core){ closeNewflow(); return; }
-  core.cells.CONTEXT=nfCell('CONTEXT',[nfA('who'), nfA('days')&&('I spend my days: '+nfA('days')), nfA('values')&&('What matters most to me: '+nfA('values'))]);
-  const dir=nfA('direct');
-  core.cells.DO=nfCell('DO',[nfA('help'), nfA('decide')&&('How I decide: '+nfA('decide')), dir&&('Be '+dir.toLowerCase()+' with me.')]);
-  core.cells.DONT=nfCell('DONT',[nfA('never'), nfA('peeves')]);
-  const f=nfA('formality');
-  core.cells.VOICE=nfCell('VOICE',[f&&('Speak in a '+f.toLowerCase()+' tone.'), nfA('phrases')&&('Phrases I use: '+nfA('phrases')), nfA('humor')&&('Humor: '+nfA('humor'))]);
-  core.cells.GATES=nfCell('GATES',[nfA('rule'), nfA('line')]);
+  Object.assign(core.cells,nfCompose(nfA));
   const nm=nfA('name')||'My persona';
   closeNewflow();
   await newClone(grid, nm);

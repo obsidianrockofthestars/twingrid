@@ -100,23 +100,23 @@ function scene(canvas,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRat
   function move(it,x,y){ if(!fits(st.items.filter(function(q){ return q!==it; }),x,y,it.w)) return false; it.x=x; it.y=y; it.ref.x=x; it.ref.y=y; placeAvatar(); draw(); if(opts.onChange) opts.onChange(it); return true; }
   function placeAvatar(){ if(!opts.avatar||opts.avatar.fixed) return; var pref=[3,4,2,5,1,6,0,7]; for(var i=0;i<pref.length;i++) if(fits(st.items,pref[i],0,1)){ opts.avatar.col=pref[i]; return; } opts.avatar.col=3; }
   canvas.addEventListener('pointermove',function(e){ var p=pos(e);
-    if(st.drag){ var it=st.drag.item; var nx=Math.round((p[0]-LEFT)/CW-st.drag.dx), ny=Math.floor((p[1]-TOP)/FH); nx=Math.max(0,Math.min(COLS-it.w,nx)); ny=Math.max(0,Math.min(2,ny)); if(nx!==it.x||ny!==it.y) move(it,nx,ny); return; }
+    if(st.drag){ var it=st.drag.item; var nx=Math.round((p[0]-LEFT)/CW-st.drag.dx), ny=Math.floor((p[1]-TOP)/FH); nx=Math.max(0,Math.min(COLS-it.w,nx)); ny=Math.max(0,Math.min(2,ny)); if(nx!==it.x||ny!==it.y){ st.drag.moved=true; move(it,nx,ny); } return; }
     var h=hit(p[0],p[1]); if(h!==st.hover){ st.hover=h; var hs=st.hots[h]; canvas.style.cursor=hs?(opts.editable&&hs.kind==='obj'?'grab':((hs.kind==='door'&&opts.linked&&opts.linked.has(hs.facet))||hs.kind==='tool'?'pointer':'default')):'default'; draw(); say(h>=0?h:st.sel); } });
   canvas.addEventListener('pointerleave',function(){ if(st.drag) return; st.hover=-1; draw(); say(st.sel); });
   canvas.addEventListener('pointercancel',function(){ st.drag=null; canvas.style.cursor='default'; });
   canvas.addEventListener('pointerdown',function(e){ var p=pos(e), h=hit(p[0],p[1]); st.sel=h; draw(); say(h); try{ canvas.focus({preventScroll:true}); }catch(_){}
     var hs=st.hots[h]; if(hs&&hs.kind==='obj'&&opts.editable){ st.drag={item:hs.item,dx:(p[0]-LEFT)/CW-hs.item.x}; try{ canvas.setPointerCapture(e.pointerId); }catch(_){} canvas.style.cursor='grabbing'; e.preventDefault(); } });
-  canvas.addEventListener('pointerup',function(e){ if(st.drag){ st.drag=null; canvas.style.cursor='grab'; try{ canvas.releasePointerCapture(e.pointerId); }catch(_){} return; }
-    var p=pos(e), h=hit(p[0],p[1]); var hs=st.hots[h]; if(hs&&hs.kind!=='obj'&&hs.kind!=='floor'&&opts.onOpen) opts.onOpen(hs); });
+  canvas.addEventListener('pointerup',function(e){ if(st.drag){ var dg=st.drag; st.drag=null; canvas.style.cursor='grab'; try{ canvas.releasePointerCapture(e.pointerId); }catch(_){} if(!dg.moved&&opts.onOpen&&st.hots[st.sel]) opts.onOpen(st.hots[st.sel]); return; }
+    var p=pos(e), h=hit(p[0],p[1]); var hs=st.hots[h]; if(hs&&hs.kind!=='floor'&&opts.onOpen) opts.onOpen(hs); });
   canvas.addEventListener('keydown',function(e){ var n=st.hots.length; if(!n) return; var k=e.key; var hs=st.hots[st.sel];
     if(opts.editable&&hs&&hs.kind==='obj'&&(k==='ArrowLeft'||k==='ArrowRight'||k==='ArrowUp'||k==='ArrowDown')){ var it=hs.item; var nx=it.x+(k==='ArrowRight'?1:k==='ArrowLeft'?-1:0), ny=it.y+(k==='ArrowDown'?1:k==='ArrowUp'?-1:0);
       nx=Math.max(0,Math.min(COLS-it.w,nx)); ny=Math.max(0,Math.min(2,ny)); move(it,nx,ny); say(st.sel); e.preventDefault(); return; }
     var next=null; if(k==='ArrowRight'||k==='ArrowDown'||k==='.'||k==='PageDown') next=(st.sel+1)%n; else if(k==='ArrowLeft'||k==='ArrowUp'||k===','||k==='PageUp') next=(st.sel-1+n)%n; else if(k==='Home') next=0; else if(k==='End') next=n-1;
     if(next!==null){ st.sel=next; draw(); say(next); e.preventDefault(); return; }
-    if((k==='Enter'||k===' ')&&hs&&hs.kind!=='obj'&&hs.kind!=='floor'&&opts.onOpen){ opts.onOpen(hs); e.preventDefault(); } });
+    if((k==='Enter'||k===' ')&&hs&&hs.kind!=='floor'&&opts.onOpen){ opts.onOpen(hs); e.preventDefault(); } });
   canvas.addEventListener('focus',function(){ if(st.sel<0&&st.hots.length){ st.sel=0; draw(); } say(st.sel); });
   canvas.addEventListener('blur',function(){ say(-1); });
-  function set(house,linked){ st.items=place(house,opts.manifest||{}); if(linked) opts.linked=linked; st.sel=-1; st.hover=-1; placeAvatar(); draw(); }
+  function set(house,linked){ opts.room=(house&&house.room)||'studio'; st.items=place(house,opts.manifest||{}); if(linked) opts.linked=linked; st.sel=-1; st.hover=-1; placeAvatar(); draw(); }
   function setAvatar(a){ opts.avatar=a; placeAvatar(); if(a&&a.img) a.img.addEventListener('load',draw); draw(); }
   set(opts.house,opts.linked); if(opts.avatar&&opts.avatar.img) opts.avatar.img.addEventListener('load',draw);
   return {draw:draw,set:set,setAvatar:setAvatar,state:st,size:[W,H]}; }
