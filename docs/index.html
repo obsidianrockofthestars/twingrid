@@ -202,6 +202,8 @@ button{font-family:inherit}
 #home .pkhpdoors{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
 #home .pkhpdoor.pkhpdone{background:var(--accent-soft);border-color:var(--accent-w-deep)}
 #home .pkhphint{display:block;font-size:12.5px;color:var(--ink-dim);margin:0 0 4px}
+#home .pkagwrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--pkhp-line)}
+#home .pkhpta.pkagta{min-height:96px;font-family:"IBM Plex Mono",monospace;font-size:13px}
 #home .pkhpdoor{font:inherit;font-size:14px;min-height:36px;padding:6px 14px;border-radius:10px;border:1px solid var(--accent-w);background:var(--card-w);color:var(--ink);cursor:pointer;font-weight:600;overflow-wrap:anywhere}
 #home .pkhp .plitem{padding:8px 0;border-top:1px solid var(--line-w)}
 #home .pkhp .plstamp{font-size:12.5px;color:var(--ink-dim)}
@@ -2555,7 +2557,7 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
     const note=t=>{ const q=document.createElement('p'); q.className='pkhpnote'; q.textContent=t; pbody.appendChild(q); return q; };
     const foot=(label,onSave)=>{ const f=document.createElement('div'); f.className='pkhpfoot'; const b=document.createElement('button'); b.type='button'; b.className='hbtn solid'; b.textContent=label; const m=document.createElement('span'); m.className='pkhpmsg'; m.setAttribute('role','status'); f.append(b,m); pbody.appendChild(f); panel.__msg=m;
       b.onclick=async()=>{ b.disabled=true; m.textContent='Saving...'; const res=await onSave(); b.disabled=false; if(!res||res.error){ m.textContent=(res&&res.error)||'Could not save.'; return; }
-        r.data=res.data; if(res.name!==undefined) r.name=res.name; if(res.is_public!==undefined) r.is_public=res.is_public; await pkHomeScene(r); if(sec.__open) sec.__open(kind,arg,'Saved.'); }; return m; };
+        r.data=res.data; if(res.name!==undefined) r.name=res.name; if(res.is_public!==undefined) r.is_public=res.is_public; await pkHomeScene(r); if(sec.__open) sec.__open(kind,arg,(typeof res.msg==='string'&&res.msg)||'Saved.'); }; return m; };
     const facetSave=(name,cells)=>pkhpSave(r.id,dd=>{ const g=dd.facets.find(x=>x&&x.name===name); if(!g) return {error:'That facet is gone from the saved persona. Reload the page.'}; g.cells=Object.assign({},g.cells||{},cells); });
     if(kind==='door'){ const f=byNameL[arg]; if(!f){ T('That door is not on this persona.'); return; } T((arg==='core'?'The basics':String(arg).slice(0,40))+': its five cells'); note('Plain text, in your own words. Everyone who can see this floor reads these cells.'); f.cells=(f.cells&&typeof f.cells==='object')?f.cells:{}; const tas={};
       CELLS.forEach(c=>{ const l=document.createElement('label'); l.className='pkhpq'; const s=document.createElement('span'); s.textContent=cellLabel(c)+' ('+c+')'; const ta=document.createElement('textarea'); ta.className='pkhpta pkhpcell'; ta.maxLength=PK_SNAP_MAX; ta.value=String(f.cells[c]||''); tas[c]=ta; l.append(s,ta); pbody.appendChild(l); });
@@ -2596,8 +2598,16 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
           if(x.type==='choice'&&Array.isArray(x.options)){ const row=document.createElement('div'); row.className='pkhpchoices'; row.setAttribute('role','group'); row.setAttribute('aria-label',String(x.q).slice(0,140)); x.options.slice(0,5).forEach(o=>{ o=String(o).slice(0,140); const b=document.createElement('button'); b.type='button'; b.className='pkhpchoice'; b.textContent=o; b.setAttribute('aria-pressed','false'); b.onclick=()=>{ ans[x.id]=(ans[x.id]===o)?'':o; row.querySelectorAll('.pkhpchoice').forEach(y=>y.setAttribute('aria-pressed',String(y.textContent===ans[x.id]))); paint(x); }; row.appendChild(b); }); l.appendChild(row); }
           else { const ta=document.createElement('textarea'); ta.className='pkhpta'; ta.maxLength=600; ta.oninput=()=>{ ans[x.id]=ta.value; paint(x); }; l.appendChild(ta); }
           const pv=document.createElement('div'); pv.className='pkhpprev'; pv.hidden=true; prevs[x.id]=pv; l.appendChild(pv); pbody.appendChild(l); });
-        foot('Save these answers',()=>{ const got=page.filter(x=>sentence(x)); if(!got.length) return Promise.resolve({error:'Answer at least one, or skip these.'}); return pkhpSave(r.id,dd=>{ const g=dd.facets.find(y=>y&&y.name===st.facet); if(!g) return {error:'That facet is gone from the saved persona. Reload the page.'}; g.cells=Object.assign({},g.cells||{}); const x=(dd.depth&&typeof dd.depth==='object')?dd.depth:{}; const dn=new Set(Array.isArray(x.done)?x.done:[]);
-          for(const y of got){ const nx=pkhpAppend(g.cells[y.cell],sentence(y)); if(nx.length>PK_SNAP_MAX) return {error:cellLabel(y.cell)+' is full at 40,000 characters. Trim it from its door first.'}; g.cells[y.cell]=nx; dn.add(kid(y)); } x.done=[...dn]; x.on=true; dd.depth=x; }); });
+        const commit=got=>pkhpSave(r.id,dd=>{ const g=dd.facets.find(y=>y&&y.name===st.facet); if(!g) return {error:'That facet is gone from the saved persona. Reload the page.'}; g.cells=Object.assign({},g.cells||{}); const x=(dd.depth&&typeof dd.depth==='object')?dd.depth:{}; const dn=new Set(Array.isArray(x.done)?x.done:[]);
+          for(const y of got){ const nx=pkhpAppend(g.cells[y.cell],sentence(y)); if(nx.length>PK_SNAP_MAX) return {error:cellLabel(y.cell)+' is full at 40,000 characters. Trim it from its door first.'}; g.cells[y.cell]=nx; dn.add(kid(y)); } x.done=[...dn]; x.on=true; dd.depth=x; });
+        foot('Save these answers',()=>{ const got=page.filter(x=>sentence(x)); if(!got.length) return Promise.resolve({error:'Answer at least one, or skip these.'}); return commit(got); });
+        // Let my AI answer these (v18): every unanswered question of THIS facet, keyed by id, copied out for the owner's own AI; the reply pasted back lands through commit, the same path as a typed answer. An id outside this facet is ignored, a choice outside its options is dropped and counted.
+        const agq=left.map(x=>({id:x.id,cell:x.cell,type:x.type,q:String(x.q).slice(0,140),opts:(x.type==='choice'&&Array.isArray(x.options))?x.options.slice(0,5).map(o=>String(o).slice(0,140)):undefined}));
+        const ag=document.createElement('div'); ag.className='pkagwrap'; const agh=document.createElement('p'); agh.className='pkhpnote'; agh.textContent='Let my AI answer these. Copy the '+agq.length+' unanswered questions for '+nm(st.facet)+' into an AI that knows you, paste its reply below, and each answer lands the same way as one you typed.'; ag.appendChild(agh);
+        const agf=document.createElement('div'); agf.className='pkhpfoot'; const agc=document.createElement('button'); agc.type='button'; agc.className='hbtn pkagcopy'; agc.textContent='Copy the questions for my AI'; const agm=document.createElement('span'); agm.className='pkhpmsg'; agm.setAttribute('role','status'); agf.append(agc,agm); ag.appendChild(agf);
+        const agl=document.createElement('label'); agl.className='pkhpq'; const ags=document.createElement('span'); ags.textContent='Paste what your AI gave you'; const agt=document.createElement('textarea'); agt.className='pkhpta pkagta'; agt.maxLength=PK_SNAP_MAX; agl.append(ags,agt); ag.appendChild(agl); pbody.appendChild(ag);
+        agc.onclick=()=>{ const t=pkagInterview(nm(st.facet),agq); navigator.clipboard.writeText(t).then(()=>{ agm.textContent='Copied. Paste it into your AI.'; }).catch(()=>{ agm.textContent='Copy failed; the questions are in the box below, copy them from there.'; agt.value=t; }); };
+        foot('Save the pasted answers',()=>{ let m; try{ m=pkagMap(pkagParse(agt.value,new Set(agq.map(q=>q.id))),agq); }catch(e){ return Promise.resolve({error:e.message}); } const skipped=m.dropped?(m.dropped+' skipped for not being one of the choices.'):''; if(!m.got.length) return Promise.resolve({error:('No answers matched these questions. '+skipped).trim()}); m.got.forEach(a=>{ ans[a.id]=a.v; }); const got=agq.filter(x=>sentence(x)); return commit(got).then(res=>{ if(res.data) res.msg=('Saved '+got.length+(got.length===1?' answer. ':' answers. ')+skipped).trim(); return res; }); });
         nav(true); }); }
     else if(kind==='hat'){ const st=(arg&&typeof arg==='object')?arg:{}; if(st.saved){ open('door',st.saved); return; } const pack=PK_HATS.find(x=>x[0]===st.pack); T(pack?('Add a hat: '+pack[1]):'New hat');
       note(pack?'Five cells in the hat\'s own voice, prefilled. Change any of them; once saved they are yours. The floor sets who can see it: Private is yours, Kindred opens to Kindred, Public sits in the visiting room for anyone.':'A hat is a facet your twin wears: a name, a kind, a floor and five cells in your own words. The basement offers five generic questions per cell for it.');
@@ -4079,7 +4089,7 @@ function plForm(pl,mine){ const f=document.createElement('form'); f.className='p
 const nfEl=document.getElementById('newflow');
 const NF_PANELS=['nfChoose','nfQuiz','nfReveal','nfTemplates','nfMcp'];
 function nfShow(id){ NF_PANELS.forEach(p=>{const e=document.getElementById(p); if(e) e.hidden=(p!==id);}); }
-function openChooser(){ nfTwenty=false; nfShow('nfChoose'); nfEl.classList.add('open'); }
+function openChooser(){ nfTwenty=false; nfLoadStart(); nfShow('nfChoose'); nfEl.classList.add('open'); }
 function closeNewflow(){ nfEl.classList.remove('open'); }
 document.getElementById('nfx').onclick=closeNewflow;
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && nfEl.classList.contains('open')) closeNewflow(); });
@@ -4117,7 +4127,10 @@ let nfQi=0; const nfAns={};
 // and one spare, named here so tools/questions_check.mjs can assert they exist. The six land in the core cells through pkhpAppend.
 const PK_START_QS=['core.CONTEXT.01','core.DO.01','core.DONT.02','core.GATES.02','core.VOICE.01','core.CONTEXT.02'];
 let nfTwenty=false, nfExtra=null; const nfSteps=()=>(nfTwenty&&nfExtra)?QSTEPS.concat([nfExtra]):QSTEPS;
-async function nfTwentyStart(){ nfTwenty=true; nfExtra=null; const bank=await pkQuestions(); if(bank){ const byId=Object.fromEntries(bank.map(x=>[x.id,x])); const qs=PK_START_QS.map(id=>byId[id]).filter(Boolean).map(x=>({id:x.id,cell:x.cell,q:x.q,type:x.type,opts:Array.isArray(x.options)?x.options.slice(0,5).map(String):undefined,ph:String(x.hint||'')})); if(qs.length) nfExtra={title:'A little deeper',qs}; } nfEl.classList.add('open'); nfStart(); }
+// the six start questions from the bank, loaded once. The quiz shows them as a sixth step on the twenty path only; the interview and the paste carry them on every path (v18).
+async function nfLoadStart(){ if(nfExtra) return nfExtra; const bank=await pkQuestions(); if(bank){ const byId=Object.fromEntries(bank.map(x=>[x.id,x])); const qs=PK_START_QS.map(id=>byId[id]).filter(Boolean).map(x=>({id:x.id,cell:x.cell,q:x.q,type:x.type,opts:Array.isArray(x.options)?x.options.slice(0,5).map(String):undefined,ph:String(x.hint||'')})); if(qs.length) nfExtra={title:'A little deeper',qs}; } return nfExtra; }
+const nfAllQs=()=>QSTEPS.flatMap(st=>st.qs).concat(nfExtra?nfExtra.qs:[]);
+async function nfTwentyStart(){ nfTwenty=true; await nfLoadStart(); nfEl.classList.add('open'); nfStart(); }
 // "Let your AI build it" without installing anything: the same 14 questions, answered by the user's own AI
 // from what it already remembers about them, returned as JSON keyed by question id, pasted back here.
 function nfInterviewText(){
@@ -4125,14 +4138,14 @@ function nfInterviewText(){
   lines.push("I want you to write a short profile of me for a tool called Personakind, using what you already know about me from our past conversations and your memory of me. Answer the questions below in MY voice, as me, first person, plain language, one to three sentences each. Where you truly do not know, make your best honest guess from what you do know and keep it short; do not invent specifics like names, places or dates.");
   lines.push("");
   lines.push("Reply with ONLY a JSON object, no commentary, using exactly these keys. Inside an answer use single quotes, never double quotes, so the JSON stays valid:");
-  QSTEPS.forEach(st=>{ st.qs.forEach(q=>{ const hint=q.type==='choice'?(' Choose exactly one of: '+q.opts.join(', ')+'.'):''; lines.push('- "'+q.id+'": '+q.q+hint); }); });
+  QSTEPS.forEach(st=>{ st.qs.forEach(q=>lines.push(pkagQLine(q))); }); if(nfExtra){ lines.push(''); lines.push('A little deeper (these land in the persona as sentences, so answer them as me):'); nfExtra.qs.forEach(q=>lines.push(pkagQLine(q))); }
   lines.push("");
-  lines.push('Example shape: {"name":"...", "who":"...", "days":"...", "values":"...", "help":"...", "decide":"...", "direct":"Balanced", "never":"...", "peeves":"...", "formality":"Conversational", "phrases":"...", "humor":"...", "rule":"...", "line":"..."}');
+  lines.push('Example shape: {'+nfAllQs().map(q=>'"'+q.id+'":'+((q.type==='choice'&&Array.isArray(q.opts))?('"'+q.opts[Math.min(1,q.opts.length-1)]+'"'):'"..."')).join(', ')+'}');
   return lines.join("\n");
 }
 function nfLenientParse(txt, known){
   // Find every "key": " position for a known key, take the text up to the next key as its value.
-  const hits=[]; const re=/"([a-z]+)"\s*:\s*"/g; let m;
+  const hits=[]; const re=/"([A-Za-z0-9_.]+)"\s*:\s*"/g; let m;
   while((m=re.exec(txt))){ if(known.has(m[1])) hits.push({k:m[1],start:m.index,valAt:m.index+m[0].length}); }
   if(hits.length<3) return null;
   const out={};
@@ -4141,21 +4154,35 @@ function nfLenientParse(txt, known){
     if(v) out[h.k]=v; });
   return out;
 }
-function nfImportAnswers(raw){
+// The paste path (v18), shared by the chooser's "Let your AI build it" door and the basement's "Let my AI answer these": one parser, one mapper.
+// pkagParse: a { ... } block out of whatever the chat app gave back (curly quotes straightened, real JSON first, the key by key read second).
+function pkagParse(raw, known){
   let txt=String(raw||'').trim(); const a=txt.indexOf('{'), b=txt.lastIndexOf('}'); if(a<0||b<0||b<=a) throw new Error('I could not find a { ... } block in that. Paste the whole reply from your AI.');
-  // Chat apps curl the quotes and AIs put unescaped quotes inside answers (seen 2026-09-02: "phrases":"Done > Perfect." "Money is a shackle." ...),
-  // so straighten the quotes first, try real JSON, and fall back to a key-by-key read over the 14 known keys.
   txt=txt.replace(/[\u201C\u201D\u201E\u201F\u2033]/g,'"').replace(/[\u2018\u2019\u201A\u2032]/g,"'");
-  const known=new Set(); QSTEPS.forEach(st=>st.qs.forEach(q=>known.add(q.id)));
   let obj=null; try{ obj=JSON.parse(txt.slice(a,b+1)); }catch(e){ obj=nfLenientParse(txt.slice(a,b+1), known); }
   if(!obj||typeof obj!=='object'||Array.isArray(obj)) throw new Error('That block is not valid JSON. Ask your AI to "reply with only the JSON object" and paste again.');
-  let n=0; Object.keys(obj).forEach(k=>{ if(!known.has(k)) return; let v=obj[k]; if(v==null) return; v=String(v).trim(); if(!v) return; if(v.length>600) v=v.slice(0,600); nfAns[k]=v; n++; });
-  if(n<3) throw new Error('Only '+n+' of the 14 answers were recognised. Check the keys match the interview.');
-  return n;
+  return obj;
+}
+// pkagMap: only ids in qs land (anything else is ignored, never created); a choice answer must be one of the options or it is dropped and counted; 600 characters an answer.
+function pkagMap(obj, qs){ const got=[]; let dropped=0, ignored=0; const byId={}; qs.forEach(q=>{ byId[q.id]=q; });
+  Object.keys(obj||{}).forEach(k=>{ const q=byId[k]; if(!q){ ignored++; return; } let v=obj[k]; if(v==null) return; v=String(v).trim(); if(!v) return; if(v.length>600) v=v.slice(0,600);
+    if(q.type==='choice'&&Array.isArray(q.opts)){ const hit=q.opts.find(o=>String(o).toLowerCase()===v.toLowerCase()); if(hit===undefined){ dropped++; return; } v=String(hit); }
+    got.push({id:q.id,cell:q.cell,type:q.type,v}); });
+  return {got,dropped,ignored}; }
+function pkagQLine(q){ return '- "'+q.id+'": '+q.q+((q.type==='choice'&&Array.isArray(q.opts))?(' Choose exactly one of: '+q.opts.join(', ')+'.'):''); }
+function pkagInterview(label, qs){ const L=[];
+  L.push('Answer these questions about me for a tool called Personakind, for the part of me called '+label+', using what you already know about me from our past conversations and your memory of me. Answer in MY voice, as me, first person, plain language, one to three sentences each. Where you truly do not know, make your best honest guess from what you do know and keep it short; do not invent specifics like names, places or dates. Leave a question out rather than guess wildly.');
+  L.push(''); L.push('Reply with ONLY a JSON object, no commentary, using exactly these keys. Inside an answer use single quotes, never double quotes, so the JSON stays valid:');
+  qs.forEach(q=>L.push(pkagQLine(q))); return L.join('\n'); }
+function nfImportAnswers(raw){
+  const qs=nfAllQs(); const m=pkagMap(pkagParse(raw,new Set(qs.map(q=>q.id))),qs);
+  m.got.forEach(a=>{ nfAns[a.id]=a.v; });
+  if(m.got.length<3) throw new Error('Only '+m.got.length+' of the '+qs.length+' answers were recognised. Check the keys match the interview.');
+  return m.got.length;
 }
 (function(){
   const cb=document.getElementById('nfCopyInterview'), cm=document.getElementById('nfCopyMsg'), pg=document.getElementById('nfPasteGo'), pm=document.getElementById('nfPasteMsg'), ta=document.getElementById('nfPaste');
-  if(cb) cb.onclick=()=>{ navigator.clipboard.writeText(nfInterviewText()).then(()=>{ cm.textContent='Copied. Paste it into your AI.'; setTimeout(()=>cm.textContent='',2500); }).catch(()=>{ cm.textContent='Copy failed; select the text in the box below instead.'; ta.value=nfInterviewText(); }); };
+  if(cb) cb.onclick=async()=>{ await nfLoadStart(); const t=nfInterviewText(); navigator.clipboard.writeText(t).then(()=>{ cm.textContent='Copied. Paste it into your AI.'; setTimeout(()=>cm.textContent='',2500); }).catch(()=>{ cm.textContent='Copy failed; select the text in the box below instead.'; ta.value=t; }); };
   if(pg) pg.onclick=async()=>{ pm.textContent=''; try{ const n=nfImportAnswers(ta.value); pm.textContent='Got '+n+' answers.'; ta.value=''; pm.textContent=''; nfReveal(); }catch(e){ pm.textContent=e.message; } };
 })();
 function nfStart(){ nfQi=0; nfShow('nfQuiz'); nfRender(); }
@@ -4232,7 +4259,7 @@ async function nfFinish(){
   const core=grid.facets.find(f=>f.name==='core'); if(!core){ closeNewflow(); return; }
   Object.assign(core.cells,nfCompose(nfA));
   const nm=nfA('name')||'My persona';
-  if(nfTwenty){ const done=[]; (nfExtra?nfExtra.qs:[]).forEach(q=>{ const v=nfA(q.id); if(!v) return; const sent=q.type==='choice'?v:(/[.!?]$/.test(v)?v:v+'.'); core.cells[q.cell]=pkhpAppend(core.cells[q.cell],sent); done.push(q.id); }); grid.depth={done}; grid.twin=true; }
+  const done=[]; (nfExtra?nfExtra.qs:[]).forEach(q=>{ const v=nfA(q.id); if(!v) return; const sent=q.type==='choice'?v:(/[.!?]$/.test(v)?v:v+'.'); core.cells[q.cell]=pkhpAppend(core.cells[q.cell],sent); done.push(q.id); }); if(done.length) grid.depth={done}; if(nfTwenty) grid.twin=true;
   closeNewflow();
   await newClone(grid, nm);
   if(nfTwenty){ nfTwenty=false; try{ sessionStorage.setItem('pk_home_open','look'); }catch(_){} if(/route-home/.test(document.body.className)) await renderHome(); }

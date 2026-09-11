@@ -3,8 +3,8 @@
 import fs from 'node:fs';
 const h=fs.readFileSync(new URL('../docs/index.html',import.meta.url),'utf8');
 const cut=(from,to)=>{ const i=h.indexOf(from); const j=h.indexOf(to,i); if(i<0||j<0) throw new Error('anchor missing: '+from.slice(0,40)); return h.slice(i,j+to.length); };
-const src=[cut('function nfCell(name,parts)','(add your own here)"); }'),cut('function nfCompose(A)',"GATES:nfCell('GATES',[A('rule'), A('line')]) }; }"),cut('const PK_CORE_HDR=','/i;'),cut('function pkhpInvert(cells)','return {a,ok}; }'),cut('function pkhpWriteBack(cells,ans,ok)','return out; }'),cut('function pkhpAppend(old,s)','+s; }'),cut('function pkHatName(v,facets)','return {name:v}; }'),cut('function pkHatCells(cells,name)','return out; }')].join('\n');
-const {nfCompose,pkhpInvert,pkhpWriteBack,pkhpAppend,pkHatName,pkHatCells}=new Function(src+'\nreturn {nfCompose,pkhpInvert,pkhpWriteBack,pkhpAppend,pkHatName,pkHatCells};')();
+const src=[cut('function nfCell(name,parts)','(add your own here)"); }'),cut('function nfCompose(A)',"GATES:nfCell('GATES',[A('rule'), A('line')]) }; }"),cut('const PK_CORE_HDR=','/i;'),cut('function pkhpInvert(cells)','return {a,ok}; }'),cut('function pkhpWriteBack(cells,ans,ok)','return out; }'),cut('function pkhpAppend(old,s)','+s; }'),cut('function pkHatName(v,facets)','return {name:v}; }'),cut('function pkHatCells(cells,name)','return out; }'),cut('function nfLenientParse(txt, known)','return out;\n}'),cut('function pkagParse(raw, known)','return obj;\n}'),cut('function pkagMap(obj, qs)','return {got,dropped,ignored}; }'),cut('function pkagQLine(q)',":''); }")].join('\n');
+const {nfCompose,pkhpInvert,pkhpWriteBack,pkhpAppend,pkHatName,pkHatCells,pkagParse,pkagMap,pkagQLine}=new Function(src+'\nreturn {nfCompose,pkhpInvert,pkhpWriteBack,pkhpAppend,pkHatName,pkHatCells,pkagParse,pkagMap,pkagQLine};')();
 let fails=0; const ok=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } };
 const A={who:'A calm designer.',days:'shipping things',values:'honesty, craft',help:'Bottom line first.',decide:'research, then gut',direct:'Blunt',never:'Never flatter me.',peeves:'No jargon.',formality:'Casual',phrases:'Done is better.',humor:'Dry.',rule:'Tell the truth.',line:'Never hurt my people.'};
 const cells=nfCompose(id=>A[id]||''); const inv=pkhpInvert(cells);
@@ -27,4 +27,21 @@ ok(pkHatName('My Coach Hat',[]).name==='my-coach-hat','slug from owner text'); o
 const hc=pkHatCells({DO:'# core / DO\n\nAsk sharp questions.',DONT:'# manager / DONT\n\nNever rescue.'},'coach');
 ok(hc.DO==='# coach / DO\n\nAsk sharp questions.','core header renamed: '+JSON.stringify(hc.DO)); ok(hc.DONT==='# coach / DONT\n\nNever rescue.','blank guidance header renamed'); ok(hc.VOICE==='# coach / VOICE\n\n(add your own here)','empty cell gets the placeholder');
 ok(pkhpAppend(hc.VOICE,'Warm.')==='# coach / VOICE\n\nWarm.','a hat cell appends like any other');
+// the paste mapper (v18): bank ids parse on the lenient path, an unknown id is ignored, a choice outside its options is dropped and counted, case folds to the option, 600 characters an answer
+const QS=[{id:'core.DO.01',cell:'DO',type:'text',q:'How do I like help?'},{id:'core.VOICE.02',cell:'VOICE',type:'choice',q:'How formal?',opts:['Casual','Formal']},{id:'hat.DONT.03',cell:'DONT',type:'text',q:'Never?'}];
+const known=new Set(QS.map(q=>q.id));
+const p1=pkagParse('Sure! Here it is:\n{\u201Ccore.DO.01\u201D: \u201CBottom line first.\u201D, "core.VOICE.02": "casual"}\nHope that helps.',known);
+ok(p1['core.DO.01']==='Bottom line first.'&&p1['core.VOICE.02']==='casual','curly quotes straightened, prose around the block ignored: '+JSON.stringify(p1));
+const p2=pkagParse('{"core.DO.01": "I say "no" a lot.", "core.VOICE.02": "Formal", "hat.DONT.03": "Never flatter."}',known);
+ok(p2['core.DO.01']==='I say "no" a lot.'&&p2['hat.DONT.03']==='Never flatter.','unescaped quotes inside an answer survive the key by key read on dotted ids: '+JSON.stringify(p2));
+let threw=false; try{ pkagParse('no braces here',known); }catch(e){ threw=true; } ok(threw,'no block throws');
+const m1=pkagMap({'core.DO.01':'Bottom line first.','core.VOICE.02':'casual','hat.DONT.03':'','other.DO.01':'stray','core.CONTEXT.09':'x'},QS);
+ok(m1.got.length===2&&m1.got[0].id==='core.DO.01'&&m1.got[0].cell==='DO','only known ids land: '+JSON.stringify(m1.got.map(a=>a.id)));
+ok(m1.got[1].v==='Casual','a choice folds to its option: '+JSON.stringify(m1.got[1]));
+ok(m1.ignored===2,'two unknown ids ignored, not created: '+m1.ignored); ok(m1.dropped===0,'an empty answer is neither landed nor counted');
+const m2=pkagMap({'core.VOICE.02':'Blunt','core.DO.01':'x'.repeat(700)},QS);
+ok(m2.dropped===1&&m2.got.length===1,'a choice outside its options is dropped and counted: '+JSON.stringify([m2.dropped,m2.got.length]));
+ok(m2.got[0].v.length===600,'600 characters an answer');
+ok(pkagQLine(QS[1])==='- "core.VOICE.02": How formal? Choose exactly one of: Casual, Formal.','a choice line names its options');
+ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries no options');
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
