@@ -18,6 +18,7 @@ const fs=require("fs"); const h=fs.readFileSync("docs/index.html","utf8");
 const m=/<script type="module">([\s\S]*?)<\/script>/.exec(h); if(!m){console.error("no module");process.exit(2);}
 fs.writeFileSync("tools/_module.tmp.mjs", m[1]);' || fail=1
 node --check tools/_module.tmp.mjs && echo "node --check OK" || fail=1
+node --check docs/scene.js && node --check docs/avatar.js && echo "classic scripts OK" || fail=1
 rm -f tools/_module.tmp.mjs
 
 step "2. page module: top level under the stubbed DOM"

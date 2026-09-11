@@ -103,6 +103,7 @@ function scene(canvas,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRat
     if(st.drag){ var it=st.drag.item; var nx=Math.round((p[0]-LEFT)/CW-st.drag.dx), ny=Math.floor((p[1]-TOP)/FH); nx=Math.max(0,Math.min(COLS-it.w,nx)); ny=Math.max(0,Math.min(2,ny)); if(nx!==it.x||ny!==it.y) move(it,nx,ny); return; }
     var h=hit(p[0],p[1]); if(h!==st.hover){ st.hover=h; var hs=st.hots[h]; canvas.style.cursor=hs?(opts.editable&&hs.kind==='obj'?'grab':((hs.kind==='door'&&opts.linked&&opts.linked.has(hs.facet))||hs.kind==='tool'?'pointer':'default')):'default'; draw(); say(h>=0?h:st.sel); } });
   canvas.addEventListener('pointerleave',function(){ if(st.drag) return; st.hover=-1; draw(); say(st.sel); });
+  canvas.addEventListener('pointercancel',function(){ st.drag=null; canvas.style.cursor='default'; });
   canvas.addEventListener('pointerdown',function(e){ var p=pos(e), h=hit(p[0],p[1]); st.sel=h; draw(); say(h); try{ canvas.focus({preventScroll:true}); }catch(_){}
     var hs=st.hots[h]; if(hs&&hs.kind==='obj'&&opts.editable){ st.drag={item:hs.item,dx:(p[0]-LEFT)/CW-hs.item.x}; try{ canvas.setPointerCapture(e.pointerId); }catch(_){} canvas.style.cursor='grabbing'; e.preventDefault(); } });
   canvas.addEventListener('pointerup',function(e){ if(st.drag){ st.drag=null; canvas.style.cursor='grab'; try{ canvas.releasePointerCapture(e.pointerId); }catch(_){} return; }
@@ -133,6 +134,7 @@ function street(canvas,houses,opts){ var dpr=Math.max(1,Math.min(3,window.device
     rect(ctx,x+HW/2-13,base-44,26,44,mix(acc,INK,.25),rt.line); ell(ctx,x+HW/2+8,base-22,2,2,PAPER,null);
     if(hs.img&&hs.img.complete&&hs.img.naturalWidth){ var ah=52, aw=ah*2/3; ctx.drawImage(hs.img,x+HW/2-aw/2,base-ah,aw,ah); }
     if(hs.show===false){ ctx.fillStyle='rgba(27,27,34,.35)'; ctx.fillRect(x-6,top-28,HW+12,102); }
+    if(opts&&opts.sel===i){ ctx.strokeStyle=acc; ctx.lineWidth=3; ctx.strokeRect(x-9,top-31,HW+18,base-top+35); ctx.lineWidth=1; }
     hots.push({i:i,bb:[x-6,top-28,x+HW+6,base]}); });
   return {hots:hots,size:[SW,SH],hit:function(px,py){ for(var k=0;k<hots.length;k++){ var b=hots[k].bb; if(px>=b[0]&&px<=b[2]&&py>=b[1]&&py<=b[3]) return k; } return -1; }}; }
 window.pkScene={scene:scene,street:street,place:place,tones:tones,mix:mix,materials:MAT,drawSprite:sprite,drawHouse:drawHouse,floorOf:floorOf,COLS:COLS,FLOOR_KEYS:FLOOR_KEYS};

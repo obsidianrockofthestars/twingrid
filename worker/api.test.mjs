@@ -696,6 +696,15 @@ await check("guardedPrompt port: default compose = core + vibe register, guard p
   eq(p, expected, "prompt");
 });
 
+await check("guardedPrompt caps every cell at 12,000 characters (review finding 1, 2026-09-10: the snapshot import makes bulk text one click)", async () => {
+  const big = "x".repeat(30000);
+  const data = { facets: [{ name: "core", kind: "core", cells: { CONTEXT: big, VOICE: "Short." } }, { name: "vibe", kind: "register", cells: { DO: big } }] };
+  const p = guardedPrompt(data, undefined);
+  eq(p.length < 12000 * 2 + 600, true, "composed prompt bounded (" + p.length + ")");
+  eq(p.includes("x".repeat(12001)), false, "no cell over 12,000");
+  eq(p.includes("Short."), true, "short cells intact");
+});
+
 await check("guardedPrompt port: queue mode with two runs emits RUN headers", async () => {
   const data = { facets: GRID.data.facets.concat([{ name: "critic", kind: "specialist", cells: { DONT: "No flattery." } }]) };
   const p = guardedPrompt(data, { mode: "queue", queue: ["coach", "critic"], sel: { register: "vibe" } });

@@ -145,7 +145,7 @@ button{font-family:inherit}
 .rrow .rn{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rseg{display:flex;gap:4px;flex-shrink:0}
 .rseg .chip{padding:3px 8px}
-/* the Home scene (A3, 2026-09-10): one canvas drawn by /iso.js from catalog keys, never from text; ids and classes carry the pkscene prefix */
+/* the Home scene (A3, 2026-09-10): one canvas drawn by /scene.js from catalog keys, never from text; ids and classes carry the pkscene prefix */
 .pkscene{margin:0 0 10px}
 .pkscene canvas{display:block;width:100%;max-width:560px;height:auto;border-radius:14px;background:transparent;touch-action:none}
 .pkscene canvas:focus-visible{outline:2px solid var(--pacc,var(--accent));outline-offset:3px}
@@ -180,12 +180,12 @@ button{font-family:inherit}
 .pklookprev svg{width:56px;height:84px;display:block}
 .pklookhead{display:flex;gap:10px;align-items:center;margin:4px 0 6px}
 .pklookhead .note{margin:0}
-#lookfields .hrow .rn{min-width:64px}
-#snapfields .hrow .rn{min-width:44px}
+#pklookfields .hrow .rn{min-width:64px}
+#pksnapfields .hrow .rn{min-width:44px}
 .pksnapprev{margin:6px 0;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--line);font-size:12px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto;color:var(--text)}
 .pksnapin{font-size:12.5px;color:var(--text);margin-top:6px;max-width:100%;min-height:24px}
-#snapbox a{color:var(--text);text-decoration:underline}
-#lookfields .hrow select{max-width:100%}
+#pksnapbox a{color:var(--text);text-decoration:underline}
+#pklookfields .hrow select{max-width:100%}
 .pklookck{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);cursor:pointer;min-height:24px;padding:2px 0}
 .pklookck input{width:16px;height:16px;margin:0}
 /* the Home box (M1, 2026-09-07) */
@@ -1393,8 +1393,8 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <label id="adultrow" hidden><input type="checkbox" id="adultok"> I confirm I am 18 or older. Publishing a persona requires it, once per account. Building in private does not.</label>
       <details class="pk-rooms" id="roomsbox"><summary>Rooms: who sits where <span class="note" id="roomsum"></span></summary><p class="note" style="margin:6px 0 4px">Every facet sits on one floor. The Visiting room is Public: strangers, Explore and hosted chat by anyone but you read it. The Home floor is Kindred only: personas yours are Kindred with, by consent. The Basement is Private: you, the operators you named, and your house guests. Move a facet with the buttons. Save to apply.</p><div id="roomlist"></div></details>
       <details class="pk-rooms" id="homebox"><summary>Home <span class="note" id="homesum"></span></summary><p class="note" style="margin:6px 0 4px">The room your persona lives in. Everyone who opens its page sees it. An object can open one of your facets; if that facet is Private or Kindred, strangers see the object and no door. Save to apply.</p><div id="homefields"></div></details>
-      <details class="pk-rooms" id="lookbox"><summary><span id="lookword">Look</span> <span class="note" id="looksum"></span></summary><p class="note" style="margin:6px 0 4px" id="looknote">How your persona looks: body, face, skin, hair, eyes and what it wears. Drawn on its page and standing in its Home. Every choice is a preset; adaptive and accessibility items are in the main lists and never cost anything. Save to apply.</p><div id="lookfields"></div></details>
-      <details class="pk-rooms" id="snapbox"><summary>Snapshots <span class="note" id="snapsum"></span></summary><p class="note" style="margin:6px 0 4px">An Obsidian snapshot is one note from your vault: a plain text file that ends in .md. Nothing in it runs and nothing is uploaded anywhere; the page reads the text here in your browser, you pick the facet and the cell it lands in, and Save keeps it. Up to 40,000 characters a file. <a href="/templates/snapshot-sample.md" target="_blank" rel="noopener">See a sample snapshot</a>.</p><div id="snapfields"></div></details>
+      <details class="pk-rooms" id="pklookbox"><summary><span id="pklookword">Look</span> <span class="note" id="pklooksum"></span></summary><p class="note" style="margin:6px 0 4px" id="pklooknote">How your persona looks: body, face, skin, hair, eyes and what it wears. Drawn on its page and standing in its Home. Every choice is a preset; adaptive and accessibility items are in the main lists and never cost anything. Save to apply.</p><div id="pklookfields"></div></details>
+      <details class="pk-rooms" id="pksnapbox"><summary>Snapshots <span class="note" id="pksnapsum"></span></summary><p class="note" style="margin:6px 0 4px">An Obsidian snapshot is one note from your vault: a plain text file that ends in .md. Nothing in it runs and nothing is uploaded anywhere; the page reads the text here in your browser, you pick the facet and the cell it lands in, and Save keeps it. Up to 40,000 characters a file. <a href="/templates/snapshot-sample.md" target="_blank" rel="noopener">See a sample snapshot</a>.</p><div id="pksnapfields"></div></details>
       <a class="newbtn" href="?life" style="display:block;text-align:center;text-decoration:none;margin-top:8px">Life log and rules</a>
       <div id="facebox"><div id="faceav" aria-hidden="true">P</div><div id="facebtns"><button class="newbtn" type="button" id="faceup">Upload image</button><div class="hclaimrow" style="gap:6px"><select id="facestyle" class="tbtn" aria-label="Image style" style="font-size:12px;padding:6px 8px"><option value="portrait">Painted portrait</option><option value="illustration">Flat illustration</option><option value="pixel">Pixel art</option><option value="watercolor">Watercolor</option></select><button class="newbtn" type="button" id="facegen" title="Costs 15 hosted messages">Create image (15 messages)</button></div><button class="newbtn" type="button" id="faceclear" hidden>Remove image</button></div><input type="file" id="facefile" accept="image/png,image/jpeg,image/webp" hidden></div>
       <div id="facemsg" aria-live="polite"></div>
@@ -2217,7 +2217,7 @@ async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
   if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones(); initOperator(session);
     if(window.__editorBooted) return; window.__editorBooted=true;
     try{ const g=sessionStorage.getItem('pk_open_grid'); if(g){ sessionStorage.removeItem('pk_open_grid'); const b=[...document.querySelectorAll('#clonelist .clone')].find(x=>x.dataset.gid===g); if(b) b.click(); }
-      const oh=sessionStorage.getItem('pk_open_home'); if(oh){ sessionStorage.removeItem('pk_open_home'); setTimeout(()=>{ if(oh==='core'){ if(byName.core) openCell('core','CONTEXT'); return; } const el=document.getElementById(oh==='public'?'ispublic':oh==='look'?'lookbox':oh==='snap'?'snapbox':'homebox'); if(!el) return; if(oh==='home'||oh==='look'||oh==='snap') el.open=true; el.scrollIntoView({block:'center'}); if(oh==='public') el.focus(); },500); }
+      const oh=sessionStorage.getItem('pk_open_home'); if(oh){ sessionStorage.removeItem('pk_open_home'); setTimeout(()=>{ if(oh==='core'){ if(byName.core) openCell('core','CONTEXT'); return; } const el=document.getElementById(oh==='public'?'ispublic':oh==='look'?'pklookbox':oh==='snap'?'pksnapbox':'homebox'); if(!el) return; if(oh==='home'||oh==='look'||oh==='snap') el.open=true; el.scrollIntoView({block:'center'}); if(oh==='public') el.focus(); },500); }
       if(sessionStorage.getItem('pk_open_chat')){ sessionStorage.removeItem('pk_open_chat'); setTimeout(()=>document.getElementById('chatbtn').click(),200); } else { tourMaybe('editor',TOUR_EDITOR,900); } }catch(_){}
     try{ const __p=sessionStorage.getItem('pk_pending_path');
       if(__p){ sessionStorage.removeItem('pk_pending_path');
@@ -2328,7 +2328,7 @@ function pkCatalog(){ if(!PK_CAT){ PK_CAT=fetch(location.origin+'/catalog/object
     .catch(()=>{ PK_CAT=null; return null; }); } return PK_CAT; }
 function pkHouse(create){ if(create&&(!GRID.house||typeof GRID.house!=='object')) GRID.house={}; return (GRID.house&&typeof GRID.house==='object')?GRID.house:{}; }
 function pkHomeIcon(host,o){ host.innerHTML=(o&&typeof o.svg==='string')?o.svg:''; }
-// ---------- the Home scene (A3, 2026-09-10): /iso.js draws docs/catalog/sprites.json part lists on a 2 to 1 grid. The page hands it
+// ---------- the Home scene (A3, 2026-09-10): /scene.js draws docs/catalog/sprites.json part lists as a cutaway house. The page hands it
 // catalog keys and tile integers only; every label the viewer reads comes back through textContent here. ----------
 let PK_SPR=null;
 function pkSprites(){ if(!PK_SPR){ PK_SPR=fetch(location.origin+'/catalog/sprites.json').then(r=>r.ok?r.json():null).catch(()=>null).then(m=>{ if(!m||!Array.isArray(m.sprites)) PK_SPR=null; return m; }); } return PK_SPR; }
@@ -2341,12 +2341,12 @@ function pkAvatarCat(){ if(!PK_AVC){ PK_AVC=fetch(location.origin+'/catalog/avat
 function pkAvatarSvg(av,cat,size){ return (window.pkAvatar&&cat&&av&&typeof av==='object')?window.pkAvatar.svg(av,cat,size||64):''; }
 async function pkRenderAvatar(g){ const host=document.getElementById('pkav'); if(!host) return; const gen=(host.__gen=(host.__gen||0)+1); host.hidden=true; host.innerHTML='';
   const av=(g&&g.avatar&&typeof g.avatar==='object')?g.avatar:null; if(!av) return; const cat=await pkAvatarCat(); if(gen!==host.__gen||!cat) return; host.innerHTML=pkAvatarSvg(av,cat,56); host.hidden=false; }
-function pkLookSum(cat){ const sum=document.getElementById('looksum'); if(!sum) return; const av=GRID.avatar; if(!av||typeof av!=='object'||!cat||!window.pkAvatar){ sum.textContent=av?'':'not set'; return; }
+function pkLookSum(cat){ const sum=document.getElementById('pklooksum'); if(!sum) return; const av=GRID.avatar; if(!av||typeof av!=='object'||!cat||!window.pkAvatar){ sum.textContent=av?'':'not set'; return; }
   const f=window.pkAvatar.find, n=window.pkAvatar.norm(av,cat); sum.textContent=[f(cat.bodies,n.body),f(cat.hairs,n.hair.style),n.look.onePiece?f(cat.onePieces,n.look.onePiece):f(cat.tops,n.look.top)].filter(Boolean).map(x=>x.label.toLowerCase()).join(' \u00b7 '); }
-async function pkRepaintLook(){ const box=document.getElementById('lookfields'); if(!box) return; const gen=(box.__gen=(box.__gen||0)+1);
+async function pkRepaintLook(){ const box=document.getElementById('pklookfields'); if(!box) return; const gen=(box.__gen=(box.__gen||0)+1);
   const cat=await pkAvatarCat(); if(gen!==box.__gen) return; box.innerHTML='';
   if(!cat||!window.pkAvatar){ const p=document.createElement('p'); p.className='note'; p.textContent='The look catalog did not load. Try again in a moment.'; box.appendChild(p); return; }
-  const W=cat.words||{}; const word=k=>String(W[k]||k); const lw=document.getElementById('lookword'); if(lw) lw.textContent=word('look');
+  const W=cat.words||{}; const word=k=>String(W[k]||k); const lw=document.getElementById('pklookword'); if(lw) lw.textContent=word('look');
   if(!GRID.avatar||typeof GRID.avatar!=='object'){ const b=document.createElement('button'); b.type='button'; b.className='newbtn'; b.textContent='Start a '+word('look').toLowerCase(); b.onclick=()=>{ GRID.avatar=window.pkAvatar.defaults(cat); pkRepaintLook(); pkRepaintHome(); }; box.appendChild(b); pkLookSum(cat); return; }
   const av=GRID.avatar=window.pkAvatar.norm(GRID.avatar,cat);
   const head=document.createElement('div'); head.className='pklookhead'; const prev=document.createElement('div'); prev.className='pklookprev'; prev.setAttribute('aria-hidden','true');
@@ -2387,7 +2387,7 @@ function pkFacetsByScope(list){ const out={lobby:[],visiting:[],house:[]}; (Arra
 function pkSnapText(){ return 'The snapshot chest: bring in an Obsidian note as text. Enter opens the Snapshots box.'; }
 function pkCoreText(){ return 'The core desk: the base questions that make the core identity. Enter opens the core cells.'; }
 const PK_SNAP_MAX=40000;
-function pkRepaintSnap(){ const box=document.getElementById('snapfields'); if(!box) return; box.innerHTML=''; const sum=document.getElementById('snapsum'); if(sum) sum.textContent='';
+function pkRepaintSnap(){ const box=document.getElementById('pksnapfields'); if(!box) return; box.innerHTML=''; const sum=document.getElementById('pksnapsum'); if(sum) sum.textContent='';
   const row=(label,ctl)=>{ const r=document.createElement('label'); r.className='hrow'; const sp=document.createElement('span'); sp.className='rn'; sp.textContent=label; r.append(sp,ctl); box.appendChild(r); return r; };
   const opt=(sel,v,t,on)=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if(on) o.selected=true; sel.appendChild(o); };
   const file=document.createElement('input'); file.type='file'; file.accept='.md,.txt,text/markdown,text/plain'; file.className='pksnapin'; file.setAttribute('aria-label','Choose a snapshot file'); box.appendChild(file);
@@ -2404,9 +2404,10 @@ function pkRepaintSnap(){ const box=document.getElementById('snapfields'); if(!b
       if(!text.trim()){ msg.textContent='That file is empty.'; return; } prev.textContent=text.slice(0,2000)+(text.length>2000?'\n\u2026':''); prev.hidden=false; fr.hidden=cr.hidden=hr.hidden=false; go.hidden=false; msg.textContent=text.length.toLocaleString()+' characters read from '+String(f.name||'the file').slice(0,60)+'. Nothing has been saved yet.'; };
     rd.onerror=()=>{ msg.textContent='Could not read that file.'; }; rd.readAsText(f); };
   go.onclick=()=>{ if(!text) return; const f=byName[fs.value]; if(!f){ msg.textContent='Pick a facet.'; return; } f.cells=f.cells||{}; const c=cs.value; const old=String(f.cells[c]||'');
+    if(how.value!=='replace'&&old.trim()&&old.length+text.length>PK_SNAP_MAX){ msg.textContent='That cell would pass 40,000 characters. Replace it, or pick another cell.'; return; }
     f.cells[c]=(how.value==='replace'||!old.trim())?text:(old.replace(/\s+$/,'')+'\n\n'+text); render(); if(sum) sum.textContent='placed in '+fs.value+' / '+cellLabel(c); msg.textContent='Placed in '+(fs.value==='core'?'The basics':fs.value)+' / '+cellLabel(c)+'. Press Save to keep it.'; }; }
-async function pkShelfCounts(id){ try{ const [a,b]=await Promise.all([SB.from('twingrid_actions_public').select('id',{count:'exact',head:true}).eq('grid_id',id), SB.from('twingrid_sparks_public').select('id',{count:'exact',head:true}).eq('grid_id',id)]); return {posts:a.count||0,sparks:b.count||0}; }catch(_){ return {posts:0,sparks:0}; } }
-function pkShelfText(c){ c=c||{posts:0,sparks:0}; return 'The shelf: what the persona has made and earned. '+c.posts+(c.posts===1?' post':' posts')+' of its own and '+c.sparks+(c.sparks===1?' Spark':' Sparks')+'.'+(c.posts?' Enter opens Lately.':''); }
+async function pkShelfCounts(id){ try{ const [a,b]=await Promise.all([SB.from('twingrid_actions_public').select('id',{count:'exact',head:true}).eq('grid_id',id), SB.from('twingrid_sparks_public').select('id',{count:'exact',head:true}).eq('grid_id',id)]); if(a.error||b.error) return null; return {posts:a.count||0,sparks:b.count||0}; }catch(_){ return null; } }
+function pkShelfText(c){ if(c===undefined) return 'The shelf: what the persona has made and earned. Counting.'; if(c===null) return 'The shelf: what the persona has made and earned. The counts did not load.'; return 'The shelf: what the persona has made and earned. '+c.posts+(c.posts===1?' post':' posts')+' of its own and '+c.sparks+(c.sparks===1?' Spark':' Sparks')+'.'+(c.posts?' Enter opens Lately.':''); }
 function pkDepthText(list){ const hs=(Array.isArray(list)?list:[]).filter(f=>f&&pkFacetScope(f)==='house'); const cells=hs.reduce((a,f)=>a+Object.keys((f&&f.cells)||{}).length,0); return 'The Workshop hatch: the depth. '+hs.length+(hs.length===1?' facet':' facets')+' and '+cells+(cells===1?' cell':' cells')+' in the '+PK_ROOM_LABEL.house+'.'; }
 // the signed-in Home: the newest persona's house plus the three-step build guide (Dylan, 2026-09-10: the house is where the how-to lives)
 async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'), guide=document.getElementById('pkguide'), keys=document.getElementById('pkhscenekeys'), hd=document.getElementById('pkhomesceneh'); if(!sec||!guide||!hd) return; if(!r){ sec.hidden=true; return; }
@@ -2422,9 +2423,9 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
   const shl=document.createElement('label'); shl.className='pkhshow'; const sh=document.createElement('input'); sh.type='checkbox'; sh.checked=h.show===true; shl.append(sh,'Show the drawn house to visitors'); if(n) guide.appendChild(shl);
   const save=document.createElement('button'); save.type='button'; save.className='hbtn solid pkhsave'; save.textContent='Save the layout'; save.hidden=true; const msg=document.createElement('span'); msg.className='hrenmsg'; msg.setAttribute('role','status'); guide.append(save,msg);
   sh.onchange=()=>{ if(sh.checked) h.show=true; else delete h.show; save.hidden=false; msg.textContent=''; };
-  save.onclick=async()=>{ save.disabled=true; msg.textContent='Saving...'; const dd=Object.assign({},(d&&d.facets)?d:{facets:[]}); dd.house=h; const {error}=await SB.from('twingrid_grids').update({data:dd}).eq('id',r.id); save.disabled=false; if(error){ msg.textContent='Could not save: '+String(error.message||'').slice(0,80); return; } r.data=dd; save.hidden=true; msg.textContent='Saved.'; setTimeout(()=>{ if(msg.textContent==='Saved.') msg.textContent=''; },2000); };
+  save.onclick=async()=>{ save.disabled=true; msg.textContent='Saving...'; const {data:fresh,error:e0}=await SB.from('twingrid_grids').select('data').eq('id',r.id).maybeSingle(); if(e0||!fresh){ save.disabled=false; msg.textContent='Could not read the persona back. Try again.'; return; } const dd=Object.assign({facets:[]},(fresh.data&&typeof fresh.data==='object')?fresh.data:{}); dd.house=h; const {error}=await SB.from('twingrid_grids').update({data:dd}).eq('id',r.id); save.disabled=false; if(error){ msg.textContent='Could not save: '+String(error.message||'').slice(0,80); return; } r.data=dd; save.hidden=true; msg.textContent='Saved.'; setTimeout(()=>{ if(msg.textContent==='Saved.') msg.textContent=''; },2000); };
   const toEditor=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); }catch(_){} location.href='?editor'; };
-  const sc=await pkSceneMount(document.getElementById('pkhscene'),h,{accent:pkThemeFor(d.theme).accent,room:h.room,linked:new Set((d.facets||[]).map(f=>f&&f.name)),avatarData:d.avatar,editable:n>0,lit:[true,true,true],facets:pkFacetsByScope(d.facets),tools:[{floor:2,id:'workshop'},{floor:1,id:'core'},{floor:1,id:'obsidian',side:'left'},{floor:0,id:'shelf'}],toolText:(()=>{ const tt={workshop:pkDepthText(d.facets)+' Enter opens the Workshop.',core:pkCoreText(),obsidian:pkSnapText(),shelf:pkShelfText(null)}; pkShelfCounts(r.id).then(c=>{ tt.shelf=pkShelfText(c).replace(' Enter opens Lately.',''); }); return tt; })(),onOpen:hs=>{ if(hs.kind==='tool'){ try{ sessionStorage.setItem('pk_open_home',hs.id==='core'?'core':hs.id==='obsidian'?'snap':'home'); }catch(_){} } if(hs.kind==='tool'||hs.kind==='door') toEditor(); },onChange:()=>{ save.hidden=false; msg.textContent=''; }}); sec.hidden=!sc; }
+  const sc=await pkSceneMount(document.getElementById('pkhscene'),h,{accent:pkThemeFor(d.theme).accent,room:h.room,linked:new Set((d.facets||[]).map(f=>f&&f.name)),avatarData:d.avatar,editable:n>0,lit:[true,true,true],facets:pkFacetsByScope(d.facets),tools:[{floor:2,id:'workshop'},{floor:1,id:'core'},{floor:1,id:'obsidian',side:'left'},{floor:0,id:'shelf'}],toolText:(()=>{ const tt={workshop:pkDepthText(d.facets)+' Enter opens the Workshop.',core:pkCoreText(),obsidian:pkSnapText(),shelf:pkShelfText(undefined)}; pkShelfCounts(r.id).then(c=>{ tt.shelf=pkShelfText(c).replace(' Enter opens Lately.',''); }); return tt; })(),onOpen:hs=>{ if(hs.kind==='tool'){ try{ sessionStorage.setItem('pk_open_home',hs.id==='core'?'core':hs.id==='obsidian'?'snap':'home'); }catch(_){} } if(hs.kind==='tool'||hs.kind==='door') toEditor(); },onChange:()=>{ save.hidden=false; msg.textContent=''; }}); sec.hidden=!sc; }
 function pkHomeSum(){ const sum=document.getElementById('homesum'); if(!sum) return; const h=pkHouse(false), z=(h.zones&&typeof h.zones==='object')?h.zones:{};
   const n=['thinking','resting','memory'].reduce((a,k)=>a+(Array.isArray(z[k])?z[k].length:0),0);
   sum.textContent=(h.room?h.room+' \u00b7 ':'')+(h.mood?h.mood+' \u00b7 ':'')+n+(n===1?' object':' objects'); }
@@ -2473,7 +2474,7 @@ async function pkRepaintHome(){ const box=document.getElementById('homefields');
   // the room, drawn: drag an object to a tile (saved as x and y on the object; twingrid_house_valid accepts 0 to 7)
   { const scn=document.createElement('div'); scn.className='pkscene'; const cv=document.createElement('canvas'); cv.tabIndex=0; cv.setAttribute('role','img'); cv.setAttribute('aria-label','Your Home, drawn as a house in cutaway. Drag an object to a floor.');
     const lb=document.createElement('p'); lb.className='pkscenelbl'; lb.setAttribute('role','status'); lb.setAttribute('aria-live','polite'); const ky=document.createElement('p'); ky.className='pkscenekeys'; ky.textContent='Drag an object to a floor and a column. Keyboard: comma and period pick, arrow keys move. Save to keep the layout.';
-    scn.append(cv,lb,ky); box.appendChild(scn); pkSceneMount(scn,h,{accent:pkEditorAccent(),editable:true,room:h.room,avatarData:GRID.avatar,lit:[true,true,true],facets:pkFacetsByScope(GRID.facets),linked:new Set(GRID.facets.map(f=>f.name)),tools:[{floor:2,id:'workshop'},{floor:1,id:'core'},{floor:1,id:'obsidian',side:'left'}],toolText:{workshop:pkDepthText(GRID.facets),core:pkCoreText(),obsidian:pkSnapText()},onOpen:hs=>{ if(hs.kind==='tool'&&hs.id==='core'&&byName.core) openCell('core','CONTEXT'); if(hs.kind==='tool'&&hs.id==='obsidian'){ const b=document.getElementById('snapbox'); if(b){ b.open=true; b.scrollIntoView({block:'center'}); } } if(hs.kind==='door'&&byName[hs.facet]) openCell(hs.facet,'CONTEXT'); },onChange:()=>pkHomeSum()}); }
+    scn.append(cv,lb,ky); box.appendChild(scn); pkSceneMount(scn,h,{accent:pkEditorAccent(),editable:true,room:h.room,avatarData:GRID.avatar,lit:[true,true,true],facets:pkFacetsByScope(GRID.facets),linked:new Set(GRID.facets.map(f=>f.name)),tools:[{floor:2,id:'workshop'},{floor:1,id:'core'},{floor:1,id:'obsidian',side:'left'}],toolText:{workshop:pkDepthText(GRID.facets),core:pkCoreText(),obsidian:pkSnapText()},onOpen:hs=>{ if(hs.kind==='tool'&&hs.id==='core'&&byName.core) openCell('core','CONTEXT'); if(hs.kind==='tool'&&hs.id==='obsidian'){ const b=document.getElementById('pksnapbox'); if(b){ b.open=true; b.scrollIntoView({block:'center'}); } } if(hs.kind==='door'&&byName[hs.facet]) openCell(hs.facet,'CONTEXT'); },onChange:()=>pkHomeSum()}); }
   pkHomeSum(); }
 
 // ---------- state ----------
@@ -3186,12 +3187,16 @@ function syncHideBtn(){
   t.onchange=()=>{ lsSet(PK_HIDEOFF,t.checked); renderExplore(); };
 })();
 // the Lobby as a street (Dylan, 2026-09-10; Jennifer's brief v2): one house front per Kindred persona, its accent, its Look in the doorway
-async function pkStreet(grid,rows){ if(!window.pkScene||!rows.length) return; const wrap=document.createElement('div'); wrap.className='pkstreet'; const cv=document.createElement('canvas'); cv.setAttribute('aria-hidden','true'); wrap.appendChild(cv); grid.appendChild(wrap);
+async function pkStreet(grid,rows){ if(!window.pkScene||!rows.length) return; const wrap=document.createElement('div'); wrap.className='pkstreet'; const cv=document.createElement('canvas'); cv.tabIndex=0; cv.setAttribute('role','img'); cv.setAttribute('aria-label','The Lobby: your Kindred as a street of houses. Arrow keys pick a house, Enter visits.'); wrap.appendChild(cv); grid.appendChild(wrap);
   const note=document.createElement('p'); note.className='pkstreetnote'; note.textContent='The Lobby: your Kindred, one house each. Click a house to visit; the cards below are the same doors.'; grid.appendChild(note);
   const acat=rows.some(r=>r.data&&r.data.avatar)?await pkAvatarCat():null;
   const houses=rows.map(r=>{ const d=(r.data&&typeof r.data==='object')?r.data:{}; const h={accent:pkThemeFor(d.theme).accent,show:!!(d.house&&d.house.show===true)}; if(d.avatar&&acat&&window.pkAvatar) h.img=window.pkAvatar.img(pkAvatarSvg(d.avatar,acat,64)); return h; });
-  const draw=()=>window.pkScene.street(cv,houses,{minWidth:wrap.clientWidth}); let st=draw(); houses.forEach(h=>{ if(h.img) h.img.addEventListener('load',()=>{ st=draw(); }); });
-  cv.addEventListener('click',e=>{ const rc=cv.getBoundingClientRect(); const px=(e.clientX-rc.left)*st.size[0]/rc.width, py=(e.clientY-rc.top)*st.size[1]/rc.height; const k=st.hit(px,py); if(k>=0&&rows[k]) location.href='?t='+encodeURIComponent(rows[k].id); }); }
+  let sel=-1; const draw=()=>window.pkScene.street(cv,houses,{minWidth:wrap.clientWidth,sel}); let st=draw(); houses.forEach(h=>{ if(h.img) h.img.addEventListener('load',()=>{ st=draw(); }); });
+  const visit=k=>{ if(k>=0&&rows[k]) location.href='?t='+encodeURIComponent(rows[k].id); };
+  const say=()=>{ note.textContent=sel>=0?('House '+(sel+1)+' of '+rows.length+': '+String(rows[sel].name||'Untitled persona').slice(0,60)+'. Enter visits.'):'The Lobby: your Kindred, one house each. Click a house to visit; the cards below are the same doors.'; };
+  cv.addEventListener('click',e=>{ const rc=cv.getBoundingClientRect(); const px=(e.clientX-rc.left)*st.size[0]/rc.width, py=(e.clientY-rc.top)*st.size[1]/rc.height; visit(st.hit(px,py)); });
+  cv.addEventListener('keydown',e=>{ const n=rows.length; if(!n) return; if(e.key==='ArrowRight'||e.key==='ArrowDown'){ sel=(sel+1)%n; } else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ sel=(sel-1+n)%n; } else if(e.key==='Home'){ sel=0; } else if(e.key==='End'){ sel=n-1; } else if((e.key==='Enter'||e.key===' ')&&sel>=0){ visit(sel); e.preventDefault(); return; } else return; e.preventDefault(); st=draw(); say(); });
+  cv.addEventListener('focus',()=>{ if(sel<0){ sel=0; st=draw(); } say(); }); cv.addEventListener('blur',()=>{ sel=-1; st=draw(); say(); }); }
 async function renderExplore(){
   const grid=document.getElementById('exgrid'), foot=document.getElementById('exfoot');
   document.title='Explore \u00b7 Personakind';
@@ -3452,7 +3457,7 @@ async function pkRenderHome(g,owner){ const sec=document.getElementById('phouse'
   let any=false;
   let showScene=(h.show===true); if(!showScene&&owner){ try{ const {data:{session}}=await SB.auth.getSession(); showScene=!!(session&&session.user&&session.user.id===owner); }catch(_){} } if(gen!==sec.__gen) return;
   if(showScene){ const acc=(getComputedStyle(document.getElementById('profile')).getPropertyValue('--pacc')||'').trim(); const whole=!!g.whole_house, kin=!!g.kindred||whole; const allNames=new Set((g.facets||[]).map(f=>f.name));
-    const tt={workshop:pkDepthText(g.facets),shelf:pkShelfText(null)}; const tools=[{floor:0,id:'shelf'}]; if(whole) tools.push({floor:2,id:'workshop'});
+    const tt={workshop:pkDepthText(g.facets),shelf:pkShelfText(undefined)}; const tools=[{floor:0,id:'shelf'}]; if(whole) tools.push({floor:2,id:'workshop'});
     pkSceneMount(scn,h,{accent:PK_HEX_RE.test(acc)?acc:'#5B45E0',room:h.room,linked:allNames,avatarData:g.avatar,lit:[true,kin,whole],facets:pkFacetsByScope(g.facets),tools,toolText:tt,onOpen:hs=>{ if(hs.kind==='door') pkFlashFacet(hs.facet); if(hs.kind==='tool'&&hs.id==='shelf'){ const l=document.getElementById('plately'); if(l&&!l.hidden) l.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); } }}).then(sc=>{ if(sc&&gen===sec.__gen) sec.hidden=false; }); pkShelfCounts(PK_CUR_ID).then(c=>{ tt.shelf=pkShelfText(c); }); }
   ['thinking','resting','memory'].forEach(zk=>{ const list=Array.isArray(z[zk])?z[zk]:[]; if(!list.length||!cat) return;
     const panel=document.createElement('div'); panel.className='phz'; const h3=document.createElement('h3'); h3.textContent=(cat.zones[zk]&&cat.zones[zk].label)||zk; panel.appendChild(h3);
