@@ -1,0 +1,22 @@
+// Local harness for the signed-in Home and the persona page (v17). Writes docs/_harness.html: the real page with the Supabase client
+// swapped for an in-memory stub holding sample grids in the live data shape, and a fake session. Serve docs/ and open /_harness.html
+// (the Home) or /_harness.html?t=g1 (the persona page). Never committed: docs/_harness.html is gitignored. No network write can happen.
+import fs from 'node:fs';
+const root=new URL('../',import.meta.url); const rd=p=>fs.readFileSync(new URL(p,root),'utf8');
+let h=rd('docs/index.html');
+const tpl=k=>JSON.parse(rd('docs/templates/'+k+'.json'));
+const mk=(id,name,k,theme,extra)=>Object.assign({id,name,owner:'u1',is_public:true,updated_at:'2026-09-11T14:00:00Z',image_url:null,voice_id:null,data:Object.assign({facets:tpl(k).facets,theme},extra||{})},{});
+const twinFlag=process.argv.includes('--twin')?{twin:true}:{};
+const grids=[mk('g1','Me','coach','nebula',Object.assign({house:{room:'studio',mood:'calm',zones:{thinking:[{obj:'desk-lamp',x:3,y:1,facet:'manager'}],resting:[],memory:[]}}},twinFlag)),mk('g2','My Shop','support','light:#2F7D6E'),mk('g3','Alrat','character','coral')];
+if(process.argv.includes('--empty')) grids.length=0;
+const stub=`const __H={grids:${JSON.stringify(grids)}};
+function __q(table){ const st={table,op:'select',filters:{}}; const b={}; ['select','eq','neq','in','is','order','limit','gte','lte','or','maybeSingle','single','insert','update','delete','upsert'].forEach(m=>{ b[m]=(...a)=>{ if(['update','insert','delete','upsert'].includes(m)){ st.op=m; st.payload=a[0]; } if(m==='eq') st.filters[a[0]]=a[1]; if(m==='maybeSingle'||m==='single') st.one=true; if(m==='select'&&a[1]&&a[1].head) st.head=true; return b; }; }); b.then=(res,rej)=>Promise.resolve().then(()=>__resolve(st)).then(res,rej); return b; }
+function __resolve(st){ const T=st.table; if(T==='twingrid_grids'||T==='twingrid_grids_public'){ if(st.op==='update'){ const g=__H.grids.find(x=>x.id===st.filters.id); if(g){ Object.assign(g,JSON.parse(JSON.stringify(st.payload))); } return {data:st.one?g:null,error:null}; } if(st.op==='insert'){ const g=Object.assign({id:'g'+(__H.grids.length+1),is_public:false,updated_at:new Date().toISOString(),image_url:null,voice_id:null},JSON.parse(JSON.stringify(st.payload))); __H.grids.push(g); return {data:st.one?g:[g],error:null}; } const rows=__H.grids.filter(g=>Object.keys(st.filters).every(k=>g[k]===st.filters[k])); if(st.one) return {data:rows[0]?JSON.parse(JSON.stringify(rows[0])):null,error:null}; return {data:JSON.parse(JSON.stringify(rows)),error:null}; }
+  if(st.head) return {count:0,error:null}; if(T==='twingrid_accounts') return {data:st.one?{handle:'tester',adult_confirmed_at:null,avatar_theme:null}:[],error:null}; return {data:st.one?null:[],error:null}; }
+const __S={user:{id:'u1',email:'tester@example.com'}};
+const SB={from:__q, rpc:()=>Promise.resolve({data:[],error:null}), storage:{from:()=>({upload:()=>Promise.resolve({error:{message:'harness'}}),remove:()=>Promise.resolve({})})}, auth:{getSession:()=>Promise.resolve({data:{session:__S}}), getUser:()=>Promise.resolve({data:{user:__S.user}}), onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}), signOut:()=>Promise.resolve({}), updateUser:()=>Promise.resolve({}), signInWithOtp:()=>Promise.resolve({}), signInWithPassword:()=>Promise.resolve({}) }};
+window.__H=__H;`;
+const a='const SB = createClient("https://jpepcqazscmhakxvutpg.supabase.co","sb_publishable_OJGmKJoI67e4I5Z_cib8yA_n7y5kjz2");';
+if(!h.includes(a)) throw new Error('SB anchor missing');
+h=h.replace(a,stub).replace("import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.115.0';","");
+fs.writeFileSync(new URL('docs/_harness.html',root),h); console.log('wrote docs/_harness.html with '+grids.length+' grids'+(twinFlag.twin?' (g1 is the twin)':''));

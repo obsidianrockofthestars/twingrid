@@ -7719,5 +7719,242 @@
 "type": "text",
 "hint": "A phrase you tack on at the end almost every time.",
 "weight": 1
+},
+{
+"id": "hat.CONTEXT.01",
+"facet": "hat",
+"cell": "CONTEXT",
+"q": "When you put this hat on, what job is it there to do?",
+"type": "text",
+"hint": "One sentence, the reason this hat exists.",
+"weight": 3
+},
+{
+"id": "hat.CONTEXT.02",
+"facet": "hat",
+"cell": "CONTEXT",
+"q": "Who is the person this hat is usually helping, and what do they need most from you?",
+"type": "text",
+"hint": "The reader on the other side, in a line.",
+"weight": 2
+},
+{
+"id": "hat.CONTEXT.03",
+"facet": "hat",
+"cell": "CONTEXT",
+"q": "What do you know in this hat that you do not know without it?",
+"type": "text",
+"hint": "The knowledge or skill the hat carries.",
+"weight": 2
+},
+{
+"id": "hat.CONTEXT.04",
+"facet": "hat",
+"cell": "CONTEXT",
+"q": "What situation makes you reach for this hat instead of another one?",
+"type": "text",
+"hint": "The trigger that puts it on.",
+"weight": 2
+},
+{
+"id": "hat.CONTEXT.05",
+"facet": "hat",
+"cell": "CONTEXT",
+"q": "Which sentence is closest to how you see your work in this hat?",
+"type": "choice",
+"hint": "Pick the truest, not the nicest.",
+"weight": 2,
+"options": [
+"A craft I keep sharpening.",
+"A duty I take seriously.",
+"A game I like winning.",
+"A service I give gladly."
+]
+},
+{
+"id": "hat.DO.01",
+"facet": "hat",
+"cell": "DO",
+"q": "What is the first thing you do when this hat goes on?",
+"type": "text",
+"hint": "The opening move, every time.",
+"weight": 3
+},
+{
+"id": "hat.DO.02",
+"facet": "hat",
+"cell": "DO",
+"q": "What does your best work look like in this hat, in one sentence?",
+"type": "text",
+"hint": "The bar you hold yourself to.",
+"weight": 2
+},
+{
+"id": "hat.DO.03",
+"facet": "hat",
+"cell": "DO",
+"q": "What do you always check before you give an answer in this hat?",
+"type": "text",
+"hint": "A fact, a source, a feeling, a number.",
+"weight": 2
+},
+{
+"id": "hat.DO.04",
+"facet": "hat",
+"cell": "DO",
+"q": "How do you like to open a conversation when you are wearing it?",
+"type": "text",
+"hint": "The first line out of your mouth.",
+"weight": 2
+},
+{
+"id": "hat.DO.05",
+"facet": "hat",
+"cell": "DO",
+"q": "When you are stuck in this hat, what do you do next?",
+"type": "text",
+"hint": "The way out of the corner.",
+"weight": 2
+},
+{
+"id": "hat.DONT.01",
+"facet": "hat",
+"cell": "DONT",
+"q": "What should this hat never do for you, even when asked nicely?",
+"type": "text",
+"hint": "A hard never, in your words.",
+"weight": 3
+},
+{
+"id": "hat.DONT.02",
+"facet": "hat",
+"cell": "DONT",
+"q": "What do people expect from this hat that you refuse to give them?",
+"type": "text",
+"hint": "The thing you push back on.",
+"weight": 2
+},
+{
+"id": "hat.DONT.03",
+"facet": "hat",
+"cell": "DONT",
+"q": "What is the shortcut in this work that you will not take?",
+"type": "text",
+"hint": "The corner you refuse to cut.",
+"weight": 2
+},
+{
+"id": "hat.DONT.04",
+"facet": "hat",
+"cell": "DONT",
+"q": "When should you take this hat off and say it is not the right one for the job?",
+"type": "text",
+"hint": "The moment to hand it back.",
+"weight": 2
+},
+{
+"id": "hat.DONT.05",
+"facet": "hat",
+"cell": "DONT",
+"q": "What would embarrass you if this hat did it in your name?",
+"type": "text",
+"hint": "The worst version of it.",
+"weight": 2
+},
+{
+"id": "hat.GATES.01",
+"facet": "hat",
+"cell": "GATES",
+"q": "What has to be true before you give any advice in this hat?",
+"type": "text",
+"hint": "The condition it checks first.",
+"weight": 3
+},
+{
+"id": "hat.GATES.02",
+"facet": "hat",
+"cell": "GATES",
+"q": "What question do you ask before anything else when you wear it?",
+"type": "text",
+"hint": "The one you never skip.",
+"weight": 2
+},
+{
+"id": "hat.GATES.03",
+"facet": "hat",
+"cell": "GATES",
+"q": "When does this hat stop and hand the decision back to you?",
+"type": "text",
+"hint": "Where its authority ends.",
+"weight": 2
+},
+{
+"id": "hat.GATES.04",
+"facet": "hat",
+"cell": "GATES",
+"q": "Who should you never speak for while wearing this hat, and why?",
+"type": "text",
+"hint": "A line around other people.",
+"weight": 2
+},
+{
+"id": "hat.GATES.05",
+"facet": "hat",
+"cell": "GATES",
+"q": "What is the line you hold in this hat no matter who is asking?",
+"type": "text",
+"hint": "The rule that survives pressure.",
+"weight": 2
+},
+{
+"id": "hat.VOICE.01",
+"facet": "hat",
+"cell": "VOICE",
+"q": "How does your tone change when this hat is on?",
+"type": "text",
+"hint": "Warmer, sharper, slower, plainer.",
+"weight": 3
+},
+{
+"id": "hat.VOICE.02",
+"facet": "hat",
+"cell": "VOICE",
+"q": "Which words or phrases show up more when you wear it?",
+"type": "text",
+"hint": "The vocabulary of the hat.",
+"weight": 2
+},
+{
+"id": "hat.VOICE.03",
+"facet": "hat",
+"cell": "VOICE",
+"q": "Which sentence sounds most like you in this hat?",
+"type": "choice",
+"hint": "Pick the one you would actually say.",
+"weight": 2,
+"options": [
+"Short and to the point.",
+"Warm and a little playful.",
+"Careful, every claim backed up.",
+"Bold, and happy to be argued with."
+]
+},
+{
+"id": "hat.VOICE.04",
+"facet": "hat",
+"cell": "VOICE",
+"q": "How much do you explain your reasoning when you are wearing it?",
+"type": "text",
+"hint": "All of it, the gist, or just the call.",
+"weight": 2
+},
+{
+"id": "hat.VOICE.05",
+"facet": "hat",
+"cell": "VOICE",
+"q": "What does this hat sound like when it disagrees with you?",
+"type": "text",
+"hint": "The tone of its pushback.",
+"weight": 2
 }
 ]

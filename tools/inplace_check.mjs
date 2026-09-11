@@ -3,8 +3,8 @@
 import fs from 'node:fs';
 const h=fs.readFileSync(new URL('../docs/index.html',import.meta.url),'utf8');
 const cut=(from,to)=>{ const i=h.indexOf(from); const j=h.indexOf(to,i); if(i<0||j<0) throw new Error('anchor missing: '+from.slice(0,40)); return h.slice(i,j+to.length); };
-const src=[cut('function nfCell(name,parts)','(add your own here)"); }'),cut('function nfCompose(A)',"GATES:nfCell('GATES',[A('rule'), A('line')]) }; }"),cut('const PK_CORE_HDR=','/i;'),cut('function pkhpInvert(cells)','return {a,ok}; }'),cut('function pkhpWriteBack(cells,ans,ok)','return out; }'),cut('function pkhpAppend(old,s)','+s; }')].join('\n');
-const {nfCompose,pkhpInvert,pkhpWriteBack,pkhpAppend}=new Function(src+'\nreturn {nfCompose,pkhpInvert,pkhpWriteBack,pkhpAppend};')();
+const src=[cut('function nfCell(name,parts)','(add your own here)"); }'),cut('function nfCompose(A)',"GATES:nfCell('GATES',[A('rule'), A('line')]) }; }"),cut('const PK_CORE_HDR=','/i;'),cut('function pkhpInvert(cells)','return {a,ok}; }'),cut('function pkhpWriteBack(cells,ans,ok)','return out; }'),cut('function pkhpAppend(old,s)','+s; }'),cut('function pkHatName(v,facets)','return {name:v}; }'),cut('function pkHatCells(cells,name)','return out; }')].join('\n');
+const {nfCompose,pkhpInvert,pkhpWriteBack,pkhpAppend,pkHatName,pkHatCells}=new Function(src+'\nreturn {nfCompose,pkhpInvert,pkhpWriteBack,pkhpAppend,pkHatName,pkHatCells};')();
 let fails=0; const ok=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } };
 const A={who:'A calm designer.',days:'shipping things',values:'honesty, craft',help:'Bottom line first.',decide:'research, then gut',direct:'Blunt',never:'Never flatter me.',peeves:'No jargon.',formality:'Casual',phrases:'Done is better.',humor:'Dry.',rule:'Tell the truth.',line:'Never hurt my people.'};
 const cells=nfCompose(id=>A[id]||''); const inv=pkhpInvert(cells);
@@ -22,4 +22,9 @@ const back3=pkhpWriteBack(own,inv2.a,inv2.ok); ok(back3.CONTEXT==='# core / CONT
 ok(pkhpAppend('# vibe / DO\n\n(add your own here)','I want one question at a time.')==='# vibe / DO\n\nI want one question at a time.','placeholder replaced under the header');
 ok(pkhpAppend('# vibe / DO\n\nI ramble.\n','I want one question at a time.')==='# vibe / DO\n\nI ramble.\n\nI want one question at a time.','prose kept, sentence under it');
 ok(pkhpAppend('','I ramble.')==='I ramble.','empty cell takes the sentence alone');
+// hats (v17): a hat name is a slug, unique among the facets, never core; its cells take the hat's own header and an empty cell keeps the placeholder
+ok(pkHatName('My Coach Hat',[]).name==='my-coach-hat','slug from owner text'); ok(!!pkHatName('',[]).error,'empty name refused'); ok(!!pkHatName('core',[]).error,'core refused'); ok(!!pkHatName('Coach',[{name:'coach'}]).error,'duplicate refused case-insensitively'); ok(!!pkHatName('12 3',[]).error,'no letters refused');
+const hc=pkHatCells({DO:'# core / DO\n\nAsk sharp questions.',DONT:'# manager / DONT\n\nNever rescue.'},'coach');
+ok(hc.DO==='# coach / DO\n\nAsk sharp questions.','core header renamed: '+JSON.stringify(hc.DO)); ok(hc.DONT==='# coach / DONT\n\nNever rescue.','blank guidance header renamed'); ok(hc.VOICE==='# coach / VOICE\n\n(add your own here)','empty cell gets the placeholder');
+ok(pkhpAppend(hc.VOICE,'Warm.')==='# coach / VOICE\n\nWarm.','a hat cell appends like any other');
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
