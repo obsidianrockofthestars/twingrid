@@ -3121,6 +3121,8 @@ const chat=document.getElementById('chat'), settings=document.getElementById('se
 let history=[];
 document.getElementById('chatbtn').onclick=()=>{ openChat(); };
 document.getElementById('chatx').onclick=()=>chat.classList.remove('open');
+// Escape closes the open drawer (chat, cell, settings). The home panel, auth and chooser have their own Escape handlers; the side/clone drawer has one too. (v18 review, finding 3)
+window.addEventListener('keydown',e=>{ if(e.key!=='Escape') return; const d=document.querySelector('.drawer.open'); if(d) d.classList.remove('open'); });
 document.getElementById('chatspk').onclick=()=>{ const b=document.getElementById('chatspk');
   if(!chatVoice){ setCreditsLine('This persona has no voice yet. Its owner can pick one in the editor: a free browser voice, or a Gemini voice.'); return; }
   speakOn=!speakOn; b.setAttribute('aria-pressed',String(speakOn)); b.textContent=speakOn?'\u{1F50A}':'\u{1F508}';
