@@ -14,7 +14,8 @@
    "wall": "paper",
    "trim": "wood",
    "window": true,
-   "note": "A bright working room"
+   "note": "A bright working room",
+   "bg": "/catalog/rooms/studio.jpg"
   },
   {
    "key": "library",
@@ -22,7 +23,8 @@
    "wall": "wood",
    "trim": "brass",
    "window": false,
-   "note": "Quiet shelves and warm wood tones"
+   "note": "Quiet shelves and warm wood tones",
+   "bg": "/catalog/rooms/library.jpg"
   },
   {
    "key": "workshop",
@@ -30,7 +32,8 @@
    "wall": "paper",
    "trim": "metal",
    "window": false,
-   "note": "A stone floored room for building things"
+   "note": "A stone floored room for building things",
+   "bg": "/catalog/rooms/workshop.jpg"
   },
   {
    "key": "porch",
@@ -38,7 +41,8 @@
    "wall": "sky",
    "trim": "wood",
    "window": true,
-   "note": "An open air porch under a pale sky"
+   "note": "An open air porch under a pale sky",
+   "bg": "/catalog/rooms/porch.jpg"
   },
   {
    "key": "observatory",
@@ -46,7 +50,8 @@
    "wall": "ink",
    "trim": "brass",
    "window": true,
-   "note": "A dark room for watching the stars"
+   "note": "A dark room for watching the stars",
+   "bg": "/catalog/rooms/observatory.jpg"
   },
   {
    "key": "kitchen",
@@ -54,7 +59,8 @@
    "wall": "paper",
    "trim": "wood",
    "window": true,
-   "note": "A warm stone floored kitchen"
+   "note": "A warm stone floored kitchen",
+   "bg": "/catalog/rooms/kitchen.jpg"
   },
   {
    "key": "garden",
@@ -62,7 +68,8 @@
    "wall": "sky",
    "trim": "wood",
    "window": false,
-   "note": "A leafy outdoor retreat"
+   "note": "A leafy outdoor retreat",
+   "bg": "/catalog/rooms/garden.jpg"
   },
   {
    "key": "office",
@@ -70,7 +77,8 @@
    "wall": "paper",
    "trim": "wood",
    "window": true,
-   "note": "A tidy sand toned workspace"
+   "note": "A tidy sand toned workspace",
+   "bg": "/catalog/rooms/office.jpg"
   }
  ],
  "sprites": [

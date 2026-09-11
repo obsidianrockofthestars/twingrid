@@ -1,6 +1,6 @@
 // Validates objects.json against the personakind catalog contract.
 // No dependencies. Run: node catalog_check.mjs
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -216,7 +216,7 @@ if (problems.length) {
   let sql = '';
   // the newest house validator file wins: twingrid_house_valid has been redefined twice since 2026-09-07 and the live one is the last
   let sqlName = '';
-  try { const { readdirSync } = await import('node:fs'); sqlName = readdirSync(join(dir, '..', 'sql')).filter((f) => /^\d{4}-\d{2}-\d{2}_house.*\.sql$/.test(f)).sort().pop() || '2026-09-07_home.sql'; sql = readFileSync(join(dir, '..', 'sql', sqlName), 'utf8'); } catch (e) { problems.push('cannot read the newest house validator file: ' + e.message); }
+  try { const { readdirSync } = await import('node:fs'); sqlName = readdirSync(join(dir, '..', 'sql')).filter((f) => /^\d{4}-\d{2}-\d{2}_house.*\.sql$/.test(f) && readFileSync(join(dir, '..', 'sql', f), 'utf8').includes('twingrid_house_valid(')).sort().pop() || '2026-09-07_home.sql'; sql = readFileSync(join(dir, '..', 'sql', sqlName), 'utf8'); } catch (e) { problems.push('cannot read the newest house validator file: ' + e.message); }
   if (sql) {
     for (const o of (data && data.objects) || []) if (!sql.includes('"' + o.id + '"')) problems.push('object id missing from the SQL validator ' + sqlName + ': ' + o.id);
     for (const m of (data && data.moods) || []) if (!sql.includes("'" + m.key + "'")) problems.push('mood missing from the SQL validator: ' + m.key);
@@ -242,6 +242,7 @@ if (problems.length) {
     if (JSON.stringify(rk) !== JSON.stringify(EXPECTED_ROOM_KEYS)) problems.push('sprites.json rooms must be ' + JSON.stringify(EXPECTED_ROOM_KEYS) + ', got ' + JSON.stringify(rk));
     for (const r of rooms) { if (!r) continue; for (const f of ['floor', 'wall', 'trim']) if (!mats.has(r[f]) || r[f] === 'accent') problems.push('room ' + r.key + ' ' + f + ' is not a material: ' + r[f]);
       if (typeof r.window !== 'boolean') problems.push('room ' + r.key + ' window must be boolean');
+      if (r.bg !== undefined) { if (typeof r.bg !== 'string' || !/^\/catalog\/rooms\/[a-z-]+\.jpg$/.test(r.bg)) problems.push('room ' + r.key + ' bg must be a /catalog/rooms/<key>.jpg path'); else if (!existsSync(new URL('../docs' + r.bg, import.meta.url))) problems.push('room ' + r.key + ' bg file missing: ' + r.bg); }
       if (typeof r.note !== 'string' || r.note.length >= 60 || DASH_RE.test(r.note)) problems.push('room ' + r.key + ' note must be a short string with no dash'); }
     const sprites = Array.isArray(man.sprites) ? man.sprites : []; const ids = new Set((data && data.objects || []).map((o) => o.id)); const seen = new Set();
     for (const sp of sprites) { const w = 'sprite ' + (sp && sp.id);

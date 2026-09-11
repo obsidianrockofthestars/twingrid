@@ -9,14 +9,14 @@
 var W=560, H=430, COLS=8, CW=60, UNIT=40, DEPTH=7, LEFT=40, TOP=34, FH=120, TOOLW=32;
 var RIGHT=LEFT+COLS*CW; /* 520; tools live in the strip 520..552, the outer wall at 556 */
 var MAT={wood:'#8B5A2B',paper:'#EDEBF2',ink:'#2A2A36',leaf:'#3E8E5B',metal:'#8A8F98',glass:'#A7D8F0',cloth:'#C96A6A',stone:'#9A9AA6',brass:'#C9A227',sky:'#BFE3F5',sand:'#D9C7A0'};
-var PAPER='#F7F7FA', INK='#1B1B22';
+var PAPER='#F7F7FA', INK='#1B1B22', LW=1, HALO=false, HALO_C='rgba(247,247,250,.92)'; /* stroke weight: 1 on a primitive shell, heavier on a painted one so every part keeps its edge (figure and ground are engineered, never hoped for) */
 function rgb(h){ h=String(h||'').replace('#',''); if(!/^[0-9a-fA-F]{6}$/.test(h)) h='5B45E0'; return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
 function hex(c){ return '#'+c.map(function(v){ v=Math.max(0,Math.min(255,Math.round(v))); return (v<16?'0':'')+v.toString(16); }).join(''); }
 function mix(a,b,t){ var x=rgb(a), y=rgb(b); return hex([x[0]+(y[0]-x[0])*t, x[1]+(y[1]-x[1])*t, x[2]+(y[2]-x[2])*t]); }
-function tones(mid){ return {light:mix(mid,PAPER,.38), mid:mid, shadow:mix(mid,INK,.38), line:mix(mid,INK,.72)}; }
+function tones(mid){ return {light:mix(mid,PAPER,.38), mid:mid, shadow:mix(mid,INK,.38), line:mix(mid,INK,LW>1?.92:.72)}; }
 function matTones(m,accent){ var mid=(m==='accent')?accent:(MAT[m]||MAT.stone); return tones(mid); }
-function rect(ctx,x,y,w,h,fill,line){ if(w<=0||h<=0) return; ctx.beginPath(); ctx.rect(x,y,w,h); if(fill){ ctx.fillStyle=fill; ctx.fill(); } if(line){ ctx.strokeStyle=line; ctx.lineWidth=1; ctx.stroke(); } }
-function ell(ctx,cx,cy,rx,ry,fill,line){ ctx.beginPath(); ctx.ellipse(cx,cy,Math.max(.5,rx),Math.max(.5,ry),0,0,Math.PI*2); if(fill){ ctx.fillStyle=fill; ctx.fill(); } if(line){ ctx.strokeStyle=line; ctx.lineWidth=1; ctx.stroke(); } }
+function rect(ctx,x,y,w,h,fill,line){ if(w<=0||h<=0) return; ctx.beginPath(); ctx.rect(x,y,w,h); if(HALO){ ctx.strokeStyle=HALO_C; ctx.lineWidth=5; ctx.stroke(); return; } if(fill){ ctx.fillStyle=fill; ctx.fill(); } if(line){ ctx.strokeStyle=line; ctx.lineWidth=LW; ctx.stroke(); } }
+function ell(ctx,cx,cy,rx,ry,fill,line){ ctx.beginPath(); ctx.ellipse(cx,cy,Math.max(.5,rx),Math.max(.5,ry),0,0,Math.PI*2); if(HALO){ ctx.strokeStyle=HALO_C; ctx.lineWidth=5; ctx.stroke(); return; } if(fill){ ctx.fillStyle=fill; ctx.fill(); } if(line){ ctx.strokeStyle=line; ctx.lineWidth=LW; ctx.stroke(); } }
 function grow(bb,x0,y0,x1,y1){ if(x0<bb[0]) bb[0]=x0; if(y0<bb[1]) bb[1]=y0; if(x1>bb[2]) bb[2]=x1; if(y1>bb[3]) bb[3]=y1; }
 function floorOf(i){ var top=TOP+i*FH; return {i:i, top:top, bottom:top+FH, base:top+FH-8, left:LEFT, right:RIGHT}; }
 /* one part, front-on: the front face in the mid tone, a top strip in the light tone (its depth), a shadow band at the foot */
@@ -29,22 +29,27 @@ function partFront(ctx,p,ox,base,t,bb){ var yo=(p.y||0)*DEPTH, z=(p.z||0)*UNIT;
     ctx.save(); ctx.beginPath(); ctx.arc(bx,by,rr-.5,0,Math.PI*2); ctx.clip(); ell(ctx,bx+rr*.35,by+rr*.35,rr*.95,rr*.95,t.shadow,null); ell(ctx,bx-rr*.05,by-rr*.05,rr*.72,rr*.72,t.mid,null); ell(ctx,bx-rr*.4,by-rr*.4,rr*.28,rr*.22,t.light,null); ctx.restore(); grow(bb,bx-rr,by-rr,bx+rr,by+rr); } }
 function partKey(p){ var dy=(p.t==='box')?(p.y+p.d/2):p.y; return -dy*10+(p.z||0); }
 /* one sprite with its footprint origin at column col on floor fl; returns the screen bbox */
-function sprite(ctx,sp,col,fl,accent){ var f=floorOf(fl), ox=LEFT+col*CW, bb=[1e9,1e9,-1e9,-1e9];
+function sprite(ctx,sp,col,fl,accent){ var f=floorOf(fl), ox=LEFT+col*CW, bb=[1e9,1e9,-1e9,-1e9]; if(LW>1&&!HALO){ var fw=(sp.footprint?sp.footprint[0]:1)*CW; ell(ctx,ox+fw/2,f.base-1,fw*.46,4,'rgba(27,27,34,.4)',null); }
   var parts=(sp.parts||[]).slice().sort(function(a,b){ return partKey(a)-partKey(b); });
   for(var i=0;i<parts.length;i++) partFront(ctx,parts[i],ox,f.base,matTones(parts[i].m,accent),bb); return bb; }
 /* the house: sky and a roof above, earth around the basement, three floors with wall, baseboard and trim; the visiting room
    gets an awning and an open front, the basement gets stone. An unlit floor is drawn, then dimmed with a lock. */
 var FLOOR_KEYS=['visiting','main','basement'];
-function drawHouse(ctx,rm,accent,lit){ var f0=floorOf(0), f2=floorOf(2), ground=floorOf(1).bottom;
+var BG_RE=/^\/catalog\/rooms\/[a-z-]+\.jpg$/, BG={};
+/* the painted shell for a room, when the manifest names one (repo data, a path shape check, never user text); null until it has loaded */
+function bgFor(rm,onload){ if(!rm||typeof rm.bg!=='string'||!BG_RE.test(rm.bg)) return null; var im=BG[rm.bg]; if(!im){ im=new Image(); im.decoding='async'; im.src=rm.bg; BG[rm.bg]=im; }
+  if(!(im.complete&&im.naturalWidth)){ if(onload) im.addEventListener('load',onload,{once:true}); return null; } return im; }
+function drawHouse(ctx,rm,accent,lit,bg){ var f0=floorOf(0), f2=floorOf(2), ground=floorOf(1).bottom; var painted=!!(bg&&bg.complete&&bg.naturalWidth);
   rect(ctx,0,0,W,H,mix(MAT.sky,PAPER,.55),null); rect(ctx,0,ground,W,H-ground,mix(MAT.stone,INK,.35),null);
+  if(painted) ctx.drawImage(bg,0,0,W,H);
   ctx.beginPath(); ctx.moveTo(-6,f0.top); ctx.lineTo(W/2,4); ctx.lineTo(RIGHT+TOOLW+18,f0.top); ctx.closePath(); ctx.fillStyle=mix(accent,INK,.45); ctx.fill(); ctx.strokeStyle=INK; ctx.lineWidth=1; ctx.stroke();
   for(var i=0;i<3;i++){ var f=floorOf(i); var wallM=(i===2)?MAT.stone:(rm.wall||'paper'); var t=tones(mix(MAT[wallM]||MAT.paper,accent,.08)); var fl=(i===2)?MAT.stone:(MAT[rm.floor||'paper']||MAT.paper); var ft=tones(fl); var tr=matTones(rm.trim||'wood',accent);
-    rect(ctx,4,f.top,RIGHT+TOOLW+4,FH,t.mid,null);
+    if(!painted){ rect(ctx,4,f.top,RIGHT+TOOLW+4,FH,t.mid,null);
     rect(ctx,4,f.top,RIGHT+TOOLW+4,f.base-f.top,t.light,null);
-    rect(ctx,4,f.base,RIGHT+TOOLW+4,FH-(f.base-f.top),ft.mid,null); rect(ctx,4,f.base,RIGHT+TOOLW+4,3,ft.light,null);
+    rect(ctx,4,f.base,RIGHT+TOOLW+4,FH-(f.base-f.top),ft.mid,null); rect(ctx,4,f.base,RIGHT+TOOLW+4,3,ft.light,null); }
     rect(ctx,4,f.base-4,RIGHT+TOOLW+4,4,tr.mid,tr.line);
     if(i===0){ for(var k=0;k<12;k++) rect(ctx,4+k*(RIGHT+TOOLW+4)/12,f.top,(RIGHT+TOOLW+4)/12,10,(k%2)?accent:mix(accent,PAPER,.6),null); }
-    if(i===1&&rm.window!==false){ var g=matTones('glass',accent); rect(ctx,LEFT+CW*2.6,f.top+18,CW*1.4,44,g.light,tr.line); rect(ctx,LEFT+CW*3.28,f.top+18,3,44,tr.mid,null); }
+    if(i===1&&rm.window!==false&&!painted){ var g=matTones('glass',accent); rect(ctx,LEFT+CW*2.6,f.top+18,CW*1.4,44,g.light,tr.line); rect(ctx,LEFT+CW*3.28,f.top+18,3,44,tr.mid,null); }
     rect(ctx,4,f.top,RIGHT+TOOLW+4,FH,null,INK); }
   rect(ctx,2,f0.top,4,f2.bottom-f0.top,mix(accent,INK,.5),INK); rect(ctx,RIGHT+TOOLW+4,f0.top,4,f2.bottom-f0.top,mix(accent,INK,.5),INK); }
 function dimFloor(ctx,i){ var f=floorOf(i); ctx.fillStyle='rgba(27,27,34,.62)'; ctx.fillRect(4,f.top,RIGHT+TOOLW+4,FH);
@@ -52,7 +57,7 @@ function dimFloor(ctx,i){ var f=floorOf(i); ctx.fillStyle='rgba(27,27,34,.62)'; 
 /* facet doors: anonymous plaques on the back wall of the floor that owns the scope; the first (core) is wider */
 function drawDoors(ctx,i,names,accent,hots){ var f=floorOf(i), x=LEFT+8, y=f.top+16, lt=tones(accent);
   for(var k=0;k<names.length&&k<14;k++){ var w=(k===0&&names[k]==='core')?40:26, h=36; if(x+w>RIGHT-4) break;
-    rect(ctx,x,y,w,h,mix(accent,PAPER,.55),lt.line); rect(ctx,x+3,y+3,w-6,h-6,null,mix(accent,PAPER,.3)); ell(ctx,x+w-7,y+h/2,2,2,lt.shadow,null);
+    rect(ctx,x,y,w,h,mix(accent,PAPER,LW>1?.8:.55),LW>1?INK:lt.line); rect(ctx,x+3,y+3,w-6,h-6,null,mix(accent,PAPER,.3)); ell(ctx,x+w-7,y+h/2,2,2,lt.shadow,null);
     hots.push({kind:'door',facet:names[k],floor:i,bb:[x,y,x+w,y+h]}); x+=w+8; } }
 /* tools in the right strip: the Workshop hatch (basement), the core desk and the snapshot chest (Home floor), the shelf (visiting) */
 function drawTool(ctx,i,id,accent,hots,side){ var f=floorOf(i), x=(side==='left')?8:RIGHT+3, w=TOOLW-6, lt=tones(accent), wd=matTones('wood',accent), mt=matTones('metal',accent);
@@ -80,14 +85,15 @@ function scene(canvas,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRat
   var st={items:[],hots:[],sel:-1,hover:-1,drag:null};
   function rm(){ var rooms=(opts.manifest&&opts.manifest.rooms)||[]; for(var i=0;i<rooms.length;i++) if(rooms[i].key===opts.room) return rooms[i]; return rooms[0]||{}; }
   function lit(i){ return !(opts.lit&&opts.lit[i]===false); }
-  function draw(){ ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H); ctx.lineJoin='round'; drawHouse(ctx,rm(),opts.accent,opts.lit); var hots=[];
-    var scopes=['lobby','visiting','house']; for(var i=0;i<3;i++){ if(!lit(i)) continue; var names=(opts.facets&&opts.facets[scopes[i]])||[]; drawDoors(ctx,i,names,opts.accent,hots); }
-    (opts.tools||[]).forEach(function(t){ if(lit(t.floor)) drawTool(ctx,t.floor,t.id,opts.accent,hots,t.side); });
+  function draw(){ ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H); ctx.lineJoin='round'; var bg=bgFor(rm(),draw); LW=bg?1.6:1; drawHouse(ctx,rm(),opts.accent,opts.lit,bg); var hots=[];
+    var scopes=['lobby','visiting','house']; var passes=bg?[true,false]:[false];
+    passes.forEach(function(halo){ HALO=halo; var sink=halo?[]:hots; for(var i=0;i<3;i++){ if(!lit(i)) continue; var names=(opts.facets&&opts.facets[scopes[i]])||[]; drawDoors(ctx,i,names,opts.accent,sink); }
+      (opts.tools||[]).forEach(function(t){ if(lit(t.floor)) drawTool(ctx,t.floor,t.id,opts.accent,sink,t.side); }); }); HALO=false;
     var order=st.items.map(function(it,i){ return i; }).sort(function(a,b){ return sortKey(st.items[a])-sortKey(st.items[b]); });
     var selHot=st.hots[st.sel], hovHot=st.hots[st.hover];
     order.forEach(function(k){ var it=st.items[k]; if(!lit(it.y)) return; var f=floorOf(it.y); var isSel=(selHot&&selHot.item===it)||(hovHot&&hovHot.item===it);
       if(isSel) rect(ctx,LEFT+it.x*CW+1,f.base-6,it.w*CW-2,6,mix(opts.accent,PAPER,.45),opts.accent);
-      it.bb=sprite(ctx,it.sp,it.x,it.y,opts.accent); hots.push({kind:'obj',item:it,floor:it.y,bb:it.bb}); });
+      if(bg){ HALO=true; sprite(ctx,it.sp,it.x,it.y,opts.accent); HALO=false; } it.bb=sprite(ctx,it.sp,it.x,it.y,opts.accent); hots.push({kind:'obj',item:it,floor:it.y,bb:it.bb}); });
     var av=opts.avatar; if(av&&av.img&&av.img.complete&&av.img.naturalWidth&&lit(0)){ var f0=floorOf(0), ah=av.h||64, aw=ah*2/3, ax=LEFT+(av.col||0)*CW+CW/2; ctx.drawImage(av.img,ax-aw/2,f0.base-ah+2,aw,ah); }
     for(var j=0;j<3;j++) if(!lit(j)){ dimFloor(ctx,j); hots.push({kind:'floor',floor:j,bb:[4,floorOf(j).top,RIGHT+TOOLW+8,floorOf(j).bottom]}); }
     st.hots=hots; if(selHot){ st.sel=hots.findIndex(function(h){ return same(h,selHot); }); } if(hovHot){ st.hover=hots.findIndex(function(h){ return same(h,hovHot); }); }
@@ -137,5 +143,5 @@ function street(canvas,houses,opts){ var dpr=Math.max(1,Math.min(3,window.device
     if(opts&&opts.sel===i){ ctx.strokeStyle=acc; ctx.lineWidth=3; ctx.strokeRect(x-9,top-31,HW+18,base-top+35); ctx.lineWidth=1; }
     hots.push({i:i,bb:[x-6,top-28,x+HW+6,base]}); });
   return {hots:hots,size:[SW,SH],hit:function(px,py){ for(var k=0;k<hots.length;k++){ var b=hots[k].bb; if(px>=b[0]&&px<=b[2]&&py>=b[1]&&py<=b[3]) return k; } return -1; }}; }
-window.pkScene={scene:scene,street:street,place:place,tones:tones,mix:mix,materials:MAT,drawSprite:sprite,drawHouse:drawHouse,floorOf:floorOf,COLS:COLS,FLOOR_KEYS:FLOOR_KEYS};
+window.pkScene={scene:scene,street:street,place:place,tones:tones,mix:mix,materials:MAT,drawSprite:sprite,drawHouse:drawHouse,bgFor:bgFor,floorOf:floorOf,COLS:COLS,FLOOR_KEYS:FLOOR_KEYS};
 })();
