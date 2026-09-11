@@ -7,7 +7,8 @@ let h=rd('docs/index.html');
 const tpl=k=>JSON.parse(rd('docs/templates/'+k+'.json'));
 const mk=(id,name,k,theme,extra)=>Object.assign({id,name,owner:'u1',is_public:true,updated_at:'2026-09-11T14:00:00Z',image_url:null,voice_id:null,data:Object.assign({facets:tpl(k).facets,theme},extra||{})},{});
 const twinFlag=process.argv.includes('--twin')?{twin:true}:{};
-const grids=[mk('g1','Me','coach','nebula',Object.assign({house:{room:'studio',mood:'calm',zones:{thinking:[{obj:'desk-lamp',x:3,y:1,facet:'manager'}],resting:[],memory:[]}}},twinFlag)),mk('g2','My Shop','support','light:#2F7D6E'),mk('g3','Alrat','character','coral')];
+const room=(process.argv.find(a=>a.startsWith('--room='))||'--room=studio').slice(7);
+const grids=[mk('g1','Me','coach','nebula',Object.assign({avatar:{body:'standing'},house:{room,mood:'calm',zones:{thinking:[{obj:'desk-lamp',x:3,y:1,facet:'manager'}],resting:[],memory:[]}}},twinFlag)),mk('g2','My Shop','support','light:#2F7D6E'),mk('g3','Alrat','character','coral')];
 if(process.argv.includes('--empty')) grids.length=0;
 const stub=`const __H={grids:${JSON.stringify(grids)}};
 function __q(table){ const st={table,op:'select',filters:{}}; const b={}; ['select','eq','neq','in','is','order','limit','gte','lte','or','maybeSingle','single','insert','update','delete','upsert'].forEach(m=>{ b[m]=(...a)=>{ if(['update','insert','delete','upsert'].includes(m)){ st.op=m; st.payload=a[0]; } if(m==='eq') st.filters[a[0]]=a[1]; if(m==='maybeSingle'||m==='single') st.one=true; if(m==='select'&&a[1]&&a[1].head) st.head=true; return b; }; }); b.then=(res,rej)=>Promise.resolve().then(()=>__resolve(st)).then(res,rej); return b; }
@@ -15,8 +16,9 @@ function __resolve(st){ const T=st.table; if(T==='twingrid_grids'||T==='twingrid
   if(st.head) return {count:0,error:null}; if(T==='twingrid_accounts') return {data:st.one?{handle:'tester',adult_confirmed_at:null,avatar_theme:null}:[],error:null}; return {data:st.one?null:[],error:null}; }
 const __S={user:{id:'u1',email:'tester@example.com'}};
 const SB={from:__q, rpc:()=>Promise.resolve({data:[],error:null}), storage:{from:()=>({upload:()=>Promise.resolve({error:{message:'harness'}}),remove:()=>Promise.resolve({})})}, auth:{getSession:()=>Promise.resolve({data:{session:__S}}), getUser:()=>Promise.resolve({data:{user:__S.user}}), onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}), signOut:()=>Promise.resolve({}), updateUser:()=>Promise.resolve({}), signInWithOtp:()=>Promise.resolve({}), signInWithPassword:()=>Promise.resolve({}) }};
-window.__H=__H;`;
+window.__H=__H; window.__scenes=[]; (function(){ function hook(){ var o=window.pkScene.scene; window.pkScene.scene=function(c,op){ var s=o(c,op); if(s) window.__scenes.push({canvas:c,scene:s,opts:op}); return s; }; } if(window.pkScene) hook(); else { var w=setInterval(function(){ if(!window.pkScene) return; clearInterval(w); hook(); },1); } })();`;
 const a='const SB = createClient("https://jpepcqazscmhakxvutpg.supabase.co","sb_publishable_OJGmKJoI67e4I5Z_cib8yA_n7y5kjz2");';
 if(!h.includes(a)) throw new Error('SB anchor missing');
 h=h.replace(a,stub).replace("import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.115.0';","");
+h=h.replace(/src="(\/?scene\.js|\/?avatar\.js)"/g,(m,f)=>'src="'+f+'?v='+Date.now()+'"'); // the static server has no cache headers; a stale scene.js measured as the new one once
 fs.writeFileSync(new URL('docs/_harness.html',root),h); console.log('wrote docs/_harness.html with '+grids.length+' grids'+(twinFlag.twin?' (g1 is the twin)':''));

@@ -34,7 +34,7 @@ function norm(av,cat){ var d=defaults(cat); av=(av&&typeof av==='object')?av:{};
   return out; }
 function garment(hexv){ return {c1:hexv,c2:mix(hexv,INK,.35),c3:mix(hexv,PAPER,.35)}; }
 /* the SVG: hair back first, then body, bottoms or one piece, shoes, top, outer, face, eyes, facial hair, hair front, headwear, accessories */
-function svg(av,cat,size){ if(!cat) return ''; av=norm(av,cat); var body=find(cat.bodies,av.body), pose=body&&body.pose==='sit'?'sit':'stand';
+function svg(av,cat,size,o){ if(!cat) return ''; av=norm(av,cat); var blink=!!(o&&o.blink); var body=find(cat.bodies,av.body), pose=body&&body.pose==='sit'?'sit':'stand';
   var skinHex=mix(find(cat.skinDepths,av.skin.depth).hex, find(cat.undertones,av.skin.undertone).shift||'#D9D0C8', .15); var hairHex=find(cat.hairColors,av.hair.color).hex;
   var base={skin:skinHex,skin2:mix(skinHex,INK,.3),hair:hairHex,hair2:mix(hairHex,INK,.35),ink:INK,white:WHITE,metal:METAL,wood:WOOD};
   var col=function(k){ var c=find(cat.colors,av.look.colors[k]); var g=garment(c?c.hex:'#888888'); for(var q in base) g[q]=base[q]; return g; };
@@ -48,7 +48,9 @@ function svg(av,cat,size){ if(!cat) return ''; av=norm(av,cat); var body=find(ca
   var ou=find(cat.outers,av.look.outer); if(ou&&av.look.outer!=='none') out+=group(ou.parts,col('outer'),INK);
   var face=find(cat.faces,av.face); if(face&&typeof face.d==='string'&&D_RE.test(face.d)) out+='<path d="'+face.d+'" fill="'+skinHex+'" stroke="'+INK+'" stroke-width=".7"/>';
   var eye=find(cat.eyes,av.eyes); var eh=eye?eye.hex:'#5A3A25';
-  out+='<ellipse cx="27.5" cy="19.5" rx="2.6" ry="2" fill="'+WHITE+'"/><ellipse cx="36.5" cy="19.5" rx="2.6" ry="2" fill="'+WHITE+'"/><circle cx="27.8" cy="19.6" r="1.6" fill="'+eh+'"/><circle cx="36.8" cy="19.6" r="1.6" fill="'+eh+'"/><circle cx="28" cy="19.6" r=".7" fill="'+INK+'"/><circle cx="37" cy="19.6" r=".7" fill="'+INK+'"/>';
+  /* the idle's second frame (v17): lids down, two short strokes where the eyes were; the page draws it one pixel shorter for the breath */
+  if(blink) out+='<path d="M 25 19.8 L 30 19.8" fill="none" stroke="'+INK+'" stroke-width="1.1" stroke-linecap="round"/><path d="M 34 19.8 L 39 19.8" fill="none" stroke="'+INK+'" stroke-width="1.1" stroke-linecap="round"/>';
+  else out+='<ellipse cx="27.5" cy="19.5" rx="2.6" ry="2" fill="'+WHITE+'"/><ellipse cx="36.5" cy="19.5" rx="2.6" ry="2" fill="'+WHITE+'"/><circle cx="27.8" cy="19.6" r="1.6" fill="'+eh+'"/><circle cx="36.8" cy="19.6" r="1.6" fill="'+eh+'"/><circle cx="28" cy="19.6" r=".7" fill="'+INK+'"/><circle cx="37" cy="19.6" r=".7" fill="'+INK+'"/>';
   out+='<path d="M 24.5 15.5 Q 27.5 14 30.5 15.2" fill="none" stroke="'+base.hair2+'" stroke-width="1" stroke-linecap="round"/><path d="M 33.5 15.2 Q 36.5 14 39.5 15.5" fill="none" stroke="'+base.hair2+'" stroke-width="1" stroke-linecap="round"/><path d="M 29.5 25.5 Q 32 27.5 34.5 25.5" fill="none" stroke="'+INK+'" stroke-width=".8" stroke-linecap="round"/>';
   var fh=find(cat.facialHairs,av.facialHair); if(fh&&av.facialHair!=='none') out+=group(fh.parts,base,null);
   out+=group(hair.front,base,null);

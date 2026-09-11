@@ -2465,7 +2465,7 @@ async function pkRepaintLook(host,g,onChange){ const box=host||document.getEleme
   paint(); }
 async function pkSceneMount(host,house,o){ if(!host) return null; let cv=host.querySelector('canvas'); const lbl=host.querySelector('.pkscenelbl'); if(!cv||!window.pkScene){ host.hidden=true; return null; }
   const gen=(host.__gen=(host.__gen||0)+1); const wantAv=!!(o.avatarData&&typeof o.avatarData==='object'); const [man,cat,acat]=await Promise.all([pkSprites(),pkCatalog(),wantAv?pkAvatarCat():null]); if(gen!==host.__gen) return null; if(!man||!cat){ host.hidden=true; return null; }
-  const avatar=(wantAv&&acat&&window.pkAvatar)?{img:window.pkAvatar.img(pkAvatarSvg(o.avatarData,acat,64)),h:64}:null;
+  const avatar=(wantAv&&acat&&window.pkAvatar)?{img:window.pkAvatar.img(pkAvatarSvg(o.avatarData,acat,64)),img2:window.pkAvatar.img(window.pkAvatar.svg(o.avatarData,acat,64,{blink:true})),h:64}:null;
   const fresh=cv.cloneNode(false); cv.replaceWith(fresh); cv=fresh; // a fresh canvas each mount, so listeners never stack
   const facets=o.facets||{lobby:[],visiting:[],house:[]}; const floorName=i=>PK_ROOM_LABEL[PK_FLOOR_SCOPE[i]]||'';
   const label=h=>{ if(!lbl) return; if(!h){ lbl.textContent=''; return; } let t='';
@@ -2575,7 +2575,7 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
       const host=document.createElement('div'); host.id='pkhpsnap'; pbody.appendChild(host); let placed=''; pkRepaintSnap(host,d,byNameL,fn=>{ placed=fn; });
       foot('Save the snapshot',()=>{ if(!placed||!byNameL[placed]) return Promise.resolve({error:'Choose a file and place it first.'}); return facetSave(placed,Object.assign({},byNameL[placed].cells||{})); }); }
     else if(kind==='look'){ T('The look'); note('Body, face, hair and what it wears, drawn on its page and standing in its Home. Every choice is a preset; adaptive and accessibility items are in the main lists and never cost anything.'); const host=document.createElement('div'); host.id='pkhplook'; pbody.appendChild(host);
-      const rel=()=>{ pkAvatarCat().then(cat=>{ if(sc) sc.setAvatar((d.avatar&&typeof d.avatar==='object'&&cat&&window.pkAvatar)?{img:window.pkAvatar.img(pkAvatarSvg(d.avatar,cat,64)),h:64}:null); }); }; pkRepaintLook(host,d,rel);
+      const rel=()=>{ pkAvatarCat().then(cat=>{ if(sc) sc.setAvatar((d.avatar&&typeof d.avatar==='object'&&cat&&window.pkAvatar)?{img:window.pkAvatar.img(pkAvatarSvg(d.avatar,cat,64)),img2:window.pkAvatar.img(window.pkAvatar.svg(d.avatar,cat,64,{blink:true})),h:64}:null); }); }; pkRepaintLook(host,d,rel);
       foot('Save the look',()=>pkhpSave(r.id,dd=>{ if(d.avatar&&typeof d.avatar==='object') dd.avatar=d.avatar; else delete dd.avatar; })); }
     else if(kind==='shelf'){ T('The shelf: lately'); const q=note('Reading the shelf.'); const host=document.createElement('div'); host.id='pkhplately'; const list=document.createElement('div'); host.appendChild(list); pbody.appendChild(host);
       pkRenderLately(r.id,host,list).then(k=>{ q.textContent=k?(k+(k===1?' public post':' public posts')+', newest first. Anyone can read these on its page.'):'Nothing on the shelf yet. When this persona posts, on its own or with you, the newest three show here and on its page.'; }); }

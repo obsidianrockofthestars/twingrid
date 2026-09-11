@@ -54,11 +54,19 @@ function drawHouse(ctx,rm,accent,lit,bg){ var f0=floorOf(0), f2=floorOf(2), grou
   rect(ctx,2,f0.top,4,f2.bottom-f0.top,mix(accent,INK,.5),INK); rect(ctx,RIGHT+TOOLW+4,f0.top,4,f2.bottom-f0.top,mix(accent,INK,.5),INK); }
 function dimFloor(ctx,i){ var f=floorOf(i); ctx.fillStyle='rgba(27,27,34,.62)'; ctx.fillRect(4,f.top,RIGHT+TOOLW+4,FH);
   var cx=(LEFT+RIGHT)/2, cy=f.top+FH/2; rect(ctx,cx-10,cy-2,20,16,PAPER,INK); ctx.beginPath(); ctx.arc(cx,cy-4,7,Math.PI,0); ctx.strokeStyle=PAPER; ctx.lineWidth=3; ctx.stroke(); }
-/* facet doors: anonymous plaques on the back wall of the floor that owns the scope; the first (core) is wider */
-function drawDoors(ctx,i,names,accent,hots){ var f=floorOf(i), x=LEFT+8, y=f.top+16, lt=tones(accent);
-  for(var k=0;k<names.length&&k<14;k++){ var w=(k===0&&names[k]==='core')?40:26, h=36; if(x+w>RIGHT-4) break;
-    rect(ctx,x,y,w,h,mix(accent,PAPER,LW>1?.8:.55),LW>1?INK:lt.line); rect(ctx,x+3,y+3,w-6,h-6,null,mix(accent,PAPER,.3)); ell(ctx,x+w-7,y+h/2,2,2,lt.shadow,null);
-    hots.push({kind:'door',facet:names[k],floor:i,bb:[x,y,x+w,y+h]}); x+=w+8; } }
+/* facet doors (v17): real doors on the back wall of the floor that owns the scope, standing on the trim: a lintel in the trim wood,
+   a slab tinted from the accent with two panels, a brass knob. The first (core) is wider. Every part is a primitive under the same
+   halo pass as the objects, so the boundary keeps its edge on a painted shell. */
+function drawDoors(ctx,i,names,accent,hots){ var f=floorOf(i), x=LEFT+8, h=52, y=f.base-4-h, lt=tones(accent), tr=matTones('wood',accent), br=tones(MAT.brass);
+  /* on a painted shell the door edge is a full two pixel ink line on integer coordinates: a 1.6 line straddles pixels and blends to about
+     (68,67,73), which sits under 3 to 1 against a mid tone wall where the paper halo does too (measured on the kitchen and library shells, v17) */
+  var lw=LW; if(LW>1) LW=2;
+  for(var k=0;k<names.length&&k<14;k++){ var w=(k===0&&names[k]==='core')?40:26; if(x+w>RIGHT-4) break;
+    rect(ctx,x-2,y-5,w+4,5,tr.light,LW>1?INK:tr.line);
+    rect(ctx,x,y,w,h,mix(accent,PAPER,LW>1?.8:.55),LW>1?INK:lt.line);
+    rect(ctx,x+4,y+5,w-8,h*.38,null,mix(accent,PAPER,.3)); rect(ctx,x+4,y+h*.52,w-8,h*.4,null,mix(accent,PAPER,.3));
+    ell(ctx,x+w-6,y+h*.55,2.2,2.2,br.mid,LW>1?INK:br.line);
+    hots.push({kind:'door',facet:names[k],floor:i,bb:[x-2,y-5,x+w+2,y+h]}); x+=w+8; } LW=lw; }
 /* tools in the right strip: the Workshop hatch (basement), the core desk and the snapshot chest (Home floor), the shelf (visiting) */
 function drawTool(ctx,i,id,accent,hots,side){ var f=floorOf(i), x=(side==='left')?8:RIGHT+3, w=TOOLW-6, lt=tones(accent), wd=matTones('wood',accent), mt=matTones('metal',accent);
   if(id==='workshop'){ rect(ctx,x,f.base-30,w,30,mix(INK,accent,.25),INK); rect(ctx,x+4,f.base-26,w-8,22,INK,lt.line); ell(ctx,x+w/2,f.base-15,5,5,null,lt.light); hots.push({kind:'tool',id:id,floor:i,bb:[x,f.base-30,x+w,f.base]}); }
@@ -94,7 +102,9 @@ function scene(canvas,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRat
     order.forEach(function(k){ var it=st.items[k]; if(!lit(it.y)) return; var f=floorOf(it.y); var isSel=(selHot&&selHot.item===it)||(hovHot&&hovHot.item===it);
       if(isSel) rect(ctx,LEFT+it.x*CW+1,f.base-6,it.w*CW-2,6,mix(opts.accent,PAPER,.45),opts.accent);
       if(bg){ HALO=true; sprite(ctx,it.sp,it.x,it.y,opts.accent); HALO=false; } it.bb=sprite(ctx,it.sp,it.x,it.y,opts.accent); hots.push({kind:'obj',item:it,floor:it.y,bb:it.bb}); });
-    var av=opts.avatar; if(av&&av.img&&av.img.complete&&av.img.naturalWidth&&lit(0)){ var f0=floorOf(0), ah=av.h||64, aw=ah*2/3, ax=LEFT+(av.col||0)*CW+CW/2; ctx.drawImage(av.img,ax-aw/2,f0.base-ah+2,aw,ah); }
+    var av=opts.avatar; if(av&&av.img&&av.img.complete&&av.img.naturalWidth&&lit(0)){ var f0=floorOf(0), ah=av.h||64, aw=ah*2/3, ax=LEFT+(av.col||0)*CW+CW/2;
+      /* the idle (v17): frame two is the lids-down image drawn one pixel shorter, feet on the same line, so the body settles as it blinks */
+      var bl=st.blink&&av.img2&&av.img2.complete&&av.img2.naturalWidth; var hh=bl?ah-1:ah; ctx.drawImage(bl?av.img2:av.img,ax-aw/2,f0.base-hh+2,aw,hh); }
     for(var j=0;j<3;j++) if(!lit(j)){ dimFloor(ctx,j); hots.push({kind:'floor',floor:j,bb:[4,floorOf(j).top,RIGHT+TOOLW+8,floorOf(j).bottom]}); }
     st.hots=hots; if(selHot){ st.sel=hots.findIndex(function(h){ return same(h,selHot); }); } if(hovHot){ st.hover=hots.findIndex(function(h){ return same(h,hovHot); }); }
     if(st.sel>=0){ var b=st.hots[st.sel].bb; rect(ctx,b[0]-3,b[1]-3,b[2]-b[0]+6,b[3]-b[1]+6,null,opts.accent); ctx.lineWidth=1; } }
@@ -123,9 +133,13 @@ function scene(canvas,opts){ var dpr=Math.max(1,Math.min(3,window.devicePixelRat
   canvas.addEventListener('focus',function(){ if(st.sel<0&&st.hots.length){ st.sel=0; draw(); } say(st.sel); });
   canvas.addEventListener('blur',function(){ say(-1); });
   function set(house,linked){ opts.room=(house&&house.room)||'studio'; st.items=place(house,opts.manifest||{}); if(linked) opts.linked=linked; st.sel=-1; st.hover=-1; placeAvatar(); draw(); }
-  function setAvatar(a){ opts.avatar=a; placeAvatar(); if(a&&a.img) a.img.addEventListener('load',draw); draw(); }
-  set(opts.house,opts.linked); if(opts.avatar&&opts.avatar.img) opts.avatar.img.addEventListener('load',draw);
-  return {draw:draw,set:set,setAvatar:setAvatar,state:st,size:[W,H]}; }
+  function setAvatar(a){ opts.avatar=a; placeAvatar(); if(a&&a.img) a.img.addEventListener('load',draw); if(a&&a.img2) a.img2.addEventListener('load',draw); draw(); }
+  set(opts.house,opts.linked); if(opts.avatar&&opts.avatar.img) opts.avatar.img.addEventListener('load',draw); if(opts.avatar&&opts.avatar.img2) opts.avatar.img2.addEventListener('load',draw);
+  /* the idle timer: a blink and a breath for 350 ms every 3.4 s; nothing runs under reduced motion (the first frame stands), and a detached canvas stops its own clock */
+  var RM=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches); var idle=null;
+  function tick(){ if(!canvas.isConnected){ clearInterval(idle); idle=null; return; } if(!(opts.avatar&&opts.avatar.img2)) return; st.blink=true; draw(); setTimeout(function(){ st.blink=false; if(canvas.isConnected) draw(); },350); }
+  if(!RM) idle=setInterval(tick,3400);
+  return {draw:draw,set:set,setAvatar:setAvatar,state:st,size:[W,H],reducedMotion:RM}; }
 /* the Lobby as a street (Dylan, 2026-09-10; Jennifer's brief, version 2): one house front per Kindred persona on a strip.
    houses: [{accent, name (never drawn), img (the Look, optional), show (the house is public)}]; returns hotspots with bboxes
    so the page can send a click to the persona page. Decorative on screen; the cards under it are the accessible path. */
