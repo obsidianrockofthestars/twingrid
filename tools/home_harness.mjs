@@ -7,8 +7,9 @@ let h=rd('docs/index.html');
 const tpl=k=>JSON.parse(rd('docs/templates/'+k+'.json'));
 const mk=(id,name,k,theme,extra)=>Object.assign({id,name,owner:'u1',is_public:true,updated_at:'2026-09-11T14:00:00Z',image_url:null,voice_id:null,data:Object.assign({facets:tpl(k).facets,theme},extra||{})},{});
 const twinFlag=process.argv.includes('--twin')?{twin:true}:{};
+const depthFlag=process.argv.includes('--depth')?{depth:{on:true,done:[]}}:{}; // --depth opens the hatch on g1 so the basement's facet pages can be measured
 const room=(process.argv.find(a=>a.startsWith('--room='))||'--room=studio').slice(7);
-const grids=[mk('g1','Me','coach','nebula',Object.assign({avatar:{body:'standing'},house:{room,mood:'calm',zones:{thinking:[{obj:'desk-lamp',x:3,y:1,facet:'manager'}],resting:[],memory:[]}}},twinFlag)),mk('g2','My Shop','support','light:#2F7D6E'),mk('g3','Alrat','character','coral')];
+const grids=[mk('g1','Me','coach','nebula',Object.assign({avatar:{body:'standing'},house:{room,mood:'calm',zones:{thinking:[{obj:'desk-lamp',x:3,y:1,facet:'manager'}],resting:[],memory:[]}}},twinFlag,depthFlag)),mk('g2','My Shop','support','light:#2F7D6E'),mk('g3','Alrat','character','coral')];
 if(process.argv.includes('--empty')) grids.length=0;
 const stub=`const __H={grids:${JSON.stringify(grids)}};
 function __q(table){ const st={table,op:'select',filters:{}}; const b={}; ['select','eq','neq','in','is','order','limit','gte','lte','or','maybeSingle','single','insert','update','delete','upsert'].forEach(m=>{ b[m]=(...a)=>{ if(['update','insert','delete','upsert'].includes(m)){ st.op=m; st.payload=a[0]; } if(m==='eq') st.filters[a[0]]=a[1]; if(m==='maybeSingle'||m==='single') st.one=true; if(m==='select'&&a[1]&&a[1].head) st.head=true; return b; }; }); b.then=(res,rej)=>Promise.resolve().then(()=>__resolve(st)).then(res,rej); return b; }
