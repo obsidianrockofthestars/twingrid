@@ -437,6 +437,11 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #profile .fcard .fh .nm{color:var(--ptext)}
 #profile .psec .psh,#profile .fcard .cell .cl{color:var(--pacc-ink)}
 #profile .psec .psb{color:var(--ptext)}
+#profile .pkhatcan{margin:0 0 18px;padding:16px 18px;background:var(--psurf);border:1px solid var(--pline);border-radius:16px}
+#profile .pkhatcanh{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--pacc-ink);margin-bottom:8px}
+#profile .pkhatcan ul{margin:0;padding:0 0 0 18px;color:var(--ptext);font-size:14px;line-height:1.55}
+#profile .pkhatcan li{margin:0 0 6px}
+#profile .pkhatcan b{color:var(--ptext)}
 #profile .fcard .cell .cv{color:var(--pmuted);max-height:none;overflow:hidden;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4}
 #profile .pdisc{color:var(--pmuted)}
@@ -814,6 +819,14 @@ body.route-home{overflow:auto;background:var(--paper)}
 #home .hfoot a{color:var(--accent-w-deep)}
 #home .hempty{grid-column:1/-1;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:34px 24px;text-align:center;color:var(--ink-soft)}
 #home .hmsg{font-size:12.5px;color:var(--ink-dim);min-height:1.2em}
+#home .pkhath{font-family:var(--serif);font-weight:600;font-size:24px;margin:8px 0 6px;color:var(--ink)}
+#home .pkhattwinrow{grid-template-columns:minmax(260px,480px);padding-bottom:10px}
+#home .pkhattwinrow:empty{display:none}
+#home .pkhatpick{text-align:left;grid-column:1/-1}
+#home .pkhatpick p{margin:0 0 12px;color:var(--ink)}
+#home .pkhatrow{display:flex;flex-wrap:wrap;gap:8px}
+#home .pkhatwear{margin-left:auto}
+#home .pkhatdoor,#home .pkhatwear{border-color:#86869B} /* the panel token, 3.33 to 1 on paper; the token itself is scoped to .pkhp */
 
 /* moderation (operators only) */
 #mod{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
@@ -1542,10 +1555,17 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="pkguide" id="pkguide"></div>
       <div class="pkhp" id="pkhomepanel" hidden role="region" aria-labelledby="pkhptitle"><div class="pkhphead"><h3 id="pkhptitle" tabindex="-1"></h3><button type="button" class="pkhpx" id="pkhpx" aria-label="Close">&times;</button></div><div id="pkhpbody"></div></div>
     </section>
+    <div class="hgrid pkhattwinrow" id="pkhattwin"></div>
+    <div class="hnew pkhatnew" id="pkhatnew" hidden>
+      <h2>Add a hat</h2>
+      <p>One house, one you. A hat is a facet your twin can wear, a coach, a founder, a support rep, each with its own do and don't. It opens as a new door in the house.</p>
+      <div class="hdoors" id="pkhatpacks"></div>
+    </div>
+    <h2 class="pkhath" id="pkhath" hidden>Characters and businesses</h2>
     <div class="hgrid" id="hgrid"></div>
     <div class="hnew">
-      <h2>Make a new persona</h2>
-      <p>Three ways in. Pick whichever feels easiest; you can change everything later.</p>
+      <h2>Start a separate persona</h2>
+      <p>For a character or a business, something that is not you. Three ways in; you can change everything later.</p>
       <div class="hdoors">
         <button class="hdoor" type="button" data-hpath="questions"><b>Answer a few questions</b><span>We ask, you answer, the persona writes itself.</span></button>
         <button class="hdoor" type="button" data-hpath="template"><b>Start from a template</b><span>A coach, a founder, a support rep. Swap in your own words.</span></button>
@@ -1750,6 +1770,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
     <div class="pkhouse" id="pkhouse" hidden aria-labelledby="pkhouseh"><h2 id="pkhouseh">The house</h2><p class="pkhousenote" id="pkhousenote"></p><div class="pkrooms" id="pkrooms"></div></div>
     <div class="facets">
       <h2>Everything its owner wrote</h2>
+      <div class="pkhatcan" id="pkhatcan" hidden><div class="pkhatcanh">What it can be</div><ul id="pkhatcanl"></ul></div>
       <div class="fgrid" id="pfacets"></div>
     </div>
     <div class="rpt" id="rpt" role="dialog" aria-modal="true" aria-labelledby="rpttitle">
@@ -2091,6 +2112,17 @@ window.addEventListener('resize',()=>{ if(__tour) tourPlace(); });
 function tourMaybe(name, steps, delay){ if(tourSeen(name)) return; setTimeout(()=>{ if(!__tour&&!tutIsOpen()) tourStart(name,steps); }, delay||600); }
 // The board is the engine room. Signed-in users land here instead: plain cards, three doors, one link to the board.
 let __homeGen=0; // refreshAuth can fire several times at load (auth events); only the newest render may paint
+// one house, many hats (Dylan, 2026-09-11): the persona is you, the hats are facets on the twin's doors. A pack is a template's core
+// facet renamed; a custom hat starts from the blank guidance for its kind. A hat name is a slug so every header and id rule still holds.
+const PK_HATS=[['coach','Coach','Sharp questions, steady accountability.'],['founder','Founder','Runway, traction, honest about risk.'],['support','Support','Calm hands on a hot ticket.'],['creator','Creator','Ideas into posts and a living audience.'],['analyst','Analyst','Messy data into honest answers.'],['operator','Operator','Runs the day, fixes it fast.'],['author','Author','Voice and craft, one draft at a time.'],['character','Character','A companion who is not you.']];
+const PK_HAT_KINDS=[['specialist','Specialist, a job it does'],['mode','Mode, a way of working'],['role','Role, a seat it takes']];
+function pkHatName(v,facets){ v=String(v||'').toLowerCase().replace(/[^a-z]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40).replace(/-+$/,''); if(!v) return {error:'Give the hat a name, letters only.'}; if(v==='core'||(Array.isArray(facets)&&facets.some(f=>f&&typeof f.name==='string'&&f.name.toLowerCase()===v))) return {error:'A facet named '+v+' is already on this persona.'}; return {name:v}; }
+function pkHatCells(cells,name){ const out={}; ['CONTEXT','DO','DONT','GATES','VOICE'].forEach(c=>{ const v=String((cells&&cells[c])||'').replace(/^# [a-z-]+ \/ [A-Z]+/,'# '+name+' / '+c); out[c]=v||('# '+name+' / '+c+'\n\n(add your own here)'); }); return out; }
+function pkHatPicker(list,host){ const box=document.createElement('div'); box.className='hempty pkhatpick'; const p=document.createElement('p'); p.textContent='Which of these is you? Your twin gets the house; the rest list under it as characters and businesses.'; box.appendChild(p); const row=document.createElement('div'); row.className='pkhatrow';
+  list.forEach(r=>{ const b=document.createElement('button'); b.type='button'; b.className='hbtn solid'; b.textContent=String(r.name||'Untitled').slice(0,80); b.onclick=async()=>{ b.disabled=true; const res=await pkhpSave(r.id,dd=>{ dd.twin=true; }); if(res.error){ b.disabled=false; p.textContent=res.error; return; } renderHome(); }; row.appendChild(b); }); box.appendChild(row); host.appendChild(box); }
+function pkHatDoors(){ const sec=document.getElementById('pkhatnew'), packs=document.getElementById('pkhatpacks'), scene=document.getElementById('pkhomescene'); if(!sec||!packs) return; packs.innerHTML=''; sec.hidden=false;
+  const door=(t,d,arg)=>{ const b=document.createElement('button'); b.type='button'; b.className='hdoor pkhatdoor'; const bt=document.createElement('b'); bt.textContent=t; const sp=document.createElement('span'); sp.textContent=d; b.append(bt,sp); b.onclick=()=>{ if(scene&&scene.__open) scene.__open('hat',arg); }; packs.appendChild(b); };
+  PK_HATS.forEach(([k,t,d])=>door(t,d,{pack:k})); door('New hat','Your own: a name, a kind, a floor, five cells.',{}); }
 async function renderHome(){ const gen=++__homeGen;
   document.body.className='marketing route-home'; app.style.display='none'; closeAuth();
   document.title='Home \u00b7 Personakind';
@@ -2103,8 +2135,12 @@ async function renderHome(){ const gen=++__homeGen;
   grid.innerHTML='';
   homeHandleUi(owner,myHandle);
   if(error){ const d=document.createElement('div'); d.className='hempty'; d.textContent=error.message; grid.appendChild(d); return; }
+  const twinRow=document.getElementById('pkhattwin'), hatNew=document.getElementById('pkhatnew'), hath=document.getElementById('pkhath'); twinRow.innerHTML=''; hatNew.hidden=true; hath.hidden=true;
   if(!data||!data.length){ pkHomeScene(null); const d=document.createElement('div'); d.className='hempty'; d.textContent='No personas yet. Pick a door below and make your first one.'; grid.appendChild(d); return; }
-  pkHomeScene(data[0]);
+  // one house per owner: the twin is the grid the owner marked as theirs (data.twin, a top level key no projection carries); the rest list under it
+  const twin=data.find(r=>r.data&&typeof r.data==='object'&&r.data.twin===true)||null;
+  pkHomeScene(twin); if(twin) pkHatDoors(); else pkHatPicker(data,twinRow);
+  hath.hidden=!(twin&&data.length>1);
   data.forEach(r=>{
     const c=document.createElement('div'); c.className='hcard';
     const nm=document.createElement('div'); nm.className='hname'; nm.textContent=r.name||'Untitled';
@@ -2125,6 +2161,7 @@ async function renderHome(){ const gen=++__homeGen;
       row.append(inp,ok,no,st); nm.after(row); inp.focus(); inp.select(); };
     const meta=document.createElement('div'); meta.className='hmeta';
     const tag=document.createElement('span'); tag.className=r.is_public?'hpub':'hpriv'; tag.textContent=r.is_public?'public':'private'; meta.appendChild(tag);
+    if(r===twin){ const yt=document.createElement('span'); yt.className='hpub pkhatyou'; yt.textContent='your twin'; meta.appendChild(yt); const nu=document.createElement('button'); nu.type='button'; nu.className='hrename'; nu.textContent='Not you?'; nu.onclick=async()=>{ nu.disabled=true; const res=await pkhpSave(r.id,dd=>{ delete dd.twin; }); if(res.error){ nu.disabled=false; msg.textContent=res.error; return; } renderHome(); }; meta.appendChild(nu); }
     const when=document.createElement('span'); when.textContent='  edited '+new Date(r.updated_at).toLocaleDateString(); meta.appendChild(when); meta.appendChild(ren); c.appendChild(meta);
     const acts=document.createElement('div'); acts.className='hacts';
     const edit=document.createElement('a'); edit.className='hbtn solid'; edit.href='?editor'; edit.textContent='Edit'; edit.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); }catch(_){} }; acts.appendChild(edit);
@@ -2132,7 +2169,7 @@ async function renderHome(){ const gen=++__homeGen;
     const share=document.createElement('button'); share.className='hbtn'; share.type='button'; share.textContent=r.is_public?'Copy share link':'Private';
     if(r.is_public){ share.onclick=()=>{ const url=shareUrlFor(r.id,r.name,myHandle); navigator.clipboard.writeText(url).then(()=>{ share.textContent='Copied'; setTimeout(()=>share.textContent='Copy share link',1400); }); }; }
     else { share.disabled=true; share.title='Tick "make public" in the editor to get a share link.'; }
-    acts.appendChild(share); c.appendChild(acts); grid.appendChild(c);
+    acts.appendChild(share); c.appendChild(acts); (r===twin?twinRow:grid).appendChild(c);
   });
 }
 // Handle line and claim card on Home. A handle is claimed once (unique, case-insensitive, reserved words refused by the
@@ -2263,6 +2300,7 @@ async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
   if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones(); initOperator(session);
     if(window.__editorBooted) return; window.__editorBooted=true;
     try{ const g=sessionStorage.getItem('pk_open_grid'); if(g){ sessionStorage.removeItem('pk_open_grid'); const b=[...document.querySelectorAll('#clonelist .clone')].find(x=>x.dataset.gid===g); if(b) b.click(); }
+      const hat=sessionStorage.getItem('pk_open_hat'); if(hat){ sessionStorage.removeItem('pk_open_hat'); if(hat!=='core'&&byName[hat]) toggleFacet(hat); }
       const oh=sessionStorage.getItem('pk_open_home'); if(oh){ sessionStorage.removeItem('pk_open_home'); setTimeout(()=>{ if(oh==='core'){ if(byName.core) openCell('core','CONTEXT'); return; } const el=document.getElementById(oh==='public'?'ispublic':oh==='look'?'pklookbox':oh==='snap'?'pksnapbox':'homebox'); if(!el) return; if(oh==='home'||oh==='look'||oh==='snap') el.open=true; el.scrollIntoView({block:'center'}); if(oh==='public') el.focus(); },500); }
       if(sessionStorage.getItem('pk_open_chat')){ sessionStorage.removeItem('pk_open_chat'); setTimeout(()=>document.getElementById('chatbtn').click(),200); } else { tourMaybe('editor',TOUR_EDITOR,900); } }catch(_){}
     try{ const __p=sessionStorage.getItem('pk_pending_path');
@@ -2382,6 +2420,8 @@ function pkSprites(){ if(!PK_SPR){ PK_SPR=fetch(location.origin+'/catalog/sprite
 // facet's cells as sentences; the only bookkeeping is data.depth ({on, done:[ids]}), a top level key no projection carries.
 let PK_QB=null;
 function pkQuestions(){ if(!PK_QB){ PK_QB=fetch(location.origin+'/catalog/questions.json').then(r=>r.ok?r.json():null).catch(()=>null).then(b=>{ if(!Array.isArray(b)){ PK_QB=null; return null; } return b.filter(x=>x&&typeof x.id==='string'&&typeof x.facet==='string'&&typeof x.q==='string'&&['CONTEXT','DO','DONT','GATES','VOICE'].indexOf(x.cell)>=0); }); } return PK_QB; }
+// how many questions this persona can answer: the bank rows for its facets, plus the generic hat rows once per facet the bank does not know
+function pkBankTotal(bank,facets){ const byF={}; bank.forEach(x=>{ byF[x.facet]=(byF[x.facet]||0)+1; }); return (Array.isArray(facets)?facets:[]).reduce((a,f)=>{ if(!f||typeof f.name!=='string') return a; return a+(byF[f.name]||(f.name!=='core'?(byF.hat||0):0)); },0); }
 function pkhpAppend(old,s){ const HDR=/^# [a-z-]+ \/ [A-Z]+\s*/; old=String(old||''); const hm=old.match(HDR); let body=old.replace(HDR,'').trim(); if(body==='(add your own here)') body=''; return (hm?hm[0].trim()+'\n\n':'')+(body?body+'\n\n':'')+s; }
 function pkEditorAccent(){ try{ return pkThemeFor(GRID.theme).accent; }catch(_){ return '#5B45E0'; } }
 // ---------- the Look (A4, 2026-09-10): data.avatar, keys only. twingrid_avatar_valid() in SQL is the real gate; this paints the editor.
@@ -2515,7 +2555,8 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
     const facetSave=(name,cells)=>pkhpSave(r.id,dd=>{ const g=dd.facets.find(x=>x&&x.name===name); if(!g) return {error:'That facet is gone from the saved persona. Reload the page.'}; g.cells=Object.assign({},g.cells||{},cells); });
     if(kind==='door'){ const f=byNameL[arg]; if(!f){ T('That door is not on this persona.'); return; } T((arg==='core'?'The basics':String(arg).slice(0,40))+': its five cells'); note('Plain text, in your own words. Everyone who can see this floor reads these cells.'); f.cells=(f.cells&&typeof f.cells==='object')?f.cells:{}; const tas={};
       CELLS.forEach(c=>{ const l=document.createElement('label'); l.className='pkhpq'; const s=document.createElement('span'); s.textContent=cellLabel(c)+' ('+c+')'; const ta=document.createElement('textarea'); ta.className='pkhpta pkhpcell'; ta.maxLength=PK_SNAP_MAX; ta.value=String(f.cells[c]||''); tas[c]=ta; l.append(s,ta); pbody.appendChild(l); });
-      foot('Save the cells',()=>{ const v={}; CELLS.forEach(c=>{ v[c]=tas[c].value; }); return facetSave(arg,v); }); }
+      foot('Save the cells',()=>{ const v={}; CELLS.forEach(c=>{ v[c]=tas[c].value; }); return facetSave(arg,v); });
+      if(arg!=='core'){ const w=document.createElement('button'); w.type='button'; w.className='hbtn pkhatwear'; w.textContent='Wear this hat and talk'; w.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); sessionStorage.setItem('pk_open_chat','1'); sessionStorage.setItem('pk_open_hat',String(arg)); }catch(_){} location.href='?editor'; }; const ft=pbody.querySelector('.pkhpfoot'); if(ft) ft.appendChild(w); } }
     else if(kind==='desk'){ const core=byNameL.core; T('The desk: the questions for this persona'); note(core?'The fourteen questions that make the core identity, filled in from what is there now. Change any answer; the preview under them shows exactly what lands in each cell when you save.':'This persona has no core facet, so the desk has nothing to write into. Open the Workshop to add one.'); if(!core) return;
       const inv=pkhpInvert(core.cells||{}); const ans=Object.assign({},inv.a); ans.name=String(r.name||''); const prev={};
       const paint=()=>{ const made=pkhpWriteBack(core.cells||{},ans,inv.ok); CELLS.forEach(c=>{ const pv=prev[c]; if(!pv) return; pv.textContent=''; const b=document.createElement('b'); b.textContent=cellLabel(c)+'\n'; pv.append(b,document.createTextNode(made[c]||'')); }); };
@@ -2542,9 +2583,9 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
       const q=note('Loading the questions.'); pkQuestions().then(bank=>{ if(panel.dataset.kind!=='basement') return; if(!bank){ q.textContent='The question bank did not load. Try again in a moment.'; return; }
         const done=new Set(Array.isArray(d.depth.done)?d.depth.done.filter(x=>typeof x==='string'):[]); const byF={}; bank.forEach(x=>{ (byF[x.facet]=byF[x.facet]||[]).push(x); });
         const nav=(skip)=>{ const f=document.createElement('div'); f.className='pkhpfoot'; if(st.facet){ const bk=document.createElement('button'); bk.type='button'; bk.className='hbtn'; bk.textContent='All facets'; bk.onclick=()=>open('basement'); f.appendChild(bk); } if(skip){ const sk=document.createElement('button'); sk.type='button'; sk.className='hbtn'; sk.textContent='Skip these'; sk.onclick=()=>open('basement',{facet:st.facet,page:(st.page||0)+1}); f.appendChild(sk); } pbody.appendChild(f); };
-        if(!st.facet){ q.textContent=done.size+' of '+bank.length+' answered. Pick a facet.'; const row=document.createElement('div'); row.className='pkhpdoors'; d.facets.forEach(f=>{ if(!f||typeof f.name!=='string'||!byF[f.name]) return; const list=byF[f.name]; const k=list.filter(x=>done.has(x.id)).length; const b=document.createElement('button'); b.type='button'; b.className='pkhpdoor'+(k===list.length?' pkhpdone':''); b.textContent=nm(f.name)+': '+k+' of '+list.length; b.onclick=()=>open('basement',{facet:f.name,page:0}); row.appendChild(b); }); pbody.appendChild(row); door(); return; }
-        const f=byNameL[st.facet]; const all=byF[st.facet]||[]; const left=all.filter(x=>!done.has(x.id)); if(!f||!all.length){ q.textContent='That facet is not on this persona.'; nav(false); return; } if(!left.length){ q.textContent='Every question for '+nm(st.facet)+' is answered.'; nav(false); return; }
-        let off=(st.page||0)*5; if(off>=left.length) off=0; const page=left.slice(off,off+5); q.textContent=nm(st.facet)+': '+(all.length-left.length)+' of '+all.length+' answered. Five at a time, skip any you like. Each answer shows the sentence it becomes before you save.';
+        if(!st.facet){ q.textContent=done.size+' of '+pkBankTotal(bank,d.facets)+' answered. Pick a facet.'; const row=document.createElement('div'); row.className='pkhpdoors'; d.facets.forEach(f=>{ if(!f||typeof f.name!=='string') return; const gn=!byF[f.name]&&f.name!=='core'&&Array.isArray(byF.hat); const list=byF[f.name]||(gn?byF.hat:null); if(!list) return; const k=list.filter(x=>done.has(gn?x.id+'@'+f.name:x.id)).length; const b=document.createElement('button'); b.type='button'; b.className='pkhpdoor'+(k===list.length?' pkhpdone':''); b.textContent=nm(f.name)+': '+k+' of '+list.length; b.onclick=()=>open('basement',{facet:f.name,page:0}); row.appendChild(b); }); pbody.appendChild(row); door(); return; }
+        const f=byNameL[st.facet]; const gn=!byF[st.facet]&&st.facet!=='core'&&Array.isArray(byF.hat); const kid=x=>gn?(x.id+'@'+st.facet):x.id; const all=byF[st.facet]||(gn?byF.hat:[]); const left=all.filter(x=>!done.has(kid(x))); if(!f||!all.length){ q.textContent='That facet is not on this persona.'; nav(false); return; } if(!left.length){ q.textContent='Every question for '+nm(st.facet)+' is answered.'; nav(false); return; }
+        let off=(st.page||0)*5; if(off>=left.length) off=0; const page=left.slice(off,off+5); q.textContent=(gn?'This hat has no questions of its own, so here are the five generic ones per cell. ':'')+nm(st.facet)+': '+(all.length-left.length)+' of '+all.length+' answered. Five at a time, skip any you like. Each answer shows the sentence it becomes before you save.';
         const ans={}, prevs={}; const sentence=x=>{ const v=String(ans[x.id]||'').trim(); if(!v) return ''; return x.type==='choice'?v:(/[.!?]$/.test(v)?v:v+'.'); };
         const paint=x=>{ const s=sentence(x), pv=prevs[x.id]; pv.textContent=''; pv.hidden=!s; if(!s) return; const b=document.createElement('b'); b.textContent='Lands in '+cellLabel(x.cell)+': '; pv.append(b,document.createTextNode(s)); };
         page.forEach(x=>{ const l=document.createElement(x.type==='choice'?'div':'label'); l.className='pkhpq'; const s=document.createElement('span'); s.textContent=String(x.q).slice(0,140); l.appendChild(s); if(typeof x.hint==='string'&&x.hint){ const sm=document.createElement('small'); sm.className='pkhphint'; sm.textContent=x.hint.slice(0,90); l.appendChild(sm); }
@@ -2552,8 +2593,18 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
           else { const ta=document.createElement('textarea'); ta.className='pkhpta'; ta.maxLength=600; ta.oninput=()=>{ ans[x.id]=ta.value; paint(x); }; l.appendChild(ta); }
           const pv=document.createElement('div'); pv.className='pkhpprev'; pv.hidden=true; prevs[x.id]=pv; l.appendChild(pv); pbody.appendChild(l); });
         foot('Save these answers',()=>{ const got=page.filter(x=>sentence(x)); if(!got.length) return Promise.resolve({error:'Answer at least one, or skip these.'}); return pkhpSave(r.id,dd=>{ const g=dd.facets.find(y=>y&&y.name===st.facet); if(!g) return {error:'That facet is gone from the saved persona. Reload the page.'}; g.cells=Object.assign({},g.cells||{}); const x=(dd.depth&&typeof dd.depth==='object')?dd.depth:{}; const dn=new Set(Array.isArray(x.done)?x.done:[]);
-          for(const y of got){ const nx=pkhpAppend(g.cells[y.cell],sentence(y)); if(nx.length>PK_SNAP_MAX) return {error:cellLabel(y.cell)+' is full at 40,000 characters. Trim it from its door first.'}; g.cells[y.cell]=nx; dn.add(y.id); } x.done=[...dn]; x.on=true; dd.depth=x; }); });
+          for(const y of got){ const nx=pkhpAppend(g.cells[y.cell],sentence(y)); if(nx.length>PK_SNAP_MAX) return {error:cellLabel(y.cell)+' is full at 40,000 characters. Trim it from its door first.'}; g.cells[y.cell]=nx; dn.add(kid(y)); } x.done=[...dn]; x.on=true; dd.depth=x; }); });
         nav(true); }); }
+    else if(kind==='hat'){ const st=(arg&&typeof arg==='object')?arg:{}; if(st.saved){ open('door',st.saved); return; } const pack=PK_HATS.find(x=>x[0]===st.pack); T(pack?('Add a hat: '+pack[1]):'New hat');
+      note(pack?'Five cells in the hat\'s own voice, prefilled. Change any of them; once saved they are yours. The floor sets who can see it: Private is yours, Kindred opens to Kindred, Public sits in the visiting room for anyone.':'A hat is a facet your twin wears: a name, a kind, a floor and five cells in your own words. The basement offers five generic questions per cell for it.');
+      const nm=document.createElement('label'); nm.className='pkhpq'; const ns=document.createElement('span'); ns.textContent='Name (letters, up to 40)'; const ni=document.createElement('input'); ni.type='text'; ni.className='pkhpin'; ni.maxLength=40; ni.value=pack?pack[0]:''; nm.append(ns,ni); pbody.appendChild(nm);
+      const selRow=(label,opts,val)=>{ const l=document.createElement('label'); l.className='pkhprow'; const s=document.createElement('span'); s.textContent=label; const se=document.createElement('select'); se.className='pkhpsel'; opts.forEach(([k,t])=>{ const o=document.createElement('option'); o.value=k; o.textContent=t; if(k===val) o.selected=true; se.appendChild(o); }); l.append(s,se); pbody.appendChild(l); return se; };
+      const kindSel=selRow('Kind',PK_HAT_KINDS,'specialist'); const floorSel=selRow('Floor',PK_SCOPES.map(x=>[x,PK_ROOM_LABEL[x]+' ('+PK_SCOPE_LABEL[x]+')']),'house');
+      const tas={}; CELLS.forEach(c=>{ const l=document.createElement('label'); l.className='pkhpq'; const s=document.createElement('span'); s.textContent=cellLabel(c)+' ('+c+')'; const ta=document.createElement('textarea'); ta.className='pkhpta pkhpcell'; ta.maxLength=PK_SNAP_MAX; tas[c]=ta; l.append(s,ta); pbody.appendChild(l); });
+      const seed=()=>{ if(pack) return fetch('templates/'+pack[0]+'.json').then(x=>x.ok?x.json():null).then(t=>{ const core=t&&Array.isArray(t.facets)&&t.facets.find(f=>f&&f.name==='core'); return core?core.cells:null; }).catch(()=>null); const g=BLANK.facets.find(f=>f&&f.kind===kindSel.value); return Promise.resolve(g?g.cells:null); };
+      const reseed=()=>seed().then(cells=>{ if(panel.dataset.kind!=='hat') return; const made=pkHatCells(cells||{},pkHatName(ni.value,[]).name||'hat'); CELLS.forEach(c=>{ tas[c].value=made[c]; }); }); reseed(); if(!pack) kindSel.onchange=reseed;
+      foot('Add the hat',()=>{ const chk=pkHatName(ni.value,d.facets); if(chk.error) return Promise.resolve({error:chk.error}); const cells={}; CELLS.forEach(c=>{ cells[c]=tas[c].value; }); const kd=PK_HAT_KINDS.some(x=>x[0]===kindSel.value)?kindSel.value:'specialist'; const scp=PK_SCOPES.indexOf(floorSel.value)>=0?floorSel.value:'house';
+        return pkhpSave(r.id,dd=>{ const c2=pkHatName(chk.name,dd.facets); if(c2.error) return {error:c2.error}; dd.facets.push({name:chk.name,kind:kd,scope:scp,cells:pkHatCells(cells,chk.name)}); }).then(res=>{ if(res.data) st.saved=chk.name; return res; }); }); }
     else if(kind==='house'){ T(n?'The house: room, mood and objects':'Build the house'); note('Pick the room and the mood, then put things on the floors. Drag them where you like in the picture, then press Save the layout.');
       pkCatalog().then(cat=>{ if(!cat||panel.dataset.kind!=='house') return; const linked=new Set(names); const redraw=()=>{ if(sc) sc.set(h,linked); };
         const sel=(label,opts,get,set,none)=>{ const l=document.createElement('label'); l.className='pkhprow'; const s=document.createElement('span'); s.textContent=label; const se=document.createElement('select'); se.className='pkhpsel'; const o0=document.createElement('option'); o0.value=''; o0.textContent=none; se.appendChild(o0); opts.forEach(x=>{ const o=document.createElement('option'); o.value=x.key; o.textContent=x.label; if(get()===x.key) o.selected=true; se.appendChild(o); }); se.onchange=()=>set(se.value); l.append(s,se); return l; };
@@ -2571,7 +2622,7 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
       foot('Save',()=>pkhpSave(r.id,()=>({is_public:ck.checked})).then(res=>{ if(res.error&&/adult_confirmation_required/.test(res.error)) res.error='Publishing needs the 18 or older confirmation. Tick it once in the Workshop, then open the door here.'; if(res.data) res.is_public=ck.checked; return res; })); }
     const rmo=matchMedia('(prefers-reduced-motion: reduce)').matches; try{ panel.scrollIntoView({block:'nearest',behavior:rmo?'auto':'smooth'}); }catch(_){} try{ ptitle.focus({preventScroll:true}); }catch(_){} };
   sec.__open=(kind,arg,txt)=>{ open(kind,arg); if(txt&&panel.__msg) panel.__msg.textContent=txt; };
-  const tt={workshop:pkDepthText(d.facets)+' Enter opens the depth.',core:pkCoreText(),obsidian:pkSnapText(),shelf:pkShelfText(undefined)}; pkShelfCounts(r.id).then(c=>{ tt.shelf=pkShelfText(c); }); if(depth.on===true) pkQuestions().then(b=>{ if(b) tt.workshop='The hatch: the depth. '+doneN+' of '+b.length+' answered. Enter opens it.'; });
+  const tt={workshop:pkDepthText(d.facets)+' Enter opens the depth.',core:pkCoreText(),obsidian:pkSnapText(),shelf:pkShelfText(undefined)}; pkShelfCounts(r.id).then(c=>{ tt.shelf=pkShelfText(c); }); if(depth.on===true) pkQuestions().then(b=>{ if(b) tt.workshop='The hatch: the depth. '+doneN+' of '+pkBankTotal(b,d.facets)+' answered. Enter opens it.'; });
   sc=await pkSceneMount(document.getElementById('pkhscene'),h,{accent:pkThemeFor(d.theme).accent,room:h.room,linked:new Set(names),avatarData:d.avatar,editable:true,objOpen:true,lit:[true,true,true],facets:pkFacetsByScope(d.facets),tools:[{floor:2,id:'workshop'},{floor:1,id:'core'},{floor:1,id:'obsidian',side:'left'},{floor:0,id:'shelf'}],toolText:tt,
     onOpen:hs=>{ if(hs.kind==='door') open('door',hs.facet); else if(hs.kind==='tool') open(hs.id==='core'?'desk':hs.id==='obsidian'?'chest':hs.id==='shelf'?'shelf':'basement'); else if(hs.kind==='obj'){ const fn=hs.item.ref.facet; if(fn&&byNameL[fn]) open('door',fn); else open('house'); } },onChange:dirty}); sec.hidden=!sc; }
 document.getElementById('pkhpx').onclick=pkhpClose;
@@ -2896,7 +2947,7 @@ function integrityOf(facets){ if(!facets.length||!byName.core) return {complete:
   let empty=0; facets.forEach(fn=>{const f=byName[fn]; if(!f)return; Object.keys(f.cells).forEach(c=>{ if(!String(f.cells[c]==null?'':f.cells[c]).trim()) empty++; }); });
   return empty? {complete:false,msg:empty+' empty cell'+(empty>1?'s':'')} : {complete:true,msg:'complete'}; }
 function render(){ if(!GRID.facets.length){document.getElementById('loadout').innerHTML='<span class="lab">no clone loaded</span>';document.getElementById('axischips').innerHTML='';return;}
-  buildAxis(); buildLoadout(); pkRepaintRooms();
+  buildAxis(); buildLoadout(); pkRepaintRooms(); pkHatTitle();
   const act=activeFacets();
   document.querySelectorAll('.node[data-name]').forEach(el=>{const n=el.dataset.name;el.classList.toggle('on',act.includes(n));const q=queue.indexOf(n);el.classList.toggle('queued',mode==='queue'&&q>=0);if(mode==='queue'&&q>=0)el.querySelector('.qbadge').textContent='#'+(q+1);});
   const cb=document.getElementById('cbig'),ci=document.getElementById('cint');
@@ -3080,7 +3131,9 @@ async function refreshCredits(){ const token=await hostedToken(); if(!token){ ho
     setCreditsLine(ended ? 'Hosted chat: your plan ended. Renew, or add your own key.' : hostedRemaining>0 ? 'Hosted chat: '+hostedRemaining+' message'+(hostedRemaining===1?'':'s')+' left'+until : 'Hosted chat: no messages left. Add your own key, or buy more.');
     setPlanLine(ended ? 'Hosted plan ended.' : hostedPlanActive() ? 'Hosted: '+hostedRemaining+' message'+(hostedRemaining===1?'':'s')+' left'+until+'. Renews itself.' : 'No hosted plan yet.');
     return hostedRemaining; }catch(_){ hostedPeriodEnd=null; setCreditsLine(''); setPlanLine('Could not read your plan right now.'); return null; } }
-async function openChat(){ pkChatFace(); if(localStorage.getItem('tg_key')){ setCreditsLine(''); chat.classList.add('open'); renderChat(); return; }
+// the hat on the chat header (v17): the specialist, mode and role in the composition, by name, through textContent. The register is its own dial and stays off the header.
+function pkHatTitle(){ const t=document.getElementById('chattitle'); if(!t) return; const hats=(mode==='queue'?queue:[sel.specialist]).concat([sel.mode,sel.role]).filter(x=>x&&byName[x]); t.textContent=hats.length?('Chat, wearing '+hats.map(x=>String(x).slice(0,40)).join(', ')):'Chat'; }
+async function openChat(){ pkChatFace(); pkHatTitle(); if(localStorage.getItem('tg_key')){ setCreditsLine(''); chat.classList.add('open'); renderChat(); return; }
   const token=await hostedToken(); if(!token){ settings.classList.add('open'); return; }
   chat.classList.add('open'); renderChat(); const n=await refreshCredits(); if(n===0) showProCard(); }
 function currentGridId(){ return curId||PK_CUR_ID||null; }
@@ -3560,6 +3613,9 @@ async function renderProfile(id,opts){ opts=opts||{};
     const bd=document.createElement('div'); bd.className='psb'; bd.textContent=cellBody(f.cells[c]);
     sec.append(h,bd); pe.appendChild(sec); }); });
   if(!any){ pe.textContent='This persona has not been filled in yet.'; }
+  // what it can be (v17): one line per hat the viewer may see, a DO and a DONT sentence from its cells, through textContent
+  { const can=document.getElementById('pkhatcan'), ul=document.getElementById('pkhatcanl'); if(can&&ul){ ul.innerHTML=''; const first=v=>{ let x=String(v||'').replace(/\s+/g,' ').trim(); if(!x||/^\(add your own here\)/.test(x)||/^<!--/.test(x)) return ''; const m=x.match(/^(.+?[.!?])(\s|$)/); return (m?m[1]:x).slice(0,160); };
+    g.facets.forEach(f=>{ if(!f||f.name==='core'||!f.cells) return; const dO=first(cellBody(f.cells.DO)), dN=first(cellBody(f.cells.DONT)); if(!dO&&!dN) return; const li=document.createElement('li'); const b=document.createElement('b'); b.textContent=String(f.name).slice(0,40)+'.'; const sp=document.createElement('span'); sp.textContent=(dO?' Do: '+dO:'')+(dN?' Don\'t: '+dN:''); li.append(b,sp); ul.appendChild(li); }); can.hidden=!ul.children.length; } }
   const grid=document.getElementById('pfacets'); grid.innerHTML='';
   g.facets.forEach(f=>{ const card=document.createElement('div'); card.className='fcard'; card.dataset.facet=String(f.name||'');
     const fh=document.createElement('div'); fh.className='fh';

@@ -2,7 +2,7 @@
 // Usage: node tools/questions_check.mjs [path]   (default docs/catalog/questions.json; a batch file may hold a subset of facets)
 import fs from 'node:fs';
 const path=process.argv[2]||new URL('../docs/catalog/questions.json',import.meta.url);
-const FACETS=['core','manager','designer','marketer','engineer','writer','qa-skeptic','librarian','prototyper','builder','sweeper','grower','maintainer','teacher','business-partner','worker','vibe','surgery','full-copy'];
+const FACETS=['core','manager','designer','marketer','engineer','writer','qa-skeptic','librarian','prototyper','builder','sweeper','grower','maintainer','teacher','business-partner','worker','vibe','surgery','full-copy','hat'];
 const CELLS=['CONTEXT','DO','DONT','GATES','VOICE'];
 const DASH=/[\u2012\u2013\u2014\u2015\u2212-]/;
 const TRAP=/\b(full name|last name|surname|real name|date of birth|birthday|birth date|social security|ssn|passport|driver'?s licen|street address|home address|mailing address|zip code|postcode|phone number|email address|password|bank|salary|income|net worth|how much (do you (earn|make|owe)|money)|credit card|account number|diagnos|medication|illness|disease|disabilit|therapist|mental health|pregnan|where (do )?you live|hometown|home town|employer'?s? name|company name|school name|(kid|child|children|son|daughter|wife|husband|spouse|partner|mother|father|mom|dad)'?s? (name|age|school|birthday))\b/i;
@@ -22,5 +22,5 @@ rows.forEach((r,i)=>{ const at='row '+i+' '+(r&&r.id);
   if(r.type==='choice'){ if(!Array.isArray(r.options)||r.options.length<2||r.options.length>5) bad(at+' options count'); else r.options.forEach((o,k)=>{ o=String(o); if(!o.trim()||o.length>=140) bad(at+' option '+k+' length'); if(DASH.test(o)) bad(at+' dash in option '+k); if(!/[.!?]$/.test(o.trim())) bad(at+' option '+k+' is not a sentence: '+o); if(TRAP.test(o)) bad(at+' privacy trap in option '+k); }); if(new Set((r.options||[]).map(o=>String(o).toLowerCase())).size!==(r.options||[]).length) bad(at+' duplicate options'); }
   if(!Number.isInteger(r.weight)||r.weight<1||r.weight>3) bad(at+' weight '+r.weight);
   per[r.facet]=per[r.facet]||{}; per[r.facet][r.cell]=(per[r.facet][r.cell]||0)+1; });
-Object.keys(per).forEach(f=>{ const n=CELLS.reduce((a,c)=>a+(per[f][c]||0),0); if(n<35||n>45) bad('facet '+f+' has '+n+' questions (want 35 to 45)'); CELLS.forEach(c=>{ if((per[f][c]||0)<5) bad('facet '+f+' cell '+c+' has '+(per[f][c]||0)+' (want 5 or more)'); }); });
+Object.keys(per).forEach(f=>{ const n=CELLS.reduce((a,c)=>a+(per[f][c]||0),0); const lo=f==='hat'?25:35, hi=f==='hat'?25:45; if(n<lo||n>hi) bad('facet '+f+' has '+n+' questions (want '+lo+' to '+hi+')'); CELLS.forEach(c=>{ if((per[f][c]||0)<5) bad('facet '+f+' cell '+c+' has '+(per[f][c]||0)+' (want 5 or more)'); }); });
 const facets=Object.keys(per); console.log((fails?'questions_check: '+fails+' failed':'questions_check OK')+' ('+rows.length+' questions, '+facets.length+' facets)'); process.exit(fails?1:0);
