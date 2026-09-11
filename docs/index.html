@@ -367,6 +367,7 @@ body.route-profile{overflow:auto}
 .pid .meta{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .pid .badge{border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--accent)}
 .pmain{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;padding:34px 0 60px;align-items:start}
+.pleft{display:flex;flex-direction:column;gap:22px;min-width:0}
 .persona{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
 .persona h2{font-size:14px;font-family:"IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 14px}
 .persona .body{white-space:pre-wrap;font-size:14.5px;line-height:1.62;color:var(--text);max-height:520px;overflow:auto}
@@ -441,6 +442,13 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #profile .psec .psb{color:var(--ptext)}
 #profile .pkhatcan{margin:0 0 18px;padding:16px 18px;background:var(--psurf);border:1px solid var(--pline);border-radius:16px}
 #profile .pkhatcanh{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--pacc-ink);margin-bottom:8px}
+#profile .pfhb{margin-top:6px}
+#profile .pfhbsum{font-family:var(--serif);font-weight:600;font-size:20px;color:var(--ptext);cursor:pointer;padding:6px 0;list-style:none}
+#profile .pfhbsum::-webkit-details-marker{display:none}
+#profile .pfhbsum::before{content:"B8 ";color:var(--pacc-ink);font-size:15px}
+#profile details[open] .pfhbsum::before{content:"BE "}
+#profile .pfhbsum:focus-visible{outline:2px solid var(--pacc);outline-offset:2px;border-radius:6px}
+#profile .pfhbnote{color:var(--pmuted);font-size:14px;line-height:1.5;margin:4px 0 16px}
 #profile .pkhatcan ul{margin:0;padding:0 0 0 18px;color:var(--ptext);font-size:14px;line-height:1.55}
 #profile .pkhatcan li{margin:0 0 6px}
 #profile .pkhatcan b{color:var(--ptext)}
@@ -1726,9 +1734,12 @@ body.route-profile #helpbtn{left:16px;right:auto}
 
   <div class="wrap">
     <div class="pmain">
+      <div class="pleft">
+      <div class="pkhatcan" id="pkhatcan" hidden><div class="pkhatcanh">What it can be</div><ul id="pkhatcanl"></ul></div>
       <div class="persona">
         <h2>What it&rsquo;s like</h2>
         <div class="body" id="ppersona"></div>
+      </div>
       </div>
       <div class="pside">
         <div class="pcta" id="pctatalk">
@@ -1770,9 +1781,10 @@ body.route-profile #helpbtn{left:16px;right:auto}
     </section>
     <div class="pkhouse" id="pkhouse" hidden aria-labelledby="pkhouseh"><h2 id="pkhouseh">The house</h2><p class="pkhousenote" id="pkhousenote"></p><div class="pkrooms" id="pkrooms"></div></div>
     <div class="facets">
-      <h2>Everything its owner wrote</h2>
-      <div class="pkhatcan" id="pkhatcan" hidden><div class="pkhatcanh">What it can be</div><ul id="pkhatcanl"></ul></div>
+      <details class="pfhb"><summary class="pfhbsum">The full handbook</summary>
+      <p class="pfhbnote">Every word its owner wrote, facet by facet. This is exactly what the AI is told to be, nothing hidden.</p>
       <div class="fgrid" id="pfacets"></div>
+      </details>
     </div>
     <div class="rpt" id="rpt" role="dialog" aria-modal="true" aria-labelledby="rpttitle">
       <div class="rptcard">
@@ -3619,7 +3631,7 @@ async function renderProfile(id,opts){ opts=opts||{};
   const order=["CONTEXT","DO","DONT","GATES","VOICE"];
   const bn=Object.fromEntries(g.facets.map(f=>[f.name,f]));
   // every facet the view handed over is a lobby facet; core leads, the rest in the owner's order
-  const pick=["core"]; g.facets.forEach(f=>{ if(f&&f.name&&f.name!=="core"&&pick.indexOf(f.name)<0) pick.push(f.name); });
+  const pick=["core"]; // "What it's like" is the core narrative; the hats lead in "What it can be" and the full grid lives in the handbook below (v18)
   const pe=document.getElementById('ppersona'); pe.innerHTML=''; let any=false;
   pick.forEach(fn=>{ const f=bn[fn]; if(!f)return; order.filter(c=>f.cells[c]&&String(f.cells[c]).trim()).forEach(c=>{ any=true;
     const sec=document.createElement('div'); sec.className='psec';
@@ -3641,6 +3653,7 @@ async function renderProfile(id,opts){ opts=opts||{};
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; PK_PLACE=null; syncHideBtn();
   pkRenderHome(g,data.owner); pkRenderAvatar(g); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner); pkRenderHouse(g,data.owner);
+  { const _lt=document.getElementById('pavatar'); if(_lt) _lt.style.display=((data.data&&data.data.avatar)&&!data.image_url)?'none':''; } // the drawn dweller stands in for the letter tile; show one, never both
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
   // Same guarded text the editor's Copy prompt hands out. No key, no account, no money: this is the door most readers take.
