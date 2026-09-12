@@ -2400,7 +2400,12 @@ document.getElementById('authx').onclick=closeAuth;
 authEl.addEventListener('click',e=>{ if(e.target===authEl) closeAuth(); });
 window.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAuth(); });
 const TERMS_VERSION='2026-09-07';
-function termsAgreed(){ const c=document.getElementById('termsok'); const err=document.getElementById('autherr'); if(c&&!c.checked){ err.textContent='Please tick the box to agree to the Terms and Privacy Notice first.'; c.focus(); return false; } try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} return true; }
+// Never demand input the card is not showing. pkAuthSet hides this row on the reset step and on sign in
+// once this browser has agreed, and #termsok stays unchecked underneath it, so the unconditional check
+// errored at a box that was not on screen and focused a hidden input into nowhere. Live on 2026-09-12
+// that made Continue with Google dead for every returning visitor who had already agreed: the button
+// set the error and never reached signInWithOAuth. The rendered row is the gate, not the tick alone.
+function termsAgreed(){ const row=document.getElementById('pkauthterms'); const c=document.getElementById('termsok'); const err=document.getElementById('autherr'); if(row&&row.hidden) return true; if(c&&!c.checked){ err.textContent='Please tick the box to agree to the Terms and Privacy Notice first.'; c.focus(); return false; } try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} return true; }
 const authReturn=()=>location.origin+location.pathname;
 const pkEmailOk=v=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
 function pkAuthSent(h,p,email){ document.getElementById('pkauthsenth').textContent=h; document.getElementById('pkauthsentp').textContent=p; document.getElementById('sentto').textContent=email; authCard.classList.add('done'); }
