@@ -686,6 +686,15 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .acplan{margin:6px 0 22px;padding:14px 16px;border:1px solid var(--line-w);border-radius:14px;background:var(--paper-2)}
 #account .acplan .acrow{margin-top:8px}
 #account .acplan .note{margin:0;color:var(--ink-soft)}
+#account .pkaglist{margin:10px 0 14px;padding-left:20px;color:var(--ink-soft);font-size:13px;line-height:1.6}
+#account .pkaglist li{margin:4px 0}
+#account .pkaginput{font:inherit;font-size:15px;min-height:24px;padding:9px 12px;border:1px solid var(--ink-dim);border-radius:10px;background:var(--card-w);color:var(--ink);flex:1 1 200px;max-width:280px}
+#account .pkagonce{margin:12px 0 8px;color:var(--ink);font-weight:600}
+#account .pkagtoken{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;color:var(--ink);background:var(--card-w);border:1px solid var(--line-w);border-radius:10px;padding:10px 12px;word-break:break-all;flex:1 1 260px;user-select:all}
+#account .pkagitem{margin-top:8px;padding-top:8px;border-top:1px solid var(--line-w);min-height:32px}
+#account .pkagname{font-weight:600;color:var(--ink);font-size:14px}
+#account .pkagbtn{min-height:24px}
+#pkagbox button:focus-visible,#pkagbox input:focus-visible{outline:2px solid var(--accent-w-deep);outline-offset:2px}
 .skiplink{position:absolute;left:-9999px;top:8px;z-index:500;background:var(--accent);color:#fff;padding:10px 14px;border-radius:999px;font:600 14px Archivo,system-ui,sans-serif;text-decoration:none}
 .skiplink:focus{left:8px;outline:2px solid #fff;outline-offset:2px}
 #account .acmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em}
@@ -1639,6 +1648,29 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="acrow"><button class="btn solid" type="button" id="acplanbtn">Plan and renew</button><a class="btn" id="acmanage" href="#" target="_blank" rel="noopener noreferrer" hidden>Manage subscription</a><button class="btn" type="button" id="acsignout">Sign out</button></div>
       <div class="acrow" style="margin-top:10px"><label class="note" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:24px"><input type="checkbox" id="acbiz" style="width:16px;height:16px;margin:0"> This is a business account (it can claim a Place)</label><span class="note" id="acbizmsg" role="status"></span></div>
       <p class="note" style="margin-top:10px">Only you see this box. Your public page starts below it.</p>
+    </section>
+    <section class="acplan" id="pkagbox" hidden aria-label="Agent access">
+      <div class="pk-kicker" style="text-align:left">Agent access</div>
+      <p class="note">Give an AI you already talk to a key of its own, and it can fill in your personas from wherever you talk to it, without you opening this page.</p>
+      <ul class="pkaglist">
+        <li>It can answer your persona's questions and add text to its cells, on personas you own.</li>
+        <li>It cannot read anyone else's persona, make a persona public, or spend your credits.</li>
+        <li>What it writes stays exactly as private as the facet it lands in. You flip the floor, never the key.</li>
+        <li>To add to a facet you have already made public, it has to ask outright. Otherwise that write is refused.</li>
+        <li>Any new hat it makes for you starts Private.</li>
+        <li>Revoke a key here whenever you like. It stops working the moment you do.</li>
+      </ul>
+      <form class="acrow" id="pkagform">
+        <label class="note" for="pkaglabel">Name this key</label>
+        <input class="pkaginput" id="pkaglabel" type="text" maxlength="60" placeholder="my laptop AI" autocomplete="off">
+        <button class="btn solid" type="submit" id="pkagmint">Make a key</button>
+        <span class="acmsg" id="pkagmsg" role="status"></span>
+      </form>
+      <div id="pkagreveal" hidden>
+        <p class="note pkagonce" id="pkagonce"></p>
+        <div class="acrow"><code class="pkagtoken" id="pkagtoken"></code><button class="btn" type="button" id="pkagcopy">Copy</button></div>
+      </div>
+      <div id="pkagtokens"></div>
     </section>
     <div class="exgrid" id="acgrid"></div>
     <p class="exfoot" id="acfoot"></p>
@@ -3539,6 +3571,48 @@ function cellLabel(c){ return CELL_LABEL[c]||c; }
 // A stranger arriving from a shared link needs a sentence about the persona, not a count of internal objects.
 // Skip link (2026-09-06): focus the first visible heading of whichever view is painted.
 document.getElementById('skiplink').onclick=e=>{ e.preventDefault(); const t=[...document.querySelectorAll('h1,h2')].find(x=>x.getBoundingClientRect().height>0); if(t){ t.tabIndex=-1; t.focus(); t.scrollIntoView({block:'start'}); } };
+// Agent access (2026-09-11): the owner's keys for the agent write lane. The page never sees, computes or
+// stores a hash. It mints through the Worker (which hashes the raw token server-side and returns the raw
+// one exactly once), lists through twingrid_agent_tokens_mine, a view that has no token_hash column at
+// all, and revokes through the Worker. Nothing here writes the token anywhere but the screen.
+function pkagRender(session){
+  const box=document.getElementById('pkagbox'); if(!box) return; box.hidden=false;
+  const msg=document.getElementById('pkagmsg'), list=document.getElementById('pkagtokens');
+  const api=async(path,body)=>{ let r; try{ r=await fetch(location.origin+'/api/agent/'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+((session&&session.access_token)||'')},body:JSON.stringify(body||{})}); }catch(_){ return {error:'network'}; }
+    let j=null; try{ j=await r.json(); }catch(_){}
+    return r.ok?(j||{}):{error:String((j&&j.error)||('http_'+r.status))}; };
+  const paint=async()=>{ list.textContent='';
+    const {data,error}=await SB.from('twingrid_agent_tokens_mine').select('id,label,created_at,last_used_at,revoked_at').order('created_at',{ascending:false});
+    const note=t=>{ const p=document.createElement('p'); p.className='note'; p.textContent=t; list.appendChild(p); };
+    if(error){ note('Could not read your keys right now.'); return; }
+    if(!data||!data.length){ note('No keys yet.'); return; }
+    data.forEach(t=>{ const row=document.createElement('div'); row.className='acrow pkagitem';
+      const n=document.createElement('span'); n.className='pkagname'; n.textContent=String(t.label||'agent');
+      const m=document.createElement('span'); m.className='note';
+      const d=x=>new Date(x).toLocaleDateString();
+      m.textContent=t.revoked_at?('revoked '+d(t.revoked_at)):('made '+d(t.created_at)+', '+(t.last_used_at?('last used '+d(t.last_used_at)):'never used'));
+      row.append(n,m);
+      if(!t.revoked_at){ const b=document.createElement('button'); b.type='button'; b.className='btn pkagbtn'; b.textContent='Revoke';
+        b.setAttribute('aria-label','Revoke the key named '+String(t.label||'agent'));
+        b.onclick=async()=>{ b.disabled=true; msg.textContent='Revoking...'; const res=await api('token/revoke',{id:t.id});
+          if(res.error){ b.disabled=false; msg.textContent='Could not revoke that key.'; return; }
+          msg.textContent='Key revoked. It stops working now.'; paint(); }; row.appendChild(b); }
+      list.appendChild(row); }); };
+  document.getElementById('pkagform').onsubmit=async(e)=>{ e.preventDefault();
+    const btn=document.getElementById('pkagmint'), inp=document.getElementById('pkaglabel');
+    btn.disabled=true; msg.textContent='Making a key...';
+    const res=await api('token',{label:inp.value});
+    btn.disabled=false;
+    if(res.error){ msg.textContent=res.error==='rate_limited'?'That is a lot of keys at once. Try again in a while.':'Could not make a key right now.'; return; }
+    msg.textContent=''; inp.value='';
+    const rev=document.getElementById('pkagreveal'); rev.hidden=false;
+    document.getElementById('pkagonce').textContent='Your key for "'+String(res.label||'agent')+'". Copy it now: this is the only time it is ever shown, and nobody can show it to you again.';
+    document.getElementById('pkagtoken').textContent=String(res.token||'');
+    paint(); };
+  document.getElementById('pkagcopy').onclick=()=>{ const b=document.getElementById('pkagcopy');
+    navigator.clipboard.writeText(document.getElementById('pkagtoken').textContent).then(()=>{ b.textContent='Copied'; setTimeout(()=>{ b.textContent='Copy'; },1400); }); };
+  paint();
+}
 // Account home (Dylan, 2026-09-06): on your own @handle page, signed in, one box with email, plan, renew, manage, sign out.
 function accountPanel(session){ const box=document.getElementById('acplan'); box.hidden=false;
   const email=session&&session.user&&session.user.email; document.getElementById('acemail').textContent=email?('Signed in as '+email):'Signed in';
@@ -3547,12 +3621,13 @@ function accountPanel(session){ const box=document.getElementById('acplan'); box
   document.getElementById('acplanbtn').onclick=async()=>{ await refreshCredits(); showProCard(); };
   document.getElementById('acsignout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
   try{ pkBizToggle(session&&session.user?session.user.id:null); }catch(_){}
+  try{ pkagRender(session); }catch(_){}
   (async()=>{ try{ const p=await rcInstance(); const info=await p.getCustomerInfo(); const u=info&&info.managementURL; if(u&&/^https:\/\//.test(u)){ manage.href=u; manage.hidden=false; } }catch(_){} })(); }
 async function renderAccount(handle){
   const nameEl=document.getElementById('acname'), hEl=document.getElementById('achandle'), bioEl=document.getElementById('acbio'), av=document.getElementById('acav'),
         grid=document.getElementById('acgrid'), foot=document.getElementById('acfoot'), editBtn=document.getElementById('aceditbtn'), form=document.getElementById('acedit');
   document.title='@'+handle+' \u00b7 Personakind';
-  grid.innerHTML=''; foot.textContent=''; editBtn.hidden=true; form.classList.remove('open'); bioEl.textContent=''; document.getElementById('acplan').hidden=true;
+  grid.innerHTML=''; foot.textContent=''; editBtn.hidden=true; form.classList.remove('open'); bioEl.textContent=''; document.getElementById('acplan').hidden=true; { const ag=document.getElementById('pkagbox'); if(ag){ ag.hidden=true; const rv=document.getElementById('pkagreveal'); if(rv) rv.hidden=true; } }
   const empty=(t,m)=>{ const d=document.createElement('div'); d.className='acempty'; const h=document.createElement('h3'); h.textContent=t; const p=document.createElement('p'); p.textContent=m; p.style.margin='0'; d.append(h,p); grid.appendChild(d); };
   const acc=HANDLE_RE.test(handle)?await accountByHandle(handle):null;
   if(!acc||acc.is_suspended){ nameEl.textContent='No page at @'+handle; hEl.textContent=''; av.textContent='?'; empty('Nothing here','There is no Personakind member with that handle, or their page is not public yet.'); return; }

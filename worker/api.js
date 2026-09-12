@@ -1765,6 +1765,299 @@ async function handleCspReport(request) {
   return new Response(null, { status: 204 });
 }
 
+// ---------------------------------------------------------------------------
+// The agent write lane (2026-09-11). A per-account token lets an AI that already knows the owner fill
+// the owner's OWN personas from outside the browser. Rulings of record (v18 picker, PLAN row 1.7): many
+// tokens per account, each labelled, no expiry, revoked by hand; an agent write always lands PRIVATE and
+// the owner flips the floor. The conservative v1 of that last one is enforced here and is the whole of it:
+// these routes never write is_public and never write a facet's scope, and they never create a facet, so
+// agent text is visible to anyone but the owner only where the owner had already published that facet.
+//
+// The raw token exists in exactly one response (the mint reply) and nowhere else: never logged, never
+// echoed back, never stored. Only its sha256 hex reaches the database, and the hash never leaves the
+// Worker. The token is read from the Authorization header ONLY; a token in a body field or a tool
+// argument is ignored, because a header does not end up in a proxy log or a tool transcript.
+// ---------------------------------------------------------------------------
+
+const AGENT_PREFIX = "pka_";
+const PK_CELL_MAX = 40000;   // the page's PK_SNAP_MAX: the per-cell ceiling
+const PK_DATA_MAX = 400000;  // the twingrid_grid_data_size CHECK: the whole-row ceiling
+const PK_CELLS = ["CONTEXT", "DO", "DONT", "GATES", "VOICE"];
+const PK_HDR_RE = /^# [a-z-]+ \/ [A-Z]+\s*/;
+const AGENT_MAX_ANSWERS = 50;
+const PK_SCOPES = ["house", "visiting", "lobby"];
+const PK_HAT_KINDS = ["specialist", "mode", "role"];
+const AGENT_MAX_FACETS = 40;
+
+async function sha256Hex(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// 32 random bytes, base64url, behind a fixed prefix so a leaked token is recognisable to a secret scanner.
+function mintRawToken() {
+  const b = new Uint8Array(32);
+  crypto.getRandomValues(b);
+  let s = "";
+  for (const x of b) s += String.fromCharCode(x);
+  return AGENT_PREFIX + btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Byte-for-byte port of pkhpAppend from docs/index.html: keep the generated header line, drop the
+// placeholder body, join with a blank line. The page and this route must produce the same cell.
+function pkAppend(old, s) {
+  old = String(old == null ? "" : old);
+  const hm = old.match(PK_HDR_RE);
+  let body = old.replace(PK_HDR_RE, "").trim();
+  if (body === "(add your own here)") body = "";
+  return (hm ? hm[0].trim() + "\n\n" : "") + (body ? body + "\n\n" : "") + s;
+}
+
+// Port of the basement commit's sentence(): a choice lands as its own option text, free text gets a
+// full stop if the writer left one off.
+function pkSentence(v, type) {
+  v = String(v == null ? "" : v).trim();
+  if (!v) return "";
+  return type === "choice" ? v : (/[.!?]$/.test(v) ? v : v + ".");
+}
+
+// The question bank, read off our own static assets (docs/catalog/questions.json), the same file the
+// page reads. Cached per isolate; it is repo data, not user data.
+let AGENT_QBANK = null;
+async function questionBank(request, env) {
+  if (AGENT_QBANK) return AGENT_QBANK;
+  if (!env.ASSETS || typeof env.ASSETS.fetch !== "function") return null;
+  let bank;
+  try {
+    const res = await env.ASSETS.fetch(new Request(new URL(request.url).origin + "/catalog/questions.json"));
+    if (!res.ok) return null;
+    bank = await res.json();
+  } catch (_) { return null; }
+  if (!Array.isArray(bank)) return null;
+  AGENT_QBANK = bank.filter((x) => x && typeof x.id === "string" && typeof x.facet === "string" && typeof x.q === "string" && PK_CELLS.indexOf(x.cell) >= 0);
+  return AGENT_QBANK;
+}
+
+// Resolve one answer id to the facet and cell it lands in, exactly as the basement does. A bare id is a
+// bank row whose own facet this persona carries. An "id@facet" key is a generic hat row (bank facet
+// "hat") applied to a facet the bank has no questions of its own for, which is what the page's kid()
+// writes into depth.done. Anything else, including an id for a facet this persona does not have,
+// resolves to null and the caller drops it.
+function resolveAnswerId(bank, facetNames, rawId) {
+  const id = String(rawId == null ? "" : rawId);
+  if (!id || id.length > 120) return null;
+  const at = id.indexOf("@");
+  if (at > 0) {
+    const base = id.slice(0, at), facet = id.slice(at + 1);
+    if (facet === "core" || !facetNames.has(facet)) return null;
+    if (bank.some((x) => x.facet === facet)) return null; // the bank knows this facet, so its own ids apply, not the generic ones
+    const q = bank.find((x) => x.id === base && x.facet === "hat");
+    return q ? { q: q, facet: facet, key: id } : null;
+  }
+  const q = bank.find((x) => x.id === id);
+  if (!q || !facetNames.has(q.facet)) return null;
+  return { q: q, facet: q.facet, key: id };
+}
+
+// Byte-for-byte port of pkFacetScope, which is itself the page's copy of the SQL twingrid_facet_scope.
+// The Lobby view projects exactly the facets this returns 'lobby' for, so this function is what decides
+// whether a cell is visible to a stranger.
+function pkFacetScope(f) {
+  if (!f) return "house";
+  if (PK_SCOPES.indexOf(f.scope) >= 0) return f.scope;
+  return (f.name === "core" || f.name === "vibe") ? "lobby" : "house";
+}
+
+// Dylan's ruling of 2026-09-11, the core-only exception to Private-until-flip. The routes still cannot
+// publish anything, but core and vibe are ALREADY Lobby-visible, so an agent answer to a core question
+// on a persona the owner has already published is public the moment it lands. That one case is refused
+// unless the caller says allow_public, which makes an agent publishing text a deliberate act rather
+// than a surprise. A facet the owner has not published is unaffected.
+function wouldBePublic(grid, facet, body) {
+  return grid.is_public === true && pkFacetScope(facet) === "lobby" && body.allow_public !== true;
+}
+
+// Ports of pkHatName and pkHatCells. A hat a ROUTE creates is always scope 'house' (Private): the body
+// does not get to pick a floor, because picking a floor is the thing Private-until-flip is about.
+function pkHatName(v, facets) {
+  v = String(v == null ? "" : v).toLowerCase().replace(/[^a-z]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+  if (!v) return { error: "bad_facet_name" };
+  if (v === "core" || (Array.isArray(facets) && facets.some((f) => f && typeof f.name === "string" && f.name.toLowerCase() === v))) return { error: "facet_exists" };
+  return { name: v };
+}
+function pkHatCells(name) {
+  const out = {};
+  for (const c of PK_CELLS) out[c] = "# " + name + " / " + c + "\n\n(add your own here)";
+  return out;
+}
+
+// Resolve the bearer to a live, unrevoked token row. The Authorization header is the only place a token
+// is read from. Returns { token: { id, owner } } or { status, code }.
+async function agentToken(request, env) {
+  const raw = bearer(request);
+  if (!raw || raw.length < 16 || raw.length > 200 || raw.indexOf(AGENT_PREFIX) !== 0) return { status: 401, code: "unauthorized" };
+  const hash = await sha256Hex(raw);
+  const rows = await serviceGet(env, "/rest/v1/twingrid_agent_tokens?select=id,owner,revoked_at&token_hash=eq." + encodeURIComponent(hash) + "&limit=1");
+  if (!rows) return { status: 502, code: "lookup_failed" };
+  if (!rows.length) return { status: 401, code: "unauthorized" };
+  const t = rows[0];
+  // Stamped on every accepted token, not only on a landed write, so a refused attempt still shows up.
+  await servicePatch(env, "/rest/v1/twingrid_agent_tokens?id=eq." + encodeURIComponent(t.id), { last_used_at: new Date().toISOString() });
+  if (t.revoked_at) return { status: 401, code: "revoked" };
+  if (!UUID_RE.test(String(t.owner))) return { status: 401, code: "unauthorized" };
+  return { token: { id: t.id, owner: t.owner } };
+}
+
+// Auth, rate limit, body, and a FRESH read of the grid. The service key bypasses RLS, so the owner
+// comparison below IS the boundary: there is no policy behind it to catch a mistake here.
+async function agentOpen(request, env) {
+  const t = await agentToken(request, env);
+  if (!t.token) return { res: json(request, t.status, { error: t.code }) };
+  if (await rateLimited(env, "agw:" + t.token.id, 120, 3600)) return { res: json(request, 429, { error: "rate_limited" }) };
+  const b = await readJson(request);
+  if (b.error) return { res: json(request, 400, { error: b.error }) };
+  const body = (b.value && typeof b.value === "object") ? b.value : {};
+  const gridId = String(body.grid_id || "");
+  if (!UUID_RE.test(gridId)) return { res: json(request, 400, { error: "bad_grid_id" }) };
+  const rows = await serviceGet(env, "/rest/v1/twingrid_grids?select=id,owner,is_public,data&id=eq." + encodeURIComponent(gridId) + "&limit=1");
+  if (!rows) return { res: json(request, 502, { error: "read_failed" }) };
+  if (!rows.length) return { res: json(request, 404, { error: "not_found" }) };
+  const grid = rows[0];
+  if (String(grid.owner) !== String(t.token.owner)) return { res: json(request, 403, { error: "forbidden" }) };
+  const data = Object.assign({ facets: [] }, (grid.data && typeof grid.data === "object") ? grid.data : {});
+  if (!Array.isArray(data.facets)) data.facets = [];
+  return { token: t.token, grid: grid, data: data, body: body };
+}
+
+// Write the mutated data back and leave a receipt. Only the data column is sent: is_public, scope and
+// every other column are untouched by design, so a route can never publish anything.
+async function agentCommit(request, env, o, kind, n, extra) {
+  if (new TextEncoder().encode(JSON.stringify(o.data)).length > PK_DATA_MAX) return json(request, 413, { error: "persona_full" });
+  if (!(await servicePatch(env, "/rest/v1/twingrid_grids?id=eq." + encodeURIComponent(o.grid.id), { data: o.data }))) return json(request, 502, { error: "save_failed" });
+  if (!(await servicePost(env, "/rest/v1/twingrid_agent_writes", { owner: o.token.owner, grid_id: o.grid.id, token_id: o.token.id, kind: kind, n_written: n }))) console.log("agent_receipt_failed");
+  return json(request, 200, Object.assign({ ok: true, kind: kind, written: n, grid_id: o.grid.id }, extra || {}));
+}
+
+// POST /api/agent/answers  { grid_id, answers: [{ id, text }] }
+// The same landing as a typed basement answer: sentence(), pkhpAppend into the question's own cell, the
+// id into data.depth.done. An id this persona does not have is dropped and counted, never an error.
+async function handleAgentAnswers(request, env) {
+  const o = await agentOpen(request, env);
+  if (o.res) return o.res;
+  const list = Array.isArray(o.body.answers) ? o.body.answers : null;
+  if (!list || !list.length) return json(request, 400, { error: "no_answers" });
+  if (list.length > AGENT_MAX_ANSWERS) return json(request, 400, { error: "too_many_answers" });
+  const bank = await questionBank(request, env);
+  if (!bank) return json(request, 502, { error: "bank_unavailable" });
+
+  const byName = new Map();
+  for (const f of o.data.facets) if (f && typeof f.name === "string") byName.set(f.name, f);
+  const names = new Set(byName.keys());
+  const depth = (o.data.depth && typeof o.data.depth === "object") ? o.data.depth : {};
+  const done = new Set(Array.isArray(depth.done) ? depth.done.filter((x) => typeof x === "string") : []);
+
+  let written = 0, dropped = 0;
+  for (const a of list) {
+    const hit = a && typeof a === "object" ? resolveAnswerId(bank, names, a.id) : null;
+    if (!hit) { dropped++; continue; }
+    let text = String(a.text == null ? "" : a.text).slice(0, 600);
+    // A choice that is not one of its options is dropped, exactly as the page drops it.
+    if (hit.q.type === "choice") {
+      const opts = Array.isArray(hit.q.options) ? hit.q.options.slice(0, 5).map((x) => String(x)) : [];
+      if (opts.indexOf(text.trim()) < 0) { dropped++; continue; }
+    }
+    const s = pkSentence(text, hit.q.type);
+    if (!s) { dropped++; continue; }
+    const f = byName.get(hit.facet);
+    if (wouldBePublic(o.grid, f, o.body)) return json(request, 409, { error: "would_be_public", facet: hit.facet });
+    f.cells = Object.assign({}, f.cells || {});
+    const next = pkAppend(f.cells[hit.q.cell], s);
+    if (next.length > PK_CELL_MAX) return json(request, 413, { error: "cell_full", facet: hit.facet, cell: hit.q.cell });
+    f.cells[hit.q.cell] = next;
+    done.add(hit.key);
+    written++;
+  }
+  if (!written) return json(request, 400, { error: "nothing_written", dropped: dropped });
+  depth.done = Array.from(done);
+  depth.on = true;
+  o.data.depth = depth;
+  return agentCommit(request, env, o, "answers", written, { dropped: dropped });
+}
+
+// POST /api/agent/cells  { grid_id, facet, cell, text }
+// Appends to one cell of one facet the persona already has. It does NOT create a facet: a facet carries
+// a scope, and a route that can create one is a route that can pick a scope, which is the thing the
+// Private-until-flip ruling is about. Until Dylan rules on the pending model, the owner makes the hat.
+async function handleAgentCells(request, env) {
+  const o = await agentOpen(request, env);
+  if (o.res) return o.res;
+  const facet = String(o.body.facet || "");
+  const cell = String(o.body.cell || "");
+  if (PK_CELLS.indexOf(cell) < 0) return json(request, 400, { error: "bad_cell" });
+  const text = String(o.body.text == null ? "" : o.body.text).slice(0, PK_CELL_MAX);
+  const s = pkSentence(text, "text");
+  if (!s) return json(request, 400, { error: "empty_text" });
+  let f = o.data.facets.find((x) => x && x.name === facet);
+  if (!f) {
+    // Dylan's ruling of 2026-09-11: a route may make a hat, and it is ALWAYS Private. create must be
+    // asked for, so a typo in a facet name is a 404 rather than a silently spawned hat.
+    if (o.body.create !== true) return json(request, 404, { error: "no_such_facet" });
+    if (o.data.facets.length >= AGENT_MAX_FACETS) return json(request, 409, { error: "too_many_facets" });
+    const chk = pkHatName(facet, o.data.facets);
+    if (chk.error) return json(request, 400, { error: chk.error });
+    const kind = PK_HAT_KINDS.indexOf(String(o.body.kind || "")) >= 0 ? String(o.body.kind) : "specialist";
+    f = { name: chk.name, kind: kind, scope: "house", cells: pkHatCells(chk.name) };
+    o.data.facets.push(f);
+  }
+  if (wouldBePublic(o.grid, f, o.body)) return json(request, 409, { error: "would_be_public", facet: f.name });
+  f.cells = Object.assign({}, f.cells || {});
+  const next = pkAppend(f.cells[cell], s);
+  if (next.length > PK_CELL_MAX) return json(request, 413, { error: "cell_full", facet: f.name, cell: cell });
+  f.cells[cell] = next;
+  return agentCommit(request, env, o, "cells", 1, { facet: f.name, cell: cell });
+}
+
+// POST /api/agent/token  { label }  -> the raw token, ONCE. Owner's Supabase JWT on Bearer.
+// This is the only response in the system that ever carries a raw token, and nothing here logs it.
+async function handleAgentTokenMint(request, env) {
+  const user = await verifyUser(env, bearer(request));
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  if (await rateLimited(env, "agmint:" + user.id, 10, 3600)) return json(request, 429, { error: "rate_limited" });
+  const b = await readJson(request);
+  if (b.error) return json(request, 400, { error: b.error });
+  const body = (b.value && typeof b.value === "object") ? b.value : {};
+  const label = String(body.label == null ? "" : body.label).replace(/\s+/g, " ").trim().slice(0, 60) || "agent";
+  const raw = mintRawToken();
+  let res;
+  try {
+    res = await fetch(sbUrl(env, "/rest/v1/twingrid_agent_tokens"), {
+      method: "POST",
+      headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=representation" }),
+      body: JSON.stringify({ owner: user.id, label: label, token_hash: await sha256Hex(raw) }),
+    });
+  } catch (_) { return json(request, 502, { error: "mint_failed" }); }
+  if (!res.ok) return json(request, 502, { error: "mint_failed" });
+  let row = null;
+  try { const rows = await res.json(); row = Array.isArray(rows) && rows.length ? rows[0] : null; } catch (_) {}
+  if (!row) return json(request, 502, { error: "mint_failed" });
+  return json(request, 200, { token: raw, id: row.id, label: row.label, created_at: row.created_at });
+}
+
+// POST /api/agent/token/revoke  { id }. Owner's Supabase JWT on Bearer. The owner filter is in the
+// PATCH itself, so another owner's id matches no row and comes back not_found rather than revoking it.
+async function handleAgentTokenRevoke(request, env) {
+  const user = await verifyUser(env, bearer(request));
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  const b = await readJson(request);
+  if (b.error) return json(request, 400, { error: b.error });
+  const id = String((b.value && b.value.id) || "");
+  if (!UUID_RE.test(id)) return json(request, 400, { error: "bad_id" });
+  const q = "/rest/v1/twingrid_agent_tokens?id=eq." + encodeURIComponent(id) + "&owner=eq." + encodeURIComponent(user.id) + "&revoked_at=is.null";
+  const row = await servicePatch(env, q, { revoked_at: new Date().toISOString() });
+  if (!row) return json(request, 404, { error: "not_found" });
+  return json(request, 200, { ok: true, id: row.id, revoked_at: row.revoked_at });
+}
+
 export async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, "") || "/";
@@ -1791,7 +2084,11 @@ export async function handleApi(request, env) {
     if (path === "/api/place/verify" && method === "POST") return await handlePlaceVerify(request, env);
     if (path === "/api/place/hit" && method === "POST") return await handlePlaceHit(request, env);
     if (path === "/api/learn" && method === "POST") return await handleLearn(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/autopilot/health" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn") {
+    if (path === "/api/agent/token" && method === "POST") return await handleAgentTokenMint(request, env);
+    if (path === "/api/agent/token/revoke" && method === "POST") return await handleAgentTokenRevoke(request, env);
+    if (path === "/api/agent/answers" && method === "POST") return await handleAgentAnswers(request, env);
+    if (path === "/api/agent/cells" && method === "POST") return await handleAgentCells(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/autopilot/health" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn" || path === "/api/agent/token" || path === "/api/agent/token/revoke" || path === "/api/agent/answers" || path === "/api/agent/cells") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });

@@ -4,6 +4,7 @@
 
 import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap, runAutopilotTick, autopilotRefusal } from "./api.js";
 import { isHandlePath } from "./index.js";
+import { createHash } from "node:crypto";
 
 const ENV = {
   SUPABASE_URL: "https://example.supabase.co",
@@ -43,6 +44,48 @@ const OTHER = { id: OTHER_ID, owner: STRANGER_ID, name: "Other Persona", data: {
 const OTHER_LOBBY = { id: OTHER_ID, owner: STRANGER_ID, name: "Other Persona", data: { facets: OTHER.data.facets.filter((f) => f.name === "core") } };
 // The Lobby projection of GRID, what twingrid_grids_public serves (facets scoped lobby: core and vibe by default).
 const GRID_LOBBY = { id: GRID_ID, owner: USER_ID, data: { facets: GRID.data.facets.filter((f) => f.name === "core" || f.name === "vibe") } };
+
+// ---- the agent write lane (2026-09-11) ----------------------------------
+// A token is only ever a sha256 hex in the database, so the fixtures hash their own raw tokens the way
+// the Worker does. The raw strings here are test constants, not secrets: they reach no real system.
+const AG_TOKEN = "pka_" + "A".repeat(43);        // live, owned by USER_ID
+const AG_REVOKED = "pka_" + "B".repeat(43);      // revoked, owned by USER_ID
+const AG_STRANGER = "pka_" + "C".repeat(43);     // live, owned by STRANGER_ID
+const TOK_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const TOK_REV_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const TOK_STR_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const AG_GRID_ID = "88888888-8888-4888-8888-888888888888";
+const AG_PUB_ID = "99999999-9999-4999-8999-999999999998";   // the same persona, published
+const shaHex = (s) => createHash("sha256").update(s).digest("hex");
+
+let tokenRows = [], writeRows = [], agentGrids = {};
+function resetAgent() {
+  tokenRows = [
+    { id: TOK_ID, owner: USER_ID, label: "my ai", token_hash: shaHex(AG_TOKEN), created_at: "2026-09-11T00:00:00+00:00", last_used_at: null, revoked_at: null },
+    { id: TOK_REV_ID, owner: USER_ID, label: "old", token_hash: shaHex(AG_REVOKED), created_at: "2026-09-01T00:00:00+00:00", last_used_at: null, revoked_at: "2026-09-10T00:00:00+00:00" },
+    { id: TOK_STR_ID, owner: STRANGER_ID, label: "theirs", token_hash: shaHex(AG_STRANGER), created_at: "2026-09-11T00:00:00+00:00", last_used_at: null, revoked_at: null },
+  ];
+  writeRows = [];
+  agentGrids = {
+    [AG_GRID_ID]: { id: AG_GRID_ID, owner: USER_ID, is_public: false, data: { facets: [
+      { name: "core", kind: "core", scope: "lobby", cells: { CONTEXT: "# core / CONTEXT\n\nI am a test persona.", DO: "(add your own here)" } },
+      { name: "coach", kind: "specialist", scope: "house", cells: {} },
+    ] } },
+    // the published twin of AG_GRID: core is Lobby-visible on it, so the core-only exception applies
+    [AG_PUB_ID]: { id: AG_PUB_ID, owner: USER_ID, is_public: true, data: { facets: [
+      { name: "core", kind: "core", cells: { CONTEXT: "# core / CONTEXT\n\nPublished." } },
+      { name: "coach", kind: "specialist", scope: "house", cells: {} },
+    ] } },
+    [OTHER_ID]: { id: OTHER_ID, owner: STRANGER_ID, is_public: true, data: { facets: [{ name: "core", kind: "core", cells: {} }] } },
+  };
+}
+// The question bank the Worker reads off env.ASSETS, same shape as docs/catalog/questions.json.
+const AG_BANK = [
+  { id: "core.CONTEXT.01", facet: "core", cell: "CONTEXT", q: "What shaped you?", type: "text" },
+  { id: "core.VOICE.02", facet: "core", cell: "VOICE", q: "How should it speak?", type: "choice", options: ["Warm", "Blunt"] },
+  { id: "hat.DO.01", facet: "hat", cell: "DO", q: "What does this hat do?", type: "text" },
+];
+const AG_ENV = Object.assign({}, ENV, { ASSETS: { fetch: async () => new Response(JSON.stringify(AG_BANK), { status: 200, headers: { "content-type": "application/json" } }) } });
 
 // State the fake backend mutates so we can assert on it.
 const calls = [];
@@ -106,6 +149,26 @@ globalThis.fetch = async (url, init) => {
     const m = /hour_utc=eq\.(\d+)/.exec(u); const gm = /grid_id=eq\.([0-9a-f-]+)/.exec(u);
     return respond(200, rulesRows.filter((r) => (!m || (r.hour_utc === Number(m[1]) && (r.mode === "together" || r.mode === "autopilot") && r.max_per_day > 0)) && (!gm || r.grid_id === gm[1])));
   }
+  // The agent lane. Service key on apikey ONLY, never Bearer: a secret key is rejected as a Bearer by
+  // the platform, and a test that let it through would hide that.
+  if (u.includes("/rest/v1/twingrid_agent_tokens")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("agent tokens are service role only");
+    if (headers.Authorization) throw new Error("the secret key goes on apikey, never Bearer");
+    if (method === "POST") { const row = Object.assign({ id: "dddddddd-dddd-4ddd-8ddd-" + String(tokenRows.length).padStart(12, "0"), created_at: "2026-09-11T12:00:00+00:00", last_used_at: null, revoked_at: null }, body); tokenRows.push(row); return respond(201, [row]); }
+    if (method === "PATCH") {
+      const im = /[?&]id=eq\.([0-9a-f-]+)/.exec(u), om = /owner=eq\.([0-9a-f-]+)/.exec(u);
+      let hit = tokenRows.filter((r) => (!im || r.id === im[1]) && (!om || r.owner === om[1]) && (!/revoked_at=is\.null/.test(u) || !r.revoked_at));
+      if (!hit.length) return respond(200, []);
+      Object.assign(hit[0], body); return respond(200, [hit[0]]);
+    }
+    const hm = /token_hash=eq\.([0-9a-f]+)/.exec(u);
+    return respond(200, tokenRows.filter((r) => !hm || r.token_hash === hm[1]));
+  }
+  if (u.includes("/rest/v1/twingrid_agent_writes")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("receipts are service role only");
+    if (method !== "POST") throw new Error("receipts are insert only from the Worker");
+    writeRows.push(body); return new Response(null, { status: 201 });
+  }
   if (u.includes("/rest/v1/twingrid_action_runs")) {
     if (method === "POST") { const row = Object.assign({ id: runsRows.length + 1 }, body); runsRows.push(row); return respond(201, [row]); }
     const idm = /[?&]id=eq\.(\d+)/.exec(u);
@@ -123,6 +186,18 @@ globalThis.fetch = async (url, init) => {
     }
     const m = /grid_id=eq\.([0-9a-f-]+)/.exec(u); const gid = m ? m[1] : "";
     return respond(200, actionsRows.filter((a) => a.grid_id === gid));
+  }
+  // The agent lane reads and writes the grid with the SERVICE key (there is no user JWT behind an agent
+  // token), so the owner check in the Worker is the only boundary. This branch must sit ABOVE the
+  // user-token branch below, which answers [] to anything that is not the good token.
+  if (u.includes("/rest/v1/twingrid_grids?") && !u.includes("twingrid_grids_public") && headers.apikey === ENV.SUPABASE_SERVICE_ROLE_KEY && !headers.Authorization) {
+    const gm = /[?&]id=eq\.([0-9a-f-]+)/.exec(u); const g = gm ? agentGrids[gm[1]] : null;
+    if (method === "PATCH") {
+      if (!g) return respond(200, []);
+      if ("is_public" in body) throw new Error("an agent route must never write is_public");
+      Object.assign(g, body); return respond(200, [g]);
+    }
+    return respond(200, g ? [g] : []);
   }
   if (u.includes("/rest/v1/twingrid_grids_public")) {
     // The Lobby view: anon key only, public rows only, data projected. Never the house.
@@ -1266,6 +1341,235 @@ await check("learn: a stranger is 403, signed out 401, learning off is 403 befor
 await check("router: /@handle and /%40handle are page routes, other paths are not", async () => {
   for (const p of ["/@clonedylan", "/@clonedylan/My%20Coach", "/%40clonedylan", "/%40Clonedylan/x"]) if (!isHandlePath(p)) throw new Error("should be handle path: " + p);
   for (const p of ["/", "/terms", "/pricing", "/api/chat", "/mcp", "/nope", "/at@sign"]) if (isHandlePath(p)) throw new Error("should not be handle path: " + p);
+});
+
+
+// ---------------------------------------------------------------------------
+// The agent write lane (2026-09-11). Every test below fails against the pre-change worker/api.js
+// (the routes 404 there), which is the mutation check the rulebook's Worker rule 1 asks for.
+// ---------------------------------------------------------------------------
+
+function agReq(path, body, token, extra) {
+  const h = Object.assign({ "Content-Type": "application/json" }, extra || {});
+  if (token) h.Authorization = "Bearer " + token;
+  return new Request("https://personakind.com/api/agent/" + path, { method: "POST", headers: h, body: JSON.stringify(body) });
+}
+const agPost = (path, body, token, env) => handleApi(agReq(path, body, token), env || AG_ENV);
+const ANS = (id, text) => ({ answers: [{ id: id, text: text }], grid_id: AG_GRID_ID });
+const cellOf = (gid, facet, cell) => { const f = agentGrids[gid].data.facets.find((x) => x.name === facet); return String((f.cells || {})[cell] || ""); };
+
+await check("agent: no token is 401 on both write routes, and a token in the BODY is not a token", async () => {
+  resetAgent();
+  eq((await agPost("answers", ANS("core.CONTEXT.01", "x"))).status, 401, "answers anon");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "core", cell: "DO", text: "x" })).status, 401, "cells anon");
+  // the token as a tool argument instead of the header: ignored, so this is still anonymous
+  const r = await agPost("answers", Object.assign({ token: AG_TOKEN, access_token: AG_TOKEN }, ANS("core.CONTEXT.01", "x")));
+  eq(r.status, 401, "token in body");
+  eq((await r.json()).error, "unauthorized", "code");
+  eq(writeRows.length, 0, "no receipt");
+  eq(cellOf(AG_GRID_ID, "core", "CONTEXT"), "# core / CONTEXT\n\nI am a test persona.", "the cell is untouched");
+  // a made-up token that has the right shape is still 401
+  eq((await agPost("answers", ANS("core.CONTEXT.01", "x"), "pka_" + "Z".repeat(43))).status, 401, "unknown token");
+});
+
+await check("agent: a valid token on a grid its owner does not own is 403, both directions", async () => {
+  resetAgent();
+  const r = await agPost("answers", { grid_id: OTHER_ID, answers: [{ id: "core.CONTEXT.01", text: "mine now" }] }, AG_TOKEN);
+  eq(r.status, 403, "owner token, stranger grid"); eq((await r.json()).error, "forbidden", "code");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "core", cell: "DO", text: "hi" }, AG_STRANGER)).status, 403, "stranger token, owner grid");
+  eq(writeRows.length, 0, "no receipt for a refused write");
+  eq(cellOf(OTHER_ID, "core", "CONTEXT"), "", "the other persona is untouched");
+});
+
+await check("agent: a revoked token is 401 and writes nothing", async () => {
+  resetAgent();
+  const r = await agPost("answers", ANS("core.CONTEXT.01", "x"), AG_REVOKED);
+  eq(r.status, 401, "status"); eq((await r.json()).error, "revoked", "code");
+  eq(writeRows.length, 0, "no receipt");
+  // it is still stamped, so a revoked token's use is visible to the owner
+  eq(!!tokenRows.find((t) => t.id === TOK_REV_ID).last_used_at, true, "last_used_at stamped");
+});
+
+await check("agent: a valid answers write lands like a typed one, leaves a receipt, and never publishes", async () => {
+  resetAgent();
+  const before = JSON.stringify(agentGrids[AG_GRID_ID].is_public) + JSON.stringify(agentGrids[AG_GRID_ID].data.facets.map((f) => f.scope));
+  const r = await agPost("answers", { grid_id: AG_GRID_ID, answers: [
+    { id: "core.CONTEXT.01", text: "A farm town and a stubborn mother" },
+    { id: "core.VOICE.02", text: "Blunt" },
+  ] }, AG_TOKEN);
+  eq(r.status, 200, "status");
+  const j = await r.json();
+  eq(j.written, 2, "written"); eq(j.kind, "answers", "kind");
+  eq(JSON.stringify(j).includes(shaHex(AG_TOKEN)), false, "no hash in the body");
+  eq(JSON.stringify(j).includes(AG_TOKEN), false, "no raw token in the body");
+  // the sentence rule: free text gets its full stop, a choice lands as its own option text
+  eq(cellOf(AG_GRID_ID, "core", "CONTEXT"), "# core / CONTEXT\n\nI am a test persona.\n\nA farm town and a stubborn mother.", "appended under the header");
+  eq(cellOf(AG_GRID_ID, "core", "VOICE"), "Blunt", "choice lands verbatim");
+  const d = agentGrids[AG_GRID_ID].data.depth;
+  eq(d.on, true, "depth on"); eq(d.done.sort().join(","), "core.CONTEXT.01,core.VOICE.02", "depth done");
+  eq(writeRows.length, 1, "one receipt");
+  eq(writeRows[0].owner + "|" + writeRows[0].grid_id + "|" + writeRows[0].token_id + "|" + writeRows[0].kind + "|" + writeRows[0].n_written, USER_ID + "|" + AG_GRID_ID + "|" + TOK_ID + "|answers|2", "receipt row");
+  eq(!!tokenRows.find((t) => t.id === TOK_ID).last_used_at, true, "last_used_at stamped");
+  eq(JSON.stringify(agentGrids[AG_GRID_ID].is_public) + JSON.stringify(agentGrids[AG_GRID_ID].data.facets.map((f) => f.scope)), before, "is_public and every scope are untouched");
+});
+
+await check("agent: an unknown id is dropped, a choice outside its options is dropped, a generic hat id lands on its facet", async () => {
+  resetAgent();
+  const r = await agPost("answers", { grid_id: AG_GRID_ID, answers: [
+    { id: "hat.DO.01@coach", text: "Asks one question at a time" },
+    { id: "hat.DO.01@core", text: "should never land on core" },
+    { id: "hat.DO.01", text: "no facet named" },
+    { id: "core.VOICE.02", text: "Sideways" },
+    { id: "nope.DO.99", text: "not in the bank" },
+  ] }, AG_TOKEN);
+  eq(r.status, 200, "status");
+  const j = await r.json();
+  eq(j.written, 1, "one landed"); eq(j.dropped, 4, "four dropped");
+  eq(cellOf(AG_GRID_ID, "coach", "DO"), "Asks one question at a time.", "the hat question landed on coach");
+  eq(cellOf(AG_GRID_ID, "core", "VOICE"), "", "the bad choice did not land");
+  eq(cellOf(AG_GRID_ID, "core", "DO"), "(add your own here)", "core DO untouched by the hat id");
+  eq(agentGrids[AG_GRID_ID].data.depth.done.join(","), "hat.DO.01@coach", "the facet-keyed id is what is recorded");
+  // nothing resolvable at all is a 400 that writes nothing
+  resetAgent();
+  const r2 = await agPost("answers", { grid_id: AG_GRID_ID, answers: [{ id: "nope", text: "x" }] }, AG_TOKEN);
+  eq(r2.status, 400, "nothing resolvable"); eq((await r2.json()).error, "nothing_written", "code"); eq(writeRows.length, 0, "no receipt");
+});
+
+await check("agent: the 40,000 cell cap and the 400,000 row cap both refuse with a short code and no stack", async () => {
+  resetAgent();
+  const f = agentGrids[AG_GRID_ID].data.facets.find((x) => x.name === "core");
+  f.cells.CONTEXT = "# core / CONTEXT\n\n" + "x".repeat(39990);
+  const r = await agPost("answers", ANS("core.CONTEXT.01", "one sentence too many"), AG_TOKEN);
+  eq(r.status, 413, "cell cap status");
+  const j = await r.json();
+  eq(j.error, "cell_full", "cell cap code"); eq(j.cell, "CONTEXT", "names the cell");
+  eq(JSON.stringify(j).toLowerCase().includes("at worker"), false, "no stack");
+  eq(writeRows.length, 0, "nothing written");
+  // the row cap: many cells each under 40,000 but over 400,000 together. The DB CHECK backstops this.
+  resetAgent();
+  const g = agentGrids[AG_GRID_ID];
+  for (let i = 0; i < 12; i++) g.data.facets.push({ name: "pad" + i, kind: "specialist", scope: "house", cells: { DO: "y".repeat(39000) } });
+  const r2 = await agPost("answers", ANS("core.CONTEXT.01", "the straw"), AG_TOKEN);
+  eq(r2.status, 413, "row cap status"); eq((await r2.json()).error, "persona_full", "row cap code");
+  eq(writeRows.length, 0, "no receipt for a refused write");
+});
+
+await check("agent: the write routes are rate limited per token", async () => {
+  resetAgent();
+  const store = new Map();
+  const KV_ENV = Object.assign({}, AG_ENV, { RATE_KV: { get: async (k) => store.get(k) || null, put: async (k, v) => { store.set(k, v); } } });
+  let last = null;
+  for (let i = 0; i < 121; i++) last = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "n" + i }, AG_TOKEN, KV_ENV);
+  eq(last.status, 429, "the 121st is refused"); eq((await last.json()).error, "rate_limited", "code");
+  eq(writeRows.length, 120, "exactly the cap landed");
+});
+
+await check("agent: the cells route appends to an existing facet and never creates one", async () => {
+  resetAgent();
+  const r = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "Keep it short" }, AG_TOKEN);
+  eq(r.status, 200, "status"); eq((await r.json()).kind, "cells", "kind");
+  eq(cellOf(AG_GRID_ID, "coach", "DO"), "Keep it short.", "landed");
+  eq(writeRows[0].kind + "|" + writeRows[0].n_written, "cells|1", "receipt");
+  const r2 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "ghost", cell: "DO", text: "x" }, AG_TOKEN);
+  eq(r2.status, 404, "unknown facet"); eq((await r2.json()).error, "no_such_facet", "code");
+  eq(agentGrids[AG_GRID_ID].data.facets.length, 2, "no facet was created");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "NOPE", text: "x" }, AG_TOKEN)).status, 400, "bad cell");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "   " }, AG_TOKEN)).status, 400, "empty text");
+  eq((await agPost("cells", { grid_id: "not-a-uuid", facet: "coach", cell: "DO", text: "x" }, AG_TOKEN)).status, 400, "bad grid id");
+  eq((await agPost("cells", { grid_id: "99999999-9999-4999-8999-999999999999", facet: "coach", cell: "DO", text: "x" }, AG_TOKEN)).status, 404, "no such grid");
+});
+
+await check("agent: mint returns the raw token exactly once and never a hash, and the hash is what is stored", async () => {
+  resetAgent();
+  eq((await agPost("token", { label: "my ai" })).status, 401, "signed out cannot mint");
+  eq((await agPost("token", { label: "my ai" }, AG_TOKEN)).status, 401, "an agent token cannot mint another");
+  const r = await handleApi(agReq("token", { label: "  my   laptop ai  " }, GOOD_TOKEN), AG_ENV);
+  eq(r.status, 200, "status");
+  const j = await r.json();
+  eq(j.label, "my laptop ai", "label is squeezed and trimmed");
+  eq(typeof j.token === "string" && j.token.indexOf("pka_") === 0 && j.token.length > 20, true, "a raw token comes back");
+  eq("token_hash" in j, false, "no hash field");
+  eq(JSON.stringify(j).includes(shaHex(j.token)), false, "the hash is not in the body");
+  const row = tokenRows.find((t) => t.id === j.id);
+  eq(row.token_hash, shaHex(j.token), "the stored hash is the sha256 of the raw token");
+  eq(row.owner, USER_ID, "owned by the minter");
+  // it works immediately, and the raw token is never returned again
+  const w = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "Fresh token" }, j.token);
+  eq(w.status, 200, "the new token writes");
+  eq(JSON.stringify(await w.json()).includes(j.token), false, "the write reply does not echo the token");
+  // two mints are two different tokens
+  const j2 = await (await handleApi(agReq("token", {}, GOOD_TOKEN), AG_ENV)).json();
+  eq(j2.token === j.token, false, "a second mint is a different token"); eq(j2.label, "agent", "default label");
+});
+
+await check("agent: revoke is owner-scoped, kills the token, and another owner's id is not_found", async () => {
+  resetAgent();
+  eq((await agPost("token/revoke", { id: TOK_ID })).status, 401, "signed out");
+  eq((await agPost("token/revoke", { id: "nope" }, GOOD_TOKEN)).status, 400, "bad id");
+  // the stranger's token id, asked for by our owner: no row matches, nothing is revoked
+  const r0 = await handleApi(agReq("token/revoke", { id: TOK_STR_ID }, GOOD_TOKEN), AG_ENV);
+  eq(r0.status, 404, "another owner's id"); eq(!!tokenRows.find((t) => t.id === TOK_STR_ID).revoked_at, false, "theirs is still live");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "still works" }, AG_TOKEN)).status, 200, "live before revoke");
+  const r = await handleApi(agReq("token/revoke", { id: TOK_ID }, GOOD_TOKEN), AG_ENV);
+  eq(r.status, 200, "revoked"); eq(!!(await r.json()).revoked_at, true, "carries the stamp");
+  const after = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "should fail" }, AG_TOKEN);
+  eq(after.status, 401, "dead after revoke"); eq((await after.json()).error, "revoked", "code");
+  eq((await handleApi(agReq("token/revoke", { id: TOK_ID }, GOOD_TOKEN), AG_ENV)).status, 404, "revoking twice is not_found");
+});
+
+await check("agent: the core-only exception, Dylan's ruling of 2026-09-11", async () => {
+  resetAgent();
+  // a Lobby-scoped facet on a PUBLISHED persona is the one case that lands in public, so it is refused
+  const r = await agPost("answers", { grid_id: AG_PUB_ID, answers: [{ id: "core.CONTEXT.01", text: "public by accident" }] }, AG_TOKEN);
+  eq(r.status, 409, "core on a published persona"); eq((await r.json()).error, "would_be_public", "code");
+  eq(cellOf(AG_PUB_ID, "core", "CONTEXT"), "# core / CONTEXT\n\nPublished.", "untouched");
+  eq(writeRows.length, 0, "no receipt");
+  // the same write with allow_public is a deliberate act and lands
+  const r2 = await agPost("answers", { grid_id: AG_PUB_ID, allow_public: true, answers: [{ id: "core.CONTEXT.01", text: "on purpose" }] }, AG_TOKEN);
+  eq(r2.status, 200, "allow_public lands"); eq(cellOf(AG_PUB_ID, "core", "CONTEXT").endsWith("on purpose."), true, "appended");
+  // a Private facet on the same published persona needs no flag
+  resetAgent();
+  eq((await agPost("cells", { grid_id: AG_PUB_ID, facet: "coach", cell: "DO", text: "house facet" }, AG_TOKEN)).status, 200, "house facet on a public persona");
+  // core on an UNPUBLISHED persona needs no flag either: nobody but the owner can see it
+  eq((await agPost("answers", ANS("core.CONTEXT.01", "private core"), AG_TOKEN)).status, 200, "core on a private persona needs no flag");
+  // and the cells route refuses the same way
+  resetAgent();
+  const r3 = await agPost("cells", { grid_id: AG_PUB_ID, facet: "core", cell: "DO", text: "x" }, AG_TOKEN);
+  eq(r3.status, 409, "cells core on a published persona"); eq((await r3.json()).error, "would_be_public", "code");
+});
+
+await check("agent: the cells route can make a hat, and a hat it makes is always Private", async () => {
+  resetAgent();
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "editor", cell: "DO", text: "x" }, AG_TOKEN)).status, 404, "no create flag is still 404");
+  eq(agentGrids[AG_GRID_ID].data.facets.length, 2, "nothing made");
+  const r = await agPost("cells", { grid_id: AG_GRID_ID, facet: "The Editor!", cell: "DO", text: "Cuts a draft in half", create: true, kind: "role" }, AG_TOKEN);
+  eq(r.status, 200, "created"); eq((await r.json()).facet, "the-editor", "the name is normalised the way the page normalises it");
+  const made = agentGrids[AG_GRID_ID].data.facets.find((x) => x.name === "the-editor");
+  eq(made.scope, "house", "ALWAYS Private");
+  eq(made.kind, "role", "kind from the body, from the allowed list");
+  eq(made.cells.DO, "# the-editor / DO\n\nCuts a draft in half.", "the header is the hat's own and the placeholder is gone");
+  eq(made.cells.VOICE, "# the-editor / VOICE\n\n(add your own here)", "the untouched cells get the page's placeholder");
+  // a body that asks for a public floor does not get one
+  const r2 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "loud", cell: "DO", text: "y", create: true, scope: "lobby", kind: "nonsense" }, AG_TOKEN);
+  eq(r2.status, 200, "created"); 
+  const loud = agentGrids[AG_GRID_ID].data.facets.find((x) => x.name === "loud");
+  eq(loud.scope, "house", "a scope in the body is ignored"); eq(loud.kind, "specialist", "a kind outside the list falls back");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "core", cell: "DO", text: "x", create: true }, AG_TOKEN)).status, 200, "core already exists, so it is just an append");
+  const r3 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "!!!", cell: "DO", text: "x", create: true }, AG_TOKEN);
+  eq(r3.status, 400, "a name with no letters"); eq((await r3.json()).error, "bad_facet_name", "code");
+  // the ceiling the page never needed, because the page never had an outside writer
+  resetAgent();
+  for (let i = 0; i < 38; i++) agentGrids[AG_GRID_ID].data.facets.push({ name: "f" + i, kind: "specialist", scope: "house", cells: {} });
+  const r4 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "onemore", cell: "DO", text: "x", create: true }, AG_TOKEN);
+  eq(r4.status, 409, "at the ceiling"); eq((await r4.json()).error, "too_many_facets", "code");
+});
+
+await check("agent: the four routes are POST only", async () => {
+  resetAgent();
+  for (const p of ["token", "token/revoke", "answers", "cells"]) {
+    const r = await handleApi(new Request("https://personakind.com/api/agent/" + p, { method: "GET" }), AG_ENV);
+    eq(r.status, 405, "GET " + p);
+  }
 });
 
 console.log("\n" + pass + " passed, " + fail + " failed");
