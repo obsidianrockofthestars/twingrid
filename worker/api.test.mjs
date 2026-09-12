@@ -55,6 +55,7 @@ const TOK_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TOK_REV_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const TOK_STR_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const AG_GRID_ID = "88888888-8888-4888-8888-888888888888";
+const AG_PUB_ID = "99999999-9999-4999-8999-999999999998";   // the same persona, published
 const shaHex = (s) => createHash("sha256").update(s).digest("hex");
 
 let tokenRows = [], writeRows = [], agentGrids = {};
@@ -66,8 +67,13 @@ function resetAgent() {
   ];
   writeRows = [];
   agentGrids = {
-    [AG_GRID_ID]: { id: AG_GRID_ID, owner: USER_ID, is_public: true, data: { facets: [
+    [AG_GRID_ID]: { id: AG_GRID_ID, owner: USER_ID, is_public: false, data: { facets: [
       { name: "core", kind: "core", scope: "lobby", cells: { CONTEXT: "# core / CONTEXT\n\nI am a test persona.", DO: "(add your own here)" } },
+      { name: "coach", kind: "specialist", scope: "house", cells: {} },
+    ] } },
+    // the published twin of AG_GRID: core is Lobby-visible on it, so the core-only exception applies
+    [AG_PUB_ID]: { id: AG_PUB_ID, owner: USER_ID, is_public: true, data: { facets: [
+      { name: "core", kind: "core", cells: { CONTEXT: "# core / CONTEXT\n\nPublished." } },
       { name: "coach", kind: "specialist", scope: "house", cells: {} },
     ] } },
     [OTHER_ID]: { id: OTHER_ID, owner: STRANGER_ID, is_public: true, data: { facets: [{ name: "core", kind: "core", cells: {} }] } },
@@ -1509,6 +1515,53 @@ await check("agent: revoke is owner-scoped, kills the token, and another owner's
   const after = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "should fail" }, AG_TOKEN);
   eq(after.status, 401, "dead after revoke"); eq((await after.json()).error, "revoked", "code");
   eq((await handleApi(agReq("token/revoke", { id: TOK_ID }, GOOD_TOKEN), AG_ENV)).status, 404, "revoking twice is not_found");
+});
+
+await check("agent: the core-only exception, Dylan's ruling of 2026-09-11", async () => {
+  resetAgent();
+  // a Lobby-scoped facet on a PUBLISHED persona is the one case that lands in public, so it is refused
+  const r = await agPost("answers", { grid_id: AG_PUB_ID, answers: [{ id: "core.CONTEXT.01", text: "public by accident" }] }, AG_TOKEN);
+  eq(r.status, 409, "core on a published persona"); eq((await r.json()).error, "would_be_public", "code");
+  eq(cellOf(AG_PUB_ID, "core", "CONTEXT"), "# core / CONTEXT\n\nPublished.", "untouched");
+  eq(writeRows.length, 0, "no receipt");
+  // the same write with allow_public is a deliberate act and lands
+  const r2 = await agPost("answers", { grid_id: AG_PUB_ID, allow_public: true, answers: [{ id: "core.CONTEXT.01", text: "on purpose" }] }, AG_TOKEN);
+  eq(r2.status, 200, "allow_public lands"); eq(cellOf(AG_PUB_ID, "core", "CONTEXT").endsWith("on purpose."), true, "appended");
+  // a Private facet on the same published persona needs no flag
+  resetAgent();
+  eq((await agPost("cells", { grid_id: AG_PUB_ID, facet: "coach", cell: "DO", text: "house facet" }, AG_TOKEN)).status, 200, "house facet on a public persona");
+  // core on an UNPUBLISHED persona needs no flag either: nobody but the owner can see it
+  eq((await agPost("answers", ANS("core.CONTEXT.01", "private core"), AG_TOKEN)).status, 200, "core on a private persona needs no flag");
+  // and the cells route refuses the same way
+  resetAgent();
+  const r3 = await agPost("cells", { grid_id: AG_PUB_ID, facet: "core", cell: "DO", text: "x" }, AG_TOKEN);
+  eq(r3.status, 409, "cells core on a published persona"); eq((await r3.json()).error, "would_be_public", "code");
+});
+
+await check("agent: the cells route can make a hat, and a hat it makes is always Private", async () => {
+  resetAgent();
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "editor", cell: "DO", text: "x" }, AG_TOKEN)).status, 404, "no create flag is still 404");
+  eq(agentGrids[AG_GRID_ID].data.facets.length, 2, "nothing made");
+  const r = await agPost("cells", { grid_id: AG_GRID_ID, facet: "The Editor!", cell: "DO", text: "Cuts a draft in half", create: true, kind: "role" }, AG_TOKEN);
+  eq(r.status, 200, "created"); eq((await r.json()).facet, "the-editor", "the name is normalised the way the page normalises it");
+  const made = agentGrids[AG_GRID_ID].data.facets.find((x) => x.name === "the-editor");
+  eq(made.scope, "house", "ALWAYS Private");
+  eq(made.kind, "role", "kind from the body, from the allowed list");
+  eq(made.cells.DO, "# the-editor / DO\n\nCuts a draft in half.", "the header is the hat's own and the placeholder is gone");
+  eq(made.cells.VOICE, "# the-editor / VOICE\n\n(add your own here)", "the untouched cells get the page's placeholder");
+  // a body that asks for a public floor does not get one
+  const r2 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "loud", cell: "DO", text: "y", create: true, scope: "lobby", kind: "nonsense" }, AG_TOKEN);
+  eq(r2.status, 200, "created"); 
+  const loud = agentGrids[AG_GRID_ID].data.facets.find((x) => x.name === "loud");
+  eq(loud.scope, "house", "a scope in the body is ignored"); eq(loud.kind, "specialist", "a kind outside the list falls back");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "core", cell: "DO", text: "x", create: true }, AG_TOKEN)).status, 200, "core already exists, so it is just an append");
+  const r3 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "!!!", cell: "DO", text: "x", create: true }, AG_TOKEN);
+  eq(r3.status, 400, "a name with no letters"); eq((await r3.json()).error, "bad_facet_name", "code");
+  // the ceiling the page never needed, because the page never had an outside writer
+  resetAgent();
+  for (let i = 0; i < 38; i++) agentGrids[AG_GRID_ID].data.facets.push({ name: "f" + i, kind: "specialist", scope: "house", cells: {} });
+  const r4 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "onemore", cell: "DO", text: "x", create: true }, AG_TOKEN);
+  eq(r4.status, 409, "at the ceiling"); eq((await r4.json()).error, "too_many_facets", "code");
 });
 
 await check("agent: the four routes are POST only", async () => {

@@ -1785,6 +1785,9 @@ const PK_DATA_MAX = 400000;  // the twingrid_grid_data_size CHECK: the whole-row
 const PK_CELLS = ["CONTEXT", "DO", "DONT", "GATES", "VOICE"];
 const PK_HDR_RE = /^# [a-z-]+ \/ [A-Z]+\s*/;
 const AGENT_MAX_ANSWERS = 50;
+const PK_SCOPES = ["house", "visiting", "lobby"];
+const PK_HAT_KINDS = ["specialist", "mode", "role"];
+const AGENT_MAX_FACETS = 40;
 
 async function sha256Hex(s) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -1856,6 +1859,38 @@ function resolveAnswerId(bank, facetNames, rawId) {
   return { q: q, facet: q.facet, key: id };
 }
 
+// Byte-for-byte port of pkFacetScope, which is itself the page's copy of the SQL twingrid_facet_scope.
+// The Lobby view projects exactly the facets this returns 'lobby' for, so this function is what decides
+// whether a cell is visible to a stranger.
+function pkFacetScope(f) {
+  if (!f) return "house";
+  if (PK_SCOPES.indexOf(f.scope) >= 0) return f.scope;
+  return (f.name === "core" || f.name === "vibe") ? "lobby" : "house";
+}
+
+// Dylan's ruling of 2026-09-11, the core-only exception to Private-until-flip. The routes still cannot
+// publish anything, but core and vibe are ALREADY Lobby-visible, so an agent answer to a core question
+// on a persona the owner has already published is public the moment it lands. That one case is refused
+// unless the caller says allow_public, which makes an agent publishing text a deliberate act rather
+// than a surprise. A facet the owner has not published is unaffected.
+function wouldBePublic(grid, facet, body) {
+  return grid.is_public === true && pkFacetScope(facet) === "lobby" && body.allow_public !== true;
+}
+
+// Ports of pkHatName and pkHatCells. A hat a ROUTE creates is always scope 'house' (Private): the body
+// does not get to pick a floor, because picking a floor is the thing Private-until-flip is about.
+function pkHatName(v, facets) {
+  v = String(v == null ? "" : v).toLowerCase().replace(/[^a-z]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+  if (!v) return { error: "bad_facet_name" };
+  if (v === "core" || (Array.isArray(facets) && facets.some((f) => f && typeof f.name === "string" && f.name.toLowerCase() === v))) return { error: "facet_exists" };
+  return { name: v };
+}
+function pkHatCells(name) {
+  const out = {};
+  for (const c of PK_CELLS) out[c] = "# " + name + " / " + c + "\n\n(add your own here)";
+  return out;
+}
+
 // Resolve the bearer to a live, unrevoked token row. The Authorization header is the only place a token
 // is read from. Returns { token: { id, owner } } or { status, code }.
 async function agentToken(request, env) {
@@ -1884,7 +1919,7 @@ async function agentOpen(request, env) {
   const body = (b.value && typeof b.value === "object") ? b.value : {};
   const gridId = String(body.grid_id || "");
   if (!UUID_RE.test(gridId)) return { res: json(request, 400, { error: "bad_grid_id" }) };
-  const rows = await serviceGet(env, "/rest/v1/twingrid_grids?select=id,owner,data&id=eq." + encodeURIComponent(gridId) + "&limit=1");
+  const rows = await serviceGet(env, "/rest/v1/twingrid_grids?select=id,owner,is_public,data&id=eq." + encodeURIComponent(gridId) + "&limit=1");
   if (!rows) return { res: json(request, 502, { error: "read_failed" }) };
   if (!rows.length) return { res: json(request, 404, { error: "not_found" }) };
   const grid = rows[0];
@@ -1934,6 +1969,7 @@ async function handleAgentAnswers(request, env) {
     const s = pkSentence(text, hit.q.type);
     if (!s) { dropped++; continue; }
     const f = byName.get(hit.facet);
+    if (wouldBePublic(o.grid, f, o.body)) return json(request, 409, { error: "would_be_public", facet: hit.facet });
     f.cells = Object.assign({}, f.cells || {});
     const next = pkAppend(f.cells[hit.q.cell], s);
     if (next.length > PK_CELL_MAX) return json(request, 413, { error: "cell_full", facet: hit.facet, cell: hit.q.cell });
@@ -1961,13 +1997,24 @@ async function handleAgentCells(request, env) {
   const text = String(o.body.text == null ? "" : o.body.text).slice(0, PK_CELL_MAX);
   const s = pkSentence(text, "text");
   if (!s) return json(request, 400, { error: "empty_text" });
-  const f = o.data.facets.find((x) => x && x.name === facet);
-  if (!f) return json(request, 404, { error: "no_such_facet" });
+  let f = o.data.facets.find((x) => x && x.name === facet);
+  if (!f) {
+    // Dylan's ruling of 2026-09-11: a route may make a hat, and it is ALWAYS Private. create must be
+    // asked for, so a typo in a facet name is a 404 rather than a silently spawned hat.
+    if (o.body.create !== true) return json(request, 404, { error: "no_such_facet" });
+    if (o.data.facets.length >= AGENT_MAX_FACETS) return json(request, 409, { error: "too_many_facets" });
+    const chk = pkHatName(facet, o.data.facets);
+    if (chk.error) return json(request, 400, { error: chk.error });
+    const kind = PK_HAT_KINDS.indexOf(String(o.body.kind || "")) >= 0 ? String(o.body.kind) : "specialist";
+    f = { name: chk.name, kind: kind, scope: "house", cells: pkHatCells(chk.name) };
+    o.data.facets.push(f);
+  }
+  if (wouldBePublic(o.grid, f, o.body)) return json(request, 409, { error: "would_be_public", facet: f.name });
   f.cells = Object.assign({}, f.cells || {});
   const next = pkAppend(f.cells[cell], s);
-  if (next.length > PK_CELL_MAX) return json(request, 413, { error: "cell_full", facet: facet, cell: cell });
+  if (next.length > PK_CELL_MAX) return json(request, 413, { error: "cell_full", facet: f.name, cell: cell });
   f.cells[cell] = next;
-  return agentCommit(request, env, o, "cells", 1, { facet: facet, cell: cell });
+  return agentCommit(request, env, o, "cells", 1, { facet: f.name, cell: cell });
 }
 
 // POST /api/agent/token  { label }  -> the raw token, ONCE. Owner's Supabase JWT on Bearer.
