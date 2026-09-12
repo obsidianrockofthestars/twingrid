@@ -2042,8 +2042,12 @@ async function handleAgentCells(request, env) {
   const facet = String(o.body.facet || "");
   const cell = String(o.body.cell || "");
   if (PK_CELLS.indexOf(cell) < 0) return json(request, 400, { error: "bad_cell" });
-  const text = String(o.body.text == null ? "" : o.body.text).slice(0, PK_CELL_MAX);
-  const s = pkSentence(text, "text");
+  // NO sentence rule here, deliberately. The basement applies pkSentence because it is completing an
+  // ANSWER to a question; the page's cell editor does not, because a cell is arbitrary prose. Forcing a
+  // terminal full stop onto cell text corrupts it: on 2026-09-12 a bulk import of the Clone Dylan grid
+  // came back 28 characters longer than its source, one appended '.' on each of the 28 cells that did
+  // not already end in punctuation, including a period after a closing code fence. Trim only.
+  const s = String(o.body.text == null ? "" : o.body.text).slice(0, PK_CELL_MAX).trim();
   if (!s) return json(request, 400, { error: "empty_text" });
   let f = o.data.facets.find((x) => x && x.name === facet);
   if (!f) {
