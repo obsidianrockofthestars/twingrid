@@ -1478,7 +1478,7 @@ await check("agent: the cells route appends to an existing facet and never creat
   resetAgent();
   const r = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "Keep it short" }, AG_TOKEN);
   eq(r.status, 200, "status"); eq((await r.json()).kind, "cells", "kind");
-  eq(cellOf(AG_GRID_ID, "coach", "DO"), "Keep it short.", "landed");
+  eq(cellOf(AG_GRID_ID, "coach", "DO"), "Keep it short", "landed verbatim, no full stop appended");
   eq(writeRows[0].kind + "|" + writeRows[0].n_written, "cells|1", "receipt");
   const r2 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "ghost", cell: "DO", text: "x" }, AG_TOKEN);
   eq(r2.status, 404, "unknown facet"); eq((await r2.json()).error, "no_such_facet", "code");
@@ -1557,7 +1557,7 @@ await check("agent: the cells route can make a hat, and a hat it makes is always
   const made = agentGrids[AG_GRID_ID].data.facets.find((x) => x.name === "the-editor");
   eq(made.scope, "house", "ALWAYS Private");
   eq(made.kind, "role", "kind from the body, from the allowed list");
-  eq(made.cells.DO, "# the-editor / DO\n\nCuts a draft in half.", "the header is the hat's own and the placeholder is gone");
+  eq(made.cells.DO, "# the-editor / DO\n\nCuts a draft in half", "the header is the hat's own, the placeholder is gone, the text is verbatim");
   eq(made.cells.VOICE, "# the-editor / VOICE\n\n(add your own here)", "the untouched cells get the page's placeholder");
   // a body that asks for a public floor does not get one
   const r2 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "loud", cell: "DO", text: "y", create: true, scope: "lobby", kind: "nonsense" }, AG_TOKEN);
@@ -1642,6 +1642,28 @@ await check("agent: vibe is reserved like core, because the name alone means Lob
   eq(r.status, 400, "vibe refused"); eq((await r.json()).error, "facet_exists", "code");
   eq(agentGrids[AG_GRID_ID].data.facets.some((f) => f.name === "vibe"), false, "nothing made");
   eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "Vibe", cell: "DO", text: "x", create: true }, AG_TOKEN)).status, 400, "and by case");
+});
+
+await check("agent: cells writes text verbatim, answers still completes the sentence (2026-09-12)", async () => {
+  resetAgent();
+  // A cell is arbitrary prose. A bulk import of the Clone Dylan grid came back 28 characters longer
+  // than its source, one appended full stop per cell that did not already end in punctuation,
+  // including one after a closing code fence. Cell text is written as given.
+  const fence = "Some prose, then a block:\n```\nnot a sentence\n```";
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: fence }, AG_TOKEN)).status, 200, "landed");
+  eq(cellOf(AG_GRID_ID, "coach", "DO"), fence, "verbatim, no full stop appended: " + JSON.stringify(cellOf(AG_GRID_ID, "coach", "DO").slice(-24)));
+  // surrounding whitespace is still trimmed, because pkAppend joins on a blank line
+  resetAgent();
+  await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DONT", text: "   padded   \n\n" }, AG_TOKEN);
+  eq(cellOf(AG_GRID_ID, "coach", "DONT"), "padded", "trimmed");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "GATES", text: "  \n \n " }, AG_TOKEN)).status, 400, "whitespace only is still empty_text");
+  // the ANSWERS route keeps the sentence rule: it is completing an answer to a question
+  resetAgent();
+  await agPost("answers", ANS("core.CONTEXT.01", "no full stop here"), AG_TOKEN);
+  eq(cellOf(AG_GRID_ID, "core", "CONTEXT").endsWith("no full stop here."), true, "answers still completes the sentence");
+  resetAgent();
+  await agPost("answers", ANS("core.CONTEXT.01", "already ends properly?"), AG_TOKEN);
+  eq(cellOf(AG_GRID_ID, "core", "CONTEXT").endsWith("already ends properly?"), true, "and never doubles it");
 });
 
 await check("agent: the four routes are POST only", async () => {
