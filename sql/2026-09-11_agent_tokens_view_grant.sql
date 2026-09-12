@@ -1,0 +1,33 @@
+-- Personakind, agent write lane follow-up (2026-09-11): close one grant drift found by the adversarial
+-- review of the live lane (finding 8).
+--
+-- Rulebook database rule 1 says every new relation revokes from anon, authenticated, service_role AND
+-- public, then grants back exactly what is needed. The 2026-09-11_agent_tokens.sql migration did that
+-- for the two tables and for the write side of the view, but its SELECT revoke on the view named only
+-- anon and public, so service_role kept the SELECT that Supabase hands out by default.
+--
+-- Harmless in effect: the service role bypasses RLS on the base table anyway, so it can already read
+-- everything the view projects and more. That is exactly why it is worth closing. Rule 1 exists so that
+-- a relation's grants say what is intended rather than what the default happened to leave behind, and
+-- a reviewer should not have to reason about whether a leftover grant matters.
+--
+-- One phase, subtractive, and nothing reads this view as the service role (the Worker reads the base
+-- table with the service key; the page reads the view as authenticated), so there is no phase B.
+
+revoke select on public.twingrid_agent_tokens_mine from service_role;
+
+-- ---------------------------------------------------------------------------
+-- Probes (expected result in the comment; actual outputs pasted into the PR)
+-- ---------------------------------------------------------------------------
+-- 1. only authenticated (and the postgres owner) hold SELECT on the view. Expected: authenticated, and no service_role row.
+-- select grantee, privilege_type from information_schema.role_table_grants where table_name='twingrid_agent_tokens_mine' order by grantee;
+--
+-- 2. the page's read still works: a signed in owner sees their own rows and no hash column.
+-- begin; set local role authenticated; select set_config('request.jwt.claims', json_build_object('sub','<owner-uuid>','role','authenticated')::text, true);
+-- select * from public.twingrid_agent_tokens_mine; rollback;   -- own rows only, columns id,owner,label,created_at,last_used_at,revoked_at
+--
+-- 3. the Worker is unaffected: it reads the BASE table with the service key, never this view.
+-- select count(*) from public.twingrid_agent_tokens;   -- as the service role, still readable
+--
+-- 4. anon still holds nothing on the view. Expected: ERROR 42501 permission denied.
+-- begin; set local role anon; select count(*) from public.twingrid_agent_tokens_mine; rollback;
