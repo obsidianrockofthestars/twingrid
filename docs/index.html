@@ -695,6 +695,12 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .pkagname{font-weight:600;color:var(--ink);font-size:14px}
 #account .pkagbtn{min-height:24px}
 #pkagbox button:focus-visible,#pkagbox input:focus-visible{outline:2px solid var(--accent-w-deep);outline-offset:2px}
+#account .pkaghow{margin-top:12px;font-size:13px;color:var(--ink-soft)}
+#account .pkaghow summary{cursor:pointer;min-height:24px;padding:4px 0;color:var(--ink);font-weight:600}
+#account .pkagpre{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;line-height:1.6;color:var(--ink);background:var(--card-w);border:1px solid var(--line-w);border-radius:10px;padding:10px 12px;overflow-x:auto;white-space:pre;margin:8px 0}
+#account .pkaglog{margin-top:12px}
+#account .pkaglogrow{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;padding:4px 0;font-size:13px;color:var(--ink-soft)}
+#account .pkaglogrow b{color:var(--ink);font-weight:600}
 .skiplink{position:absolute;left:-9999px;top:8px;z-index:500;background:var(--accent);color:#fff;padding:10px 14px;border-radius:999px;font:600 14px Archivo,system-ui,sans-serif;text-decoration:none}
 .skiplink:focus{left:8px;outline:2px solid #fff;outline-offset:2px}
 #account .acmsg{font-size:13px;color:var(--ink-dim);min-height:1.2em}
@@ -1670,7 +1676,14 @@ body.route-profile #helpbtn{left:16px;right:auto}
         <p class="note pkagonce" id="pkagonce"></p>
         <div class="acrow"><code class="pkagtoken" id="pkagtoken"></code><button class="btn" type="button" id="pkagcopy">Copy</button></div>
       </div>
+      <details class="pkaghow">
+        <summary>How an AI uses the key</summary>
+        <p class="note">Two requests, both POST, both with the key on an <code>Authorization: Bearer</code> header. Never put the key in the body: it is ignored there on purpose.</p>
+        <pre class="pkagpre" id="pkagpre"></pre>
+        <p class="note">Your persona's id is in its address bar when you open it from Home. A write lands Private. To add to a facet you have already opened to other people, add <code>"allow_public": true</code> and mean it.</p>
+      </details>
       <div id="pkagtokens"></div>
+      <div class="pkaglog" id="pkaglog"></div>
     </section>
     <div class="exgrid" id="acgrid"></div>
     <p class="exfoot" id="acfoot"></p>
@@ -3581,6 +3594,21 @@ function pkagRender(session){
   const api=async(path,body)=>{ let r; try{ r=await fetch(location.origin+'/api/agent/'+path,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+((session&&session.access_token)||'')},body:JSON.stringify(body||{})}); }catch(_){ return {error:'network'}; }
     let j=null; try{ j=await r.json(); }catch(_){}
     return r.ok?(j||{}):{error:String((j&&j.error)||('http_'+r.status))}; };
+  // What an agent actually DID, from twingrid_agent_writes. The owner already holds SELECT on it through
+  // twingrid_operates(owner); until this it was written and never read, so "last seen" on a key was the
+  // only signal and it cannot tell a landed write from a refusal (review finding 3, 2026-09-11).
+  const paintLog=async()=>{ const box=document.getElementById('pkaglog'); if(!box) return; box.textContent='';
+    const [w,g]=await Promise.all([
+      SB.from('twingrid_agent_writes').select('grid_id,kind,n_written,created_at').order('created_at',{ascending:false}).limit(20),
+      SB.from('twingrid_grids').select('id,name')]);
+    if(w.error||!w.data||!w.data.length) return;
+    const names={}; (g.data||[]).forEach(r=>{ names[r.id]=String(r.name||'Untitled persona'); });
+    const h=document.createElement('p'); h.className='note'; h.textContent='What your agents have written, newest first.'; box.appendChild(h);
+    w.data.forEach(r=>{ const row=document.createElement('div'); row.className='pkaglogrow';
+      const b=document.createElement('b'); b.textContent=names[r.grid_id]||'a persona you have since deleted';
+      const what=document.createElement('span');
+      what.textContent=(r.kind==='answers'?(r.n_written+' '+(r.n_written===1?'answer':'answers')):(r.n_written+' cell '+(r.n_written===1?'write':'writes')))+' on '+new Date(r.created_at).toLocaleString();
+      row.append(b,what); box.appendChild(row); }); };
   const paint=async()=>{ list.textContent='';
     const {data,error}=await SB.from('twingrid_agent_tokens_mine').select('id,label,created_at,last_used_at,revoked_at').order('created_at',{ascending:false});
     const note=t=>{ const p=document.createElement('p'); p.className='note'; p.textContent=t; list.appendChild(p); };
@@ -3590,11 +3618,15 @@ function pkagRender(session){
       const n=document.createElement('span'); n.className='pkagname'; n.textContent=String(t.label||'agent');
       const m=document.createElement('span'); m.className='note';
       const d=x=>new Date(x).toLocaleDateString();
-      m.textContent=t.revoked_at?('revoked '+d(t.revoked_at)):('made '+d(t.created_at)+', '+(t.last_used_at?('last used '+d(t.last_used_at)):'never used'));
+      // "last seen", not "last used": last_used_at is stamped on every accepted key including a refused
+      // attempt, so it cannot claim a write happened. What was written is the log below.
+      m.textContent=t.revoked_at?('revoked '+d(t.revoked_at)):('made '+d(t.created_at)+', '+(t.last_used_at?('last seen '+d(t.last_used_at)):'never seen'));
       row.append(n,m);
       if(!t.revoked_at){ const b=document.createElement('button'); b.type='button'; b.className='btn pkagbtn'; b.textContent='Revoke';
         b.setAttribute('aria-label','Revoke the key named '+String(t.label||'agent'));
-        b.onclick=async()=>{ b.disabled=true; msg.textContent='Revoking...'; const res=await api('token/revoke',{id:t.id});
+        // one irreversible click, and the raw key can never be shown again, so the first click arms it
+        b.onclick=async()=>{ if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='Revoke for good?'; msg.textContent='Revoking cannot be undone. Click again to confirm.'; setTimeout(()=>{ if(b.dataset.armed==='1'){ b.dataset.armed=''; b.textContent='Revoke'; } },5000); return; }
+          b.disabled=true; msg.textContent='Revoking...'; const res=await api('token/revoke',{id:t.id});
           if(res.error){ b.disabled=false; msg.textContent='Could not revoke that key.'; return; }
           msg.textContent='Key revoked. It stops working now.'; paint(); }; row.appendChild(b); }
       list.appendChild(row); }); };
@@ -3611,7 +3643,15 @@ function pkagRender(session){
     paint(); };
   document.getElementById('pkagcopy').onclick=()=>{ const b=document.getElementById('pkagcopy');
     navigator.clipboard.writeText(document.getElementById('pkagtoken').textContent).then(()=>{ b.textContent='Copied'; setTimeout(()=>{ b.textContent='Copy'; },1400); }); };
-  paint();
+  { const pre=document.getElementById('pkagpre'); if(pre) pre.textContent=
+      'POST '+location.origin+'/api/agent/answers\n'+
+      '  Authorization: Bearer YOUR-KEY\n'+
+      '  {"grid_id":"...","answers":[{"id":"core.CONTEXT.01","text":"..."}]}\n\n'+
+      'POST '+location.origin+'/api/agent/cells\n'+
+      '  Authorization: Bearer YOUR-KEY\n'+
+      '  {"grid_id":"...","facet":"coach","cell":"DO","text":"..."}\n\n'+
+      'Add "create": true to make a new hat. It always starts Private.'; }
+  paint(); paintLog();
 }
 // Account home (Dylan, 2026-09-06): on your own @handle page, signed in, one box with email, plan, renew, manage, sign out.
 function accountPanel(session){ const box=document.getElementById('acplan'); box.hidden=false;

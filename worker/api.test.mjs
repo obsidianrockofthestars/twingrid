@@ -59,7 +59,10 @@ const AG_PUB_ID = "99999999-9999-4999-8999-999999999998";   // the same persona,
 const shaHex = (s) => createHash("sha256").update(s).digest("hex");
 
 let tokenRows = [], writeRows = [], agentGrids = {};
-let dbRefusesPatch = false;   // stands in for the twingrid_grid_data_size CHECK refusing a PATCH
+// How the fake grid PATCH behaves: "" is normal, "check" is twingrid_grid_data_size refusing with
+// SQLSTATE 23514, "transient" is any other backend failure, "stale" is zero rows under the updated_at
+// filter, which is what a concurrent edit looks like.
+let patchMode = "";
 function resetAgent() {
   tokenRows = [
     { id: TOK_ID, owner: USER_ID, label: "my ai", token_hash: shaHex(AG_TOKEN), created_at: "2026-09-11T00:00:00+00:00", last_used_at: null, revoked_at: null },
@@ -68,16 +71,16 @@ function resetAgent() {
   ];
   writeRows = [];
   agentGrids = {
-    [AG_GRID_ID]: { id: AG_GRID_ID, owner: USER_ID, is_public: false, data: { facets: [
+    [AG_GRID_ID]: { id: AG_GRID_ID, owner: USER_ID, is_public: false, updated_at: "2026-09-11T00:00:00.000Z", data: { facets: [
       { name: "core", kind: "core", scope: "lobby", cells: { CONTEXT: "# core / CONTEXT\n\nI am a test persona.", DO: "(add your own here)" } },
       { name: "coach", kind: "specialist", scope: "house", cells: {} },
     ] } },
     // the published twin of AG_GRID: core is Lobby-visible on it, so the core-only exception applies
-    [AG_PUB_ID]: { id: AG_PUB_ID, owner: USER_ID, is_public: true, data: { facets: [
+    [AG_PUB_ID]: { id: AG_PUB_ID, owner: USER_ID, is_public: true, updated_at: "2026-09-11T00:00:00.000Z", data: { facets: [
       { name: "core", kind: "core", cells: { CONTEXT: "# core / CONTEXT\n\nPublished." } },
       { name: "coach", kind: "specialist", scope: "house", cells: {} },
     ] } },
-    [OTHER_ID]: { id: OTHER_ID, owner: STRANGER_ID, is_public: true, data: { facets: [{ name: "core", kind: "core", cells: {} }] } },
+    [OTHER_ID]: { id: OTHER_ID, owner: STRANGER_ID, is_public: true, updated_at: "2026-09-11T00:00:00.000Z", data: { facets: [{ name: "core", kind: "core", cells: {} }] } },
   };
 }
 // The question bank the Worker reads off env.ASSETS, same shape as docs/catalog/questions.json.
@@ -195,9 +198,14 @@ globalThis.fetch = async (url, init) => {
     const gm = /[?&]id=eq\.([0-9a-f-]+)/.exec(u); const g = gm ? agentGrids[gm[1]] : null;
     if (method === "PATCH") {
       if (!g) return respond(200, []);
-      if (dbRefusesPatch) return respond(400, { code: "23514", message: "new row violates check constraint" });
+      if (patchMode === "check") return respond(400, { code: "23514", message: "new row violates check constraint \"twingrid_grid_data_size\"" });
+      if (patchMode === "transient") return respond(500, { message: "upstream" });
+      if (patchMode === "stale") return respond(200, []);
       if ("is_public" in body) throw new Error("an agent route must never write is_public");
-      Object.assign(g, body); return respond(200, [g]);
+      // the compare and swap: PostgREST matches zero rows when updated_at moved underneath us
+      const um = /updated_at=eq\.([^&]+)/.exec(u);
+      if (um && decodeURIComponent(um[1]) !== g.updated_at) return respond(200, []);
+      Object.assign(g, body); g.updated_at = new Date(Date.parse(g.updated_at) + 1000).toISOString(); return respond(200, [g]);
     }
     return respond(200, g ? [g] : []);
   }
@@ -1566,22 +1574,74 @@ await check("agent: the cells route can make a hat, and a hat it makes is always
   eq(r4.status, 409, "at the ceiling"); eq((await r4.json()).error, "too_many_facets", "code");
 });
 
-await check("agent: a write the DATABASE refuses near the ceiling is persona_full, not save_failed", async () => {
+await check("agent: the failure code comes from the database, not from a size guess", async () => {
   resetAgent();
-  // The fake stands in for twingrid_grid_data_size: it refuses the PATCH, exactly as Postgres does when
-  // data::text crosses 400,000 octets even though JSON.stringify of the same object measured under it.
-  const g = agentGrids[AG_GRID_ID];
-  for (let i = 0; i < 10; i++) g.data.facets.push({ name: "pad" + i, kind: "specialist", scope: "house", cells: { DO: "p".repeat(39600) } });
-  dbRefusesPatch = true;
+  // twingrid_grid_data_size refusing: 23514 is a permanent capacity refusal whatever the size looked like
+  patchMode = "check";
   const r = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "the straw" }, AG_TOKEN);
-  eq(r.status, 413, "near the ceiling"); eq((await r.json()).error, "persona_full", "code");
+  eq(r.status, 413, "23514 status"); eq((await r.json()).error, "persona_full", "23514 code");
   eq(writeRows.length, 0, "nothing written");
-  // the same refusal on a SMALL persona is a real save failure and still reads as one
+  // any other backend failure is still transient, on a persona of the very same size
+  patchMode = "transient";
+  const r2 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "the straw" }, AG_TOKEN);
+  eq(r2.status, 502, "transient status"); eq((await r2.json()).error, "save_failed", "transient code");
+  // a concurrent edit moved updated_at: the loser is told so instead of being given a silent 200
+  patchMode = "stale";
+  const r3 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "the straw" }, AG_TOKEN);
+  eq(r3.status, 409, "stale status"); eq((await r3.json()).error, "stale", "stale code");
+  patchMode = "";
+  // and the write carries updated_at, so a real concurrent edit cannot be clobbered
+  agentGrids[AG_GRID_ID].updated_at = "2026-09-11T09:99:99.000Z".replace("99:99", "30:00");
+  const o = agentGrids[AG_GRID_ID].updated_at;
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "lands" }, AG_TOKEN)).status, 200, "a clean write lands");
+  eq(agentGrids[AG_GRID_ID].updated_at === o, false, "updated_at moved");
+});
+
+await check("agent: a Kindred facet is guarded like a Public one (review finding 1)", async () => {
   resetAgent();
-  dbRefusesPatch = true;
-  const r2 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "small" }, AG_TOKEN);
-  eq(r2.status, 502, "far from the ceiling"); eq((await r2.json()).error, "save_failed", "code");
-  dbRefusesPatch = false;
+  const g = agentGrids[AG_PUB_ID];
+  g.data.facets.push({ name: "garden", kind: "specialist", scope: "visiting", cells: {} });
+  // twingrid_kindred_proj carries scope in ('lobby','visiting'), so a visiting facet is read by other
+  // people and by both sides of a persona to persona run. It needs the same deliberate act.
+  const r = await agPost("cells", { grid_id: AG_PUB_ID, facet: "garden", cell: "DO", text: "seen by Kindred" }, AG_TOKEN);
+  eq(r.status, 409, "visiting on a published persona"); eq((await r.json()).error, "would_be_public", "code");
+  eq((await agPost("cells", { grid_id: AG_PUB_ID, facet: "garden", cell: "DO", text: "on purpose", allow_public: true }, AG_TOKEN)).status, 200, "allow_public lands");
+  // a house facet on the same persona still needs no flag, and so does a visiting facet on a PRIVATE
+  // persona: the Lobby and Kindred views both gate on is_public, so nothing there reaches anyone
+  eq((await agPost("cells", { grid_id: AG_PUB_ID, facet: "coach", cell: "DO", text: "private floor" }, AG_TOKEN)).status, 200, "house facet");
+  agentGrids[AG_GRID_ID].data.facets.push({ name: "garden", kind: "specialist", scope: "visiting", cells: {} });
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "garden", cell: "DO", text: "nobody sees this" }, AG_TOKEN)).status, 200, "visiting on an unpublished persona");
+});
+
+await check("agent: the rate limit covers a revoked and an unknown token, not just a live one (review finding 2)", async () => {
+  resetAgent();
+  const store = new Map();
+  const KV = { get: async (k) => store.get(k) || null, put: async (k, v) => { store.set(k, v); } };
+  const KV_ENV = Object.assign({}, AG_ENV, { RATE_KV: KV });
+  const before = calls.length;
+  let last = null;
+  for (let i = 0; i < 121; i++) last = await agPost("answers", { grid_id: AG_GRID_ID }, AG_REVOKED, KV_ENV);
+  eq(last.status, 429, "a revoked token is limited"); eq((await last.json()).error, "rate_limited", "code");
+  // and once limited it costs no database round trip at all
+  const spent = calls.length - before;
+  const after = calls.length;
+  await agPost("answers", { grid_id: AG_GRID_ID }, AG_REVOKED, KV_ENV);
+  eq(calls.length - after, 0, "a limited attempt never reaches the database");
+  // an unknown token shares the shape: limited, and on its own bucket
+  let u = null;
+  for (let i = 0; i < 121; i++) u = await agPost("answers", { grid_id: AG_GRID_ID }, "pka_" + "Z".repeat(43), KV_ENV);
+  eq(u.status, 429, "an unknown token is limited");
+  eq((await agPost("answers", ANS("core.CONTEXT.01", "x"), AG_TOKEN, KV_ENV)).status, 200, "a different token has its own bucket");
+});
+
+await check("agent: vibe is reserved like core, because the name alone means Lobby (review finding 6)", async () => {
+  resetAgent();
+  // pkFacetScope promotes core AND vibe to lobby when a facet carries no explicit scope, so a route
+  // made facet called vibe is a Lobby facet by name, safe today only because scope house is pinned.
+  const r = await agPost("cells", { grid_id: AG_GRID_ID, facet: "vibe", cell: "DO", text: "x", create: true }, AG_TOKEN);
+  eq(r.status, 400, "vibe refused"); eq((await r.json()).error, "facet_exists", "code");
+  eq(agentGrids[AG_GRID_ID].data.facets.some((f) => f.name === "vibe"), false, "nothing made");
+  eq((await agPost("cells", { grid_id: AG_GRID_ID, facet: "Vibe", cell: "DO", text: "x", create: true }, AG_TOKEN)).status, 400, "and by case");
 });
 
 await check("agent: the four routes are POST only", async () => {

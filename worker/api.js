@@ -203,7 +203,10 @@ async function readJson(request) {
   } catch (_) {
     return { error: "bad_body" };
   }
-  if (text.length > MAX_BODY_BYTES) return { error: "body_too_large" };
+  // Bytes, not UTF-16 code units: three-octet CJK would pass roughly 768 KB against a 256 KB budget.
+  // The Content-Length check above is already in bytes and Cloudflare supplies it, so this is the belt
+  // to that brace rather than a live hole (review note, 2026-09-11).
+  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return { error: "body_too_large" };
   try {
     return { value: JSON.parse(text), raw: text };
   } catch (_) {
@@ -1770,8 +1773,10 @@ async function handleCspReport(request) {
 // the owner's OWN personas from outside the browser. Rulings of record (v18 picker, PLAN row 1.7): many
 // tokens per account, each labelled, no expiry, revoked by hand; an agent write always lands PRIVATE and
 // the owner flips the floor. The conservative v1 of that last one is enforced here and is the whole of it:
-// these routes never write is_public and never write a facet's scope, and they never create a facet, so
-// agent text is visible to anyone but the owner only where the owner had already published that facet.
+// these routes never write is_public and never write a facet's scope, so they cannot publish anything.
+// A facet they CREATE (Dylan's second ruling of 2026-09-11) is pinned to scope 'house'. A write into a
+// facet the owner has already opened to other people, Public or Kindred, is refused unless the caller
+// says allow_public, so agent text reaching anyone but the owner is always a deliberate act.
 //
 // The raw token exists in exactly one response (the mint reply) and nowhere else: never logged, never
 // echoed back, never stored. Only its sha256 hex reaches the database, and the hash never leaves the
@@ -1788,12 +1793,6 @@ const AGENT_MAX_ANSWERS = 50;
 const PK_SCOPES = ["house", "visiting", "lobby"];
 const PK_HAT_KINDS = ["specialist", "mode", "role"];
 const AGENT_MAX_FACETS = 40;
-// Postgres stores jsonb with a space after every colon and comma, so data::text on a full persona runs
-// a few thousand octets longer than JSON.stringify of the same object. The Worker's own size check is
-// therefore OPTIMISTIC against the twingrid_grid_data_size CHECK, and near the ceiling the database
-// refuses a write this Worker thought would fit. This slack only decides which code a write that
-// already failed comes back as; it never decides whether anything is written.
-const PK_DATA_SLACK = 8000;
 
 async function sha256Hex(s) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -1874,13 +1873,20 @@ function pkFacetScope(f) {
   return (f.name === "core" || f.name === "vibe") ? "lobby" : "house";
 }
 
-// Dylan's ruling of 2026-09-11, the core-only exception to Private-until-flip. The routes still cannot
-// publish anything, but core and vibe are ALREADY Lobby-visible, so an agent answer to a core question
-// on a persona the owner has already published is public the moment it lands. That one case is refused
-// unless the caller says allow_public, which makes an agent publishing text a deliberate act rather
-// than a surprise. A facet the owner has not published is unaffected.
+// Dylan's ruling of 2026-09-11, the exception to Private-until-flip. The routes still cannot publish
+// anything, but core and vibe are ALREADY Lobby-visible, so an agent answer to a core question on a
+// persona the owner has published is public the moment it lands. That case is refused unless the caller
+// says allow_public, which makes an agent publishing text a deliberate act rather than a surprise.
+//
+// Widened from 'lobby' to 'not house' on the review of 2026-09-11 (finding 1). Dylan ruled the Public
+// floor; the review pointed out that a 'visiting' facet is projected to every accepted Kindred by
+// twingrid_kindred_proj and feeds BOTH sides of a persona-to-persona run, so the same sentence applies
+// one floor down. Narrowing it back to === "lobby" is his call and is one token.
+//
+// A persona the owner has not published is unaffected either way: the Lobby and Kindred views both gate
+// on is_public, so on a private persona nothing reaches anyone but the owner.
 function wouldBePublic(grid, facet, body) {
-  return grid.is_public === true && pkFacetScope(facet) === "lobby" && body.allow_public !== true;
+  return grid.is_public === true && pkFacetScope(facet) !== "house" && body.allow_public !== true;
 }
 
 // Ports of pkHatName and pkHatCells. A hat a ROUTE creates is always scope 'house' (Private): the body
@@ -1888,7 +1894,7 @@ function wouldBePublic(grid, facet, body) {
 function pkHatName(v, facets) {
   v = String(v == null ? "" : v).toLowerCase().replace(/[^a-z]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
   if (!v) return { error: "bad_facet_name" };
-  if (v === "core" || (Array.isArray(facets) && facets.some((f) => f && typeof f.name === "string" && f.name.toLowerCase() === v))) return { error: "facet_exists" };
+  if (v === "core" || v === "vibe" || (Array.isArray(facets) && facets.some((f) => f && typeof f.name === "string" && f.name.toLowerCase() === v))) return { error: "facet_exists" };
   return { name: v };
 }
 function pkHatCells(name) {
@@ -1899,19 +1905,51 @@ function pkHatCells(name) {
 
 // Resolve the bearer to a live, unrevoked token row. The Authorization header is the only place a token
 // is read from. Returns { token: { id, owner } } or { status, code }.
+//
+// The rate limit is keyed on the HASH and runs BEFORE the lookup, not on the row id after it (review
+// finding 2, 2026-09-11). Keyed on the row id it only covered tokens that resolved, so a revoked token
+// was unlimited: every attempt still cost a SELECT plus a PATCH. A token is revoked exactly when its
+// owner thinks it leaked, so that turned a killed credential into an unmetered write amplifier against
+// the owner's own project. Keyed on the hash, one bucket covers live, revoked and unknown alike, and a
+// refused attempt no longer reaches the database at all.
 async function agentToken(request, env) {
   const raw = bearer(request);
   if (!raw || raw.length < 16 || raw.length > 200 || raw.indexOf(AGENT_PREFIX) !== 0) return { status: 401, code: "unauthorized" };
   const hash = await sha256Hex(raw);
+  if (await rateLimited(env, "agw:" + hash.slice(0, 32), 120, 3600)) return { status: 429, code: "rate_limited" };
   const rows = await serviceGet(env, "/rest/v1/twingrid_agent_tokens?select=id,owner,revoked_at&token_hash=eq." + encodeURIComponent(hash) + "&limit=1");
   if (!rows) return { status: 502, code: "lookup_failed" };
   if (!rows.length) return { status: 401, code: "unauthorized" };
   const t = rows[0];
   // Stamped on every accepted token, not only on a landed write, so a refused attempt still shows up.
+  // The page calls this "last seen" for that reason: it is not evidence that anything was written.
   await servicePatch(env, "/rest/v1/twingrid_agent_tokens?id=eq." + encodeURIComponent(t.id), { last_used_at: new Date().toISOString() });
   if (t.revoked_at) return { status: 401, code: "revoked" };
   if (!UUID_RE.test(String(t.owner))) return { status: 401, code: "unauthorized" };
   return { token: { id: t.id, owner: t.owner } };
+}
+
+// PATCH the grid's data column and say WHY it failed, which plain servicePatch cannot: it collapses
+// every failure to null. Two callers need the difference (review findings 4 and 5, 2026-09-11).
+// twingrid_grid_data_size comes back as SQLSTATE 23514, which is a permanent capacity refusal, and a
+// zero row result under the updated_at filter is a concurrent edit, which is neither of those. Reading
+// Reading the database's own answer replaces the tuned constant this used to guess with.
+async function patchGridData(env, id, updatedAt, data) {
+  const q = "/rest/v1/twingrid_grids?id=eq." + encodeURIComponent(id) + (updatedAt ? "&updated_at=eq." + encodeURIComponent(updatedAt) : "");
+  let res;
+  try {
+    res = await fetch(sbUrl(env, q), { method: "PATCH", headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=representation" }), body: JSON.stringify({ data: data }) });
+  } catch (_) { return { code: "save_failed", status: 502 }; }
+  if (!res.ok) {
+    let sqlstate = "";
+    try { const j = await res.json(); sqlstate = String((j && j.code) || ""); } catch (_) {}
+    if (sqlstate === "23514") return { code: "persona_full", status: 413 };
+    return { code: "save_failed", status: 502 };
+  }
+  let rows = null;
+  try { rows = await res.json(); } catch (_) {}
+  if (!Array.isArray(rows) || rows.length !== 1) return { code: "stale", status: 409 };
+  return { row: rows[0] };
 }
 
 // Auth, rate limit, body, and a FRESH read of the grid. The service key bypasses RLS, so the owner
@@ -1919,13 +1957,12 @@ async function agentToken(request, env) {
 async function agentOpen(request, env) {
   const t = await agentToken(request, env);
   if (!t.token) return { res: json(request, t.status, { error: t.code }) };
-  if (await rateLimited(env, "agw:" + t.token.id, 120, 3600)) return { res: json(request, 429, { error: "rate_limited" }) };
   const b = await readJson(request);
   if (b.error) return { res: json(request, 400, { error: b.error }) };
   const body = (b.value && typeof b.value === "object") ? b.value : {};
   const gridId = String(body.grid_id || "");
   if (!UUID_RE.test(gridId)) return { res: json(request, 400, { error: "bad_grid_id" }) };
-  const rows = await serviceGet(env, "/rest/v1/twingrid_grids?select=id,owner,is_public,data&id=eq." + encodeURIComponent(gridId) + "&limit=1");
+  const rows = await serviceGet(env, "/rest/v1/twingrid_grids?select=id,owner,is_public,updated_at,data&id=eq." + encodeURIComponent(gridId) + "&limit=1");
   if (!rows) return { res: json(request, 502, { error: "read_failed" }) };
   if (!rows.length) return { res: json(request, 404, { error: "not_found" }) };
   const grid = rows[0];
@@ -1938,15 +1975,13 @@ async function agentOpen(request, env) {
 // Write the mutated data back and leave a receipt. Only the data column is sent: is_public, scope and
 // every other column are untouched by design, so a route can never publish anything.
 async function agentCommit(request, env, o, kind, n, extra) {
-  const size = new TextEncoder().encode(JSON.stringify(o.data)).length;
-  if (size > PK_DATA_MAX) return json(request, 413, { error: "persona_full" });
-  if (!(await servicePatch(env, "/rest/v1/twingrid_grids?id=eq." + encodeURIComponent(o.grid.id), { data: o.data }))) {
-    // A capacity refusal must not come back as save_failed: that reads as transient and an agent would
-    // retry it forever. Found live on 2026-09-11, gauntlet probe 17: at 399,703 stored octets an answers
-    // write measured under the ceiling here and was refused by the CHECK, and the caller got a 502.
-    if (size > PK_DATA_MAX - PK_DATA_SLACK) return json(request, 413, { error: "persona_full" });
-    return json(request, 502, { error: "save_failed" });
-  }
+  // The early check catches the clear cases. It cannot be exact: Postgres stores jsonb with a space
+  // after every colon and comma, so data::text runs longer than JSON.stringify of the same object and
+  // this count is always optimistic against twingrid_grid_data_size. patchGridData reads the real
+  // answer out of SQLSTATE, so being optimistic here costs nothing but a round trip.
+  if (new TextEncoder().encode(JSON.stringify(o.data)).length > PK_DATA_MAX) return json(request, 413, { error: "persona_full" });
+  const w = await patchGridData(env, o.grid.id, o.grid.updated_at, o.data);
+  if (!w.row) return json(request, w.status, { error: w.code });
   if (!(await servicePost(env, "/rest/v1/twingrid_agent_writes", { owner: o.token.owner, grid_id: o.grid.id, token_id: o.token.id, kind: kind, n_written: n }))) console.log("agent_receipt_failed");
   return json(request, 200, Object.assign({ ok: true, kind: kind, written: n, grid_id: o.grid.id }, extra || {}));
 }
