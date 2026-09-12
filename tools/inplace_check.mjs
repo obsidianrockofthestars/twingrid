@@ -74,4 +74,19 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(c.el.autherr.textContent==='','with no error');
 }
 
+// Route exemption guard (2026-09-12). The Room shipped as #49 and broke production within a minute: route()
+// sent ?room= to the room, then Supabase fired INITIAL_SESSION, the auth callback was not told the room
+// routes itself, and refreshAuth() re-routed the page to the landing (signed out) or Home (signed in).
+// Reverted as #50. The exemption list is prose a new route has to remember, so this makes it mechanical:
+// every on*Route() that route() dispatches must also appear in the onAuthStateChange callback.
+{
+  const rS=h.indexOf('function route(){'), rE=h.indexOf("document.body.className='marketing route-landing'; refreshAuth(); }", rS);
+  const aS=h.indexOf('SB.auth.onAuthStateChange('), aE=h.indexOf('\n', h.indexOf('refreshAuth();', aS));
+  ok(rS>0&&rE>rS,'route() found'); ok(aS>0&&aE>aS,'the auth callback found');
+  const names=b=>new Set((b.match(/on[A-Z][A-Za-z]*Route\(\)/g)||[]).map(x=>x.slice(0,-2)));
+  const inRoute=names(h.slice(rS,rE)), inAuth=names(h.slice(aS,aE));
+  ok(inRoute.size>=5,'route() dispatches its pages ('+inRoute.size+' found)');
+  for(const n of inRoute) ok(inAuth.has(n),n+' routes itself but is not exempted in onAuthStateChange, so INITIAL_SESSION will re-route it to the landing or Home');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
