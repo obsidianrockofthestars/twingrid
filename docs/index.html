@@ -2574,7 +2574,10 @@ function termsBar(session){ const bar=document.getElementById('termsbar'); if(!b
 document.getElementById('termsagree').onclick=async()=>{ try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} document.getElementById('termsbar').hidden=true;
   try{ await SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}); }catch(_){} };
 SB.auth.getSession().then(({data})=>termsBar(data&&data.session)).catch(()=>{});
-SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(_ev==='PASSWORD_RECOVERY'){ pkAuthSet('newpw'); authCard.classList.remove('done'); authEl.classList.add('open'); setTimeout(()=>document.getElementById('password').focus(),40); return; } if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(onPlacesRoute()){ renderPlaces(); } else if(!onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
+// Every page that routes itself must be on the exemption list below, or refreshAuth() re-routes it to
+// the landing (signed out) or Home (signed in) the moment Supabase fires INITIAL_SESSION. The Room
+// shipped without it on 2026-09-12 and was reverted (#50); the harness never fired this callback.
+SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(_ev==='PASSWORD_RECOVERY'){ pkAuthSet('newpw'); authCard.classList.remove('done'); authEl.classList.add('open'); setTimeout(()=>document.getElementById('password').focus(),40); return; } if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(onPlacesRoute()){ renderPlaces(); } else if(!onRoomRoute() && !onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
   // Terms acceptance record (2026-09-02): the box was ticked in this browser before sign-in, so stamp the version on the user once.
   try{ const u=session&&session.user; const md=(u&&u.user_metadata)||{}; if(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')===TERMS_VERSION){ SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}).catch(()=>{}); } }catch(_){} });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
