@@ -44,4 +44,34 @@ ok(m2.dropped===1&&m2.got.length===1,'a choice outside its options is dropped an
 ok(m2.got[0].v.length===600,'600 characters an answer');
 ok(pkagQLine(QS[1])==='- "core.VOICE.02": How formal? Choose exactly one of: Casual, Formal.','a choice line names its options');
 ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries no options');
+// The terms gate (2026-09-12). Lifted with a stubbed document, because the bug was a disagreement
+// between what the card SHOWS and what the guard REQUIRES, and only the rendered row can settle it.
+{
+  const tsrc=cut("function termsAgreed()","catch(_){} return true; }");
+  const mk=(rowHidden,checked)=>{ const el={pkauthterms:{hidden:rowHidden},termsok:{checked:checked,focused:false,focus(){ this.focused=true; }},autherr:{textContent:''}};
+    const doc={getElementById:(id)=>el[id]||null};
+    const ls={store:{},setItem(k,v){ this.store[k]=v; },getItem(k){ return this.store[k]||null; }};
+    const fn=new Function('document','localStorage','TERMS_VERSION', tsrc+'\nreturn termsAgreed;')(doc,ls,'2026-09-07');
+    return {el,ls,run:fn}; };
+
+  // the live bug: sign in on a browser that already agreed. The row is hidden, the box under it is
+  // unchecked, and Continue with Google called this first. It must pass, not error at an invisible box.
+  const a=mk(true,false);
+  ok(a.run()===true,'hidden terms row means already agreed, not blocked');
+  ok(a.el.autherr.textContent==='','no error is shown for a row that is not on screen');
+  ok(a.el.termsok.focused===false,'nothing is focused into a hidden input');
+
+  // the row IS on screen and unticked: still refused, still the same message
+  const b=mk(false,false);
+  ok(b.run()===false,'a visible unticked box still blocks');
+  ok(/tick the box/.test(b.el.autherr.textContent),'and says so: '+JSON.stringify(b.el.autherr.textContent));
+  ok(b.el.termsok.focused===true,'and focuses the box the message names');
+
+  // the row is on screen and ticked: passes and records the agreement for this browser
+  const c=mk(false,true);
+  ok(c.run()===true,'a visible ticked box passes');
+  ok(c.ls.store.pk_terms_ok==='2026-09-07','and stamps the terms version');
+  ok(c.el.autherr.textContent==='','with no error');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
