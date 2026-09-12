@@ -1788,6 +1788,12 @@ const AGENT_MAX_ANSWERS = 50;
 const PK_SCOPES = ["house", "visiting", "lobby"];
 const PK_HAT_KINDS = ["specialist", "mode", "role"];
 const AGENT_MAX_FACETS = 40;
+// Postgres stores jsonb with a space after every colon and comma, so data::text on a full persona runs
+// a few thousand octets longer than JSON.stringify of the same object. The Worker's own size check is
+// therefore OPTIMISTIC against the twingrid_grid_data_size CHECK, and near the ceiling the database
+// refuses a write this Worker thought would fit. This slack only decides which code a write that
+// already failed comes back as; it never decides whether anything is written.
+const PK_DATA_SLACK = 8000;
 
 async function sha256Hex(s) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -1932,8 +1938,15 @@ async function agentOpen(request, env) {
 // Write the mutated data back and leave a receipt. Only the data column is sent: is_public, scope and
 // every other column are untouched by design, so a route can never publish anything.
 async function agentCommit(request, env, o, kind, n, extra) {
-  if (new TextEncoder().encode(JSON.stringify(o.data)).length > PK_DATA_MAX) return json(request, 413, { error: "persona_full" });
-  if (!(await servicePatch(env, "/rest/v1/twingrid_grids?id=eq." + encodeURIComponent(o.grid.id), { data: o.data }))) return json(request, 502, { error: "save_failed" });
+  const size = new TextEncoder().encode(JSON.stringify(o.data)).length;
+  if (size > PK_DATA_MAX) return json(request, 413, { error: "persona_full" });
+  if (!(await servicePatch(env, "/rest/v1/twingrid_grids?id=eq." + encodeURIComponent(o.grid.id), { data: o.data }))) {
+    // A capacity refusal must not come back as save_failed: that reads as transient and an agent would
+    // retry it forever. Found live on 2026-09-11, gauntlet probe 17: at 399,703 stored octets an answers
+    // write measured under the ceiling here and was refused by the CHECK, and the caller got a 502.
+    if (size > PK_DATA_MAX - PK_DATA_SLACK) return json(request, 413, { error: "persona_full" });
+    return json(request, 502, { error: "save_failed" });
+  }
   if (!(await servicePost(env, "/rest/v1/twingrid_agent_writes", { owner: o.token.owner, grid_id: o.grid.id, token_id: o.token.id, kind: kind, n_written: n }))) console.log("agent_receipt_failed");
   return json(request, 200, Object.assign({ ok: true, kind: kind, written: n, grid_id: o.grid.id }, extra || {}));
 }

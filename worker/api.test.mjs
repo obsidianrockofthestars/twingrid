@@ -59,6 +59,7 @@ const AG_PUB_ID = "99999999-9999-4999-8999-999999999998";   // the same persona,
 const shaHex = (s) => createHash("sha256").update(s).digest("hex");
 
 let tokenRows = [], writeRows = [], agentGrids = {};
+let dbRefusesPatch = false;   // stands in for the twingrid_grid_data_size CHECK refusing a PATCH
 function resetAgent() {
   tokenRows = [
     { id: TOK_ID, owner: USER_ID, label: "my ai", token_hash: shaHex(AG_TOKEN), created_at: "2026-09-11T00:00:00+00:00", last_used_at: null, revoked_at: null },
@@ -194,6 +195,7 @@ globalThis.fetch = async (url, init) => {
     const gm = /[?&]id=eq\.([0-9a-f-]+)/.exec(u); const g = gm ? agentGrids[gm[1]] : null;
     if (method === "PATCH") {
       if (!g) return respond(200, []);
+      if (dbRefusesPatch) return respond(400, { code: "23514", message: "new row violates check constraint" });
       if ("is_public" in body) throw new Error("an agent route must never write is_public");
       Object.assign(g, body); return respond(200, [g]);
     }
@@ -1562,6 +1564,24 @@ await check("agent: the cells route can make a hat, and a hat it makes is always
   for (let i = 0; i < 38; i++) agentGrids[AG_GRID_ID].data.facets.push({ name: "f" + i, kind: "specialist", scope: "house", cells: {} });
   const r4 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "onemore", cell: "DO", text: "x", create: true }, AG_TOKEN);
   eq(r4.status, 409, "at the ceiling"); eq((await r4.json()).error, "too_many_facets", "code");
+});
+
+await check("agent: a write the DATABASE refuses near the ceiling is persona_full, not save_failed", async () => {
+  resetAgent();
+  // The fake stands in for twingrid_grid_data_size: it refuses the PATCH, exactly as Postgres does when
+  // data::text crosses 400,000 octets even though JSON.stringify of the same object measured under it.
+  const g = agentGrids[AG_GRID_ID];
+  for (let i = 0; i < 10; i++) g.data.facets.push({ name: "pad" + i, kind: "specialist", scope: "house", cells: { DO: "p".repeat(39600) } });
+  dbRefusesPatch = true;
+  const r = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "the straw" }, AG_TOKEN);
+  eq(r.status, 413, "near the ceiling"); eq((await r.json()).error, "persona_full", "code");
+  eq(writeRows.length, 0, "nothing written");
+  // the same refusal on a SMALL persona is a real save failure and still reads as one
+  resetAgent();
+  dbRefusesPatch = true;
+  const r2 = await agPost("cells", { grid_id: AG_GRID_ID, facet: "coach", cell: "DO", text: "small" }, AG_TOKEN);
+  eq(r2.status, 502, "far from the ceiling"); eq((await r2.json()).error, "save_failed", "code");
+  dbRefusesPatch = false;
 });
 
 await check("agent: the four routes are POST only", async () => {
