@@ -668,6 +668,51 @@ body.route-profile #chat .savebtn{background:var(--pacc);border-color:var(--pacc
 #account .pk-themebox .note{font-size:13px;color:var(--ink-soft)}
 /* ============ Explore ============ */
 #explore{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
+/* ---------- The Room (2026-09-12): talking to a persona is a PLACE, not a drawer over the editor.
+   Its own route (?room=<id>) so it can be linked, shared and bookmarked. The character is the portrait
+   when there is one, the paper doll when there is one, a themed plate otherwise, and the mouth is
+   anchored to the FACE rather than to the box: .mouth used to sit at 64% of its container, which only
+   lands on a mouth while the container is a 34 px chip. At any real size 64% is the chest. ---------- */
+/* two classes, not one: body.marketing{color:var(--ink)} comes later in this file at equal specificity and won */
+body.marketing.route-room{overflow:hidden;background:var(--ground);color:var(--text)}
+body.route-room #pkroom{display:flex}
+#pkroom{position:fixed;inset:0;flex-direction:column}
+#pkroom .pkrmtop{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+#pkroom .pkrmname{font-family:var(--serif);font-weight:600;font-size:17px}
+#pkroom .pkrmtag{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+#pkroom .pkrmwrap{flex:1;display:grid;grid-template-columns:minmax(0,1fr) min(420px,38vw);min-height:0}
+#pkroom .pkrmstage{position:relative;display:grid;place-items:center;min-height:0;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 8%, var(--surface2) 0%, var(--ground) 70%)}
+#pkroom .pkrmfig{position:relative;display:grid;place-items:end center;height:min(72vh,560px);aspect-ratio:1/1}
+#pkroom .pkrmshadow{position:absolute;bottom:2%;left:50%;transform:translateX(-50%);width:56%;height:5%;border-radius:50%;
+  background:radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,.55), rgba(0,0,0,0) 70%)}
+/* the character. .pkrmface is the FACE BOX, not the whole figure, so the mouth lands on a mouth. */
+#pkroom .pkrmface{position:relative;width:100%;height:100%;display:grid;place-items:center;border-radius:18px;overflow:hidden}
+#pkroom .pkrmface .pkimg{width:100%;height:100%;object-fit:cover;display:block}
+/* pkAvatar.svg writes fixed width and height attributes, so without this the doll keeps its 520 px at any viewport and is clipped by overflow:hidden. The viewBox scales it; measured at 390 wide, 2026-09-12. */
+#pkroom .pkrmface svg{width:100%;height:100%;display:block}
+#pkroom .pkrmplate{width:100%;height:100%;display:grid;place-items:center;font-family:Archivo,Arial,sans-serif;font-weight:800;
+  font-size:clamp(90px,22vh,220px);color:var(--accent-ink);background:var(--pacc,var(--grad))}
+/* the mouth: a soft darkening that deepens with --mouth, placed from data.face. A hard black bar reads
+   as a bug at size; a shadow reads as speech even when the anchor is a few percent off. */
+#pkroom .pkrmmouth{position:absolute;left:calc(var(--fx,.5) * 100%);top:calc(var(--fy,.63) * 100%);
+  width:calc(var(--fw,.2) * 100%);height:calc((0.012 + var(--mouth,0) * 0.075) * 100%);
+  transform:translate(-50%,-50%);border-radius:50%/40% 40% 60% 60%;pointer-events:none;
+  background:radial-gradient(60% 100% at 50% 45%, rgba(8,6,10,.92), rgba(8,6,10,.34) 72%, rgba(8,6,10,0) 100%);
+  opacity:calc(.25 + var(--mouth,0) * .75);transition:height .07s linear,opacity .07s linear}
+#pkroom .pkrmfig.pkrmbreathe{animation:pkrmbreath 5.2s ease-in-out infinite}
+@keyframes pkrmbreath{0%,100%{transform:translateY(0)}50%{transform:translateY(-0.9%)}}
+@media (prefers-reduced-motion: reduce){ #pkroom .pkrmfig.pkrmbreathe{animation:none} #pkroom .pkrmmouth{transition:none} }
+/* the chat is the SAME drawer, docked. Reusing it keeps send, credits, voice, Sparks and learn intact. */
+body.route-room #chat{position:static;transform:none;visibility:visible;pointer-events:auto;height:auto;width:auto;
+  border-left:1px solid var(--line);border-top:0;box-shadow:none;display:flex;flex-direction:column;min-height:0}
+body.route-room #chat .dhead .x[data-roomhide]{display:none}
+body.route-room #chat .dbody{min-height:0}
+@media (max-width:900px){
+  #pkroom .pkrmwrap{grid-template-columns:1fr;grid-template-rows:minmax(160px,1fr) minmax(0,52vh)}
+  #pkroom .pkrmfig{height:min(38vh,340px)}
+  body.route-room #chat{border-left:0;border-top:1px solid var(--line)}
+}
 body.route-explore #explore{display:block}
 body.route-explore{overflow:auto;background:var(--paper)}
 #account{display:none;background:var(--paper);color:var(--ink);min-height:100vh;min-height:100svh}
@@ -1970,6 +2015,24 @@ body.route-profile #helpbtn{left:16px;right:auto}
   .procard-x{position:absolute;top:8px;right:10px;background:none;border:0;color:var(--ink-soft);font-size:26px;line-height:1;min-height:44px;min-width:44px;cursor:pointer}
 </style>
 
+<div id="pkroom" hidden>
+  <div class="pkrmtop">
+    <a class="btn" id="pkrmback" href="?">Back</a>
+    <span class="pkrmname" id="pkrmname"></span>
+    <span class="pkrmtag">AI persona</span>
+    <span style="flex:1"></span>
+    <a class="btn" id="pkrmpage" href="?">Read the persona</a>
+  </div>
+  <div class="pkrmwrap">
+    <div class="pkrmstage">
+      <div class="pkrmfig" id="pkrmfig">
+        <div class="pkrmshadow"></div>
+        <div class="pkrmface" id="pkrmface" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="drawer" id="chat">
   <div class="dhead"><div id="chatface" aria-hidden="true"></div><div class="t" id="chattitle">Chat</div><button class="x" id="chatspk" type="button" title="Hear replies" aria-pressed="false" style="margin-right:6px;font-size:16px">&#128264;</button><button class="x" id="chatx">&times;</button></div>
   <div class="msg sys" id="creditsline" hidden style="margin:8px 12px 0"></div>
@@ -2225,7 +2288,7 @@ async function renderHome(){ const gen=++__homeGen;
     const when=document.createElement('span'); when.textContent='  edited '+new Date(r.updated_at).toLocaleDateString(); meta.appendChild(when); meta.appendChild(ren); c.appendChild(meta);
     const acts=document.createElement('div'); acts.className='hacts';
     const edit=document.createElement('a'); edit.className='hbtn solid'; edit.href='?editor'; edit.textContent='Edit'; edit.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); }catch(_){} }; acts.appendChild(edit);
-    const talk=document.createElement('a'); talk.className='hbtn'; talk.href='?editor'; talk.textContent='Talk to it'; talk.onclick=()=>{ try{ sessionStorage.setItem('pk_open_grid',r.id); sessionStorage.setItem('pk_open_chat','1'); }catch(_){} }; acts.appendChild(talk);
+    const talk=document.createElement('a'); talk.className='hbtn'; talk.href='?room='+encodeURIComponent(r.id); talk.textContent='Talk to it';; acts.appendChild(talk);
     const share=document.createElement('button'); share.className='hbtn'; share.type='button'; share.textContent=r.is_public?'Copy share link':'Private';
     if(r.is_public){ share.onclick=()=>{ const url=shareUrlFor(r.id,r.name,myHandle); navigator.clipboard.writeText(url).then(()=>{ share.textContent='Copied'; setTimeout(()=>share.textContent='Copy share link',1400); }); }; }
     else { share.disabled=true; share.title='Tick "make public" in the editor to get a share link.'; }
@@ -2344,7 +2407,81 @@ async function resolveHandlePersona(h,name){ const a=await accountByHandle(h); i
 function onExploreRoute(){ return new URLSearchParams(location.search).has('explore'); }
 function onLifeRoute(){ const q=new URLSearchParams(location.search); return q.has('life')||q.has('kindred')||q.has('learned'); }
 function onPlacesRoute(){ const q=new URLSearchParams(location.search); return q.has('places')||!!q.get('place'); }
-function route(){ const twin=onProfileRoute();
+// ---------- The Room (2026-09-12) ----------
+// Dylan: "when i click talk to it, I would rather it go to almost a virtual chat room where the avatar
+// is almost talking to you. Kind of like a VR tuber", then: "if it exists it does not link or flow well
+// like an actual website would". Both were right. The lip sync already existed (pkFlapAudio reads the
+// spoken reply's waveform through an AnalyserNode and drives --mouth at 60fps); what did not exist was
+// a PLACE to see it. Talk to it opened ?editor with a drawer, so asking for a character landed you in
+// the workbench. The room is its own route, so it can be linked, shared and bookmarked.
+const PKRM_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function onRoomRoute(){ const v=new URLSearchParams(location.search).get('room'); return (v&&PKRM_UUID.test(v))?v:null; }
+// Where the mouth goes, as fractions of the figure. The old .mouth sat at 64% of its CONTAINER, which
+// is only a mouth while the container is a 34 px chip; at any real size 64% is the chest. data.face
+// lets an owner move it, and the default is how the generated head-and-shoulders portraits frame.
+const PK_FACE_DEFAULT={x:0.5,y:0.63,w:0.20};
+function pkFaceOf(d){ const f=(d&&typeof d.face==='object'&&d.face)||{};
+  const n=(v,dflt)=>(typeof v==='number'&&isFinite(v)&&v>=0&&v<=1)?v:dflt;
+  return {x:n(f.x,PK_FACE_DEFAULT.x),y:n(f.y,PK_FACE_DEFAULT.y),w:n(f.w,PK_FACE_DEFAULT.w)}; }
+async function renderRoom(id){
+  const face=document.getElementById('pkrmface'), fig=document.getElementById('pkrmfig'), nameEl=document.getElementById('pkrmname');
+  // the owner sees the house; everyone else sees the Lobby projection, the same split the chat already uses
+  let r=null;
+  try{ const a=await SB.from('twingrid_grids').select('id,name,data,image_url,voice_id').eq('id',id).maybeSingle(); r=a.data||null; }catch(_){}
+  if(!r){ try{ const b=await SB.from('twingrid_grids_public').select('id,name,data,image_url,voice_id').eq('id',id).maybeSingle(); r=b.data||null; }catch(_){} }
+  if(!r){ nameEl.textContent='That persona is private, or the link is wrong.'; face.textContent=''; return; }
+  const nm=String(r.name||'Untitled persona');
+  document.title=nm+' · Personakind';
+  nameEl.textContent=nm;
+  document.getElementById('pkrmpage').href='?p='+encodeURIComponent(id);
+  const d=(r.data&&typeof r.data==='object')?r.data:{};
+  // NOT pkApplyTheme: that repaints the document for the persona page, and in here it turned the top
+  // bar's text to near-black ink on the near-black stage. The room keeps its own palette and takes only
+  // the accent, for the fallback plate.
+  try{ const th=pkThemeFor(d.theme); document.getElementById('pkroom').style.setProperty('--pacc',th.accent);
+       document.getElementById('pkroom').style.setProperty('--accent-ink',th.accentText); }catch(_){}
+  const initial=(nm.trim().replace(/^(the|a|an|my)\s+/i,'')[0]||'P').toUpperCase();
+  // the character: portrait, then paper doll, then a themed plate. Never an empty box.
+  face.textContent='';
+  if(r.image_url){ avatarInto(face,r.image_url,initial); }
+  else if(d.avatar){ const cat=await pkAvatarCat(); if(cat&&window.pkAvatar){ try{ face.innerHTML=window.pkAvatar.svg(d.avatar,cat,520,{}); }catch(_){} } }
+  if(!face.childNodes.length){ const p=document.createElement('div'); p.className='pkrmplate'; p.textContent=initial; face.appendChild(p); }
+  // Anchor the mouth. In order: the owner's own data.face, then a MEASUREMENT of the paper doll's
+  // tagged mouth path (exact for every look, and it cannot drift when the art changes), then the
+  // head-and-shoulders default for a portrait. A plate is a letter and gets no mouth at all.
+  const plate=!!face.querySelector('.pkrmplate');
+  let fa=(d&&typeof d.face==='object')?pkFaceOf(d):null;
+  // Measured in RENDERED pixels against the face box. ViewBox units were wrong: the doll's viewBox is
+  // 64x96 and it draws at 520 px centred inside a 560 px square, so 26/96 of the viewBox is not 26/96
+  // of the box, and the first cut put the mouth across the eyes.
+  if(!fa){ const mp=face.querySelector('svg [data-part="mouth"]');
+    if(mp){ try{ const fb=face.getBoundingClientRect(), mb=mp.getBoundingClientRect();
+        if(fb.width&&fb.height&&mb.width){ fa={x:(mb.left+mb.width/2-fb.left)/fb.width, y:(mb.top+mb.height/2-fb.top)/fb.height, w:Math.max(0.05,(mb.width*1.8)/fb.width)}; } }catch(_){} } }
+  if(!fa) fa=pkFaceOf(d);
+  if(!plate){ const m=document.createElement('span'); m.className='pkrmmouth'; m.id='pkrmmouth';
+    m.style.setProperty('--fx',String(fa.x)); m.style.setProperty('--fy',String(fa.y)); m.style.setProperty('--fw',String(fa.w));
+    face.appendChild(m); }
+  fig.classList.add('pkrmbreathe');
+  // the chat is the SAME drawer, moved into the room and docked by this route's CSS. Reusing it keeps
+  // send, credits, voice, Sparks and learn exactly as they are; a second chat would be a second bug farm.
+  const wrap=document.querySelector('#pkroom .pkrmwrap'), chat=document.getElementById('chat');
+  if(chat&&wrap&&chat.parentElement!==wrap) wrap.appendChild(chat);
+  PROFILE_GRID=(d&&d.facets)?d:{facets:[]}; PK_CUR_ID=id; GRID=PROFILE_GRID; reindex(); rebuildKinds();
+  chatFaceUrl=r.image_url||null; chatFaceInit=initial;
+  // the browser voice is free and needs no plan, so the room speaks by default. Nothing is heard until
+  // the visitor sends something, which is the gesture the autoplay policy wants anyway.
+  chatVoice=r.voice_id||'browser';
+  if(!speakOn){ const b=document.getElementById('chatspk'); if(b) b.click(); }
+  // NOT openChat(): with no key and no plan that opens the "Power the chat" drawer OVER the character,
+  // which is the same flow bug the room exists to fix. The room always renders; the credits line inside
+  // the docked chat says what is needed, the way it already does everywhere else.
+  pkChatFace(); try{ pkHatTitle(); }catch(_){}
+  chat.classList.add('open'); renderChat();
+  if(!localStorage.getItem('tg_key')){ refreshCredits().catch(()=>{}); }
+}
+function route(){ const rm=onRoomRoute();
+  if(rm){ document.body.className='marketing route-room'; app.style.display='none'; document.getElementById('pkroom').hidden=false; renderRoom(rm); return; }
+  const twin=onProfileRoute();
   if(twin){ document.body.className='marketing route-profile'; app.style.display='none'; renderProfile(twin); return; }
   const acct=onAccountRoute();
   if(acct){ const pn=accountPersonaParam(); app.style.display='none';
@@ -2828,8 +2965,11 @@ function voiceCostFor(text){ return Math.max(2, Math.min(6, Math.ceil(text.lengt
 // ---------- mouth flaps (2026-09-03): client only, no API, no cost ----------
 let chatFaceUrl=null, chatFaceInit='P';
 function pkSpeakTargets(){ const t=[]; const f=document.getElementById('chatface'); if(f&&f.childNodes.length) t.push(f);
+  // in the Room the mouth is its own element, already placed on the face by renderRoom
+  if(/route-room/.test(document.body.className)){ const rm=document.getElementById('pkrmmouth'); if(rm) t.push(rm); }
   if(/route-profile/.test(document.body.className)){ const p=document.getElementById('pavatar'); if(p) t.push(p); } return t; }
-function pkMouthEnsure(el){ let m=el.querySelector(':scope > .mouth'); if(!m){ m=document.createElement('span'); m.className='mouth'; el.appendChild(m); } return m; }
+// The Room's target IS the mouth, so it needs no child; every other target is a face box that gets one.
+function pkMouthEnsure(el){ if(el.classList.contains('pkrmmouth')) return el; let m=el.querySelector(':scope > .mouth'); if(!m){ m=document.createElement('span'); m.className='mouth'; el.appendChild(m); } return m; }
 function pkMouth(v){ const q=v<=0.08?0:v<0.3?0.33:v<0.6?0.66:1; pkSpeakTargets().forEach(el=>{ pkMouthEnsure(el); el.classList.add('speaking'); el.style.setProperty('--mouth',String(q)); }); }
 function pkMouthStop(){ document.querySelectorAll('.speaking').forEach(el=>{ el.classList.remove('speaking'); el.style.setProperty('--mouth','0'); }); }
 let __pkAC=null;
