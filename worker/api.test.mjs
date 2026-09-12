@@ -107,8 +107,11 @@ globalThis.fetch = async (url, init) => {
     return respond(200, rulesRows.filter((r) => (!m || (r.hour_utc === Number(m[1]) && (r.mode === "together" || r.mode === "autopilot") && r.max_per_day > 0)) && (!gm || r.grid_id === gm[1])));
   }
   if (u.includes("/rest/v1/twingrid_action_runs")) {
-    if (method !== "POST") throw new Error("runs are write-only from the Worker");
-    runsRows.push(body); return new Response(null, { status: 201 });
+    if (method === "POST") { const row = Object.assign({ id: runsRows.length + 1 }, body); runsRows.push(row); return respond(201, [row]); }
+    const idm = /[?&]id=eq\.(\d+)/.exec(u);
+    if (method === "PATCH" && idm) { const row = runsRows.find((r) => r.id === Number(idm[1])); if (!row) return respond(200, []); Object.assign(row, body); return respond(200, [row]); }
+    if (method === "GET") return respond(200, runsRows.slice());   // the health monitor
+    throw new Error("runs: POST insert, PATCH by id, or GET only");
   }
   if (u.includes("/rest/v1/twingrid_actions")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("actions are touched with the service key");
@@ -904,6 +907,35 @@ await check("autopilot route: 404 without AUTOPILOT_AUTH, 401 with the wrong bea
   eq(ok.status, 200, "ok"); const j = await ok.json(); eq(typeof j.grids_considered, "number", "receipt shape");
   const get = await handleApi(req("/api/autopilot/tick", { method: "GET", headers: H() }), envOn);
   eq(get.status, 405, "GET is 405");
+});
+
+await check("autopilot receipt: written started then patched finished, so a dropped run (no row) differs from a crash (row stuck at started)", async () => {
+  resetAutopilot([RULE]);
+  await runAutopilotTick(ENV, NOW);
+  eq(runsRows.length, 1, "one receipt row"); eq(runsRows[0].status, "finished", "ends finished");
+  const runPosts = calls.filter((c) => c.url.includes("/rest/v1/twingrid_action_runs") && c.method === "POST");
+  const runPatches = calls.filter((c) => c.url.includes("/rest/v1/twingrid_action_runs") && c.method === "PATCH");
+  eq(runPosts.length, 1, "one started insert"); eq(runPatches.length, 1, "one finish patch");
+});
+
+await check("autopilot health: full window is ok, a missing hour is flagged dropped, a row stuck at started is flagged unfinished", async () => {
+  const envOn = Object.assign({}, ENV, { AUTOPILOT_AUTH: "tick-secret" });
+  const off = await handleApi(req("/api/autopilot/health", { method: "GET", headers: H() }), ENV);
+  eq(off.status, 404, "404 without AUTOPILOT_AUTH");
+  const bad = await handleApi(req("/api/autopilot/health", { method: "GET", headers: H({ Authorization: "Bearer nope" }) }), envOn);
+  eq(bad.status, 401, "401 wrong bearer");
+  const now = new Date();
+  const curHour = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours());
+  const hourIso = (h) => new Date(curHour - h * 3600000).toISOString();  // h full hours before the current (still-running) hour
+  const health = () => handleApi(req("/api/autopilot/health", { method: "GET", headers: H({ Authorization: "Bearer tick-secret" }) }), envOn);
+  runsRows = []; for (let h = 1; h <= 24; h++) runsRows.push({ id: h, ran_at: hourIso(h), status: "finished" });
+  let j = await (await health()).json();
+  eq(j.ok, true, "full window ok"); eq(j.missing.length, 0, "none missing"); eq(j.unfinished.length, 0, "none unfinished");
+  runsRows = runsRows.filter((r) => r.ran_at !== hourIso(5));
+  runsRows.find((r) => r.ran_at === hourIso(3)).status = "started";
+  j = await (await health()).json();
+  eq(j.ok, false, "not ok"); eq(j.missing.includes(hourIso(5)), true, "hour 5 flagged dropped");
+  eq(j.unfinished.some((u) => u.hour === hourIso(3) && u.status === "started"), true, "hour 3 flagged unfinished");
 });
 
 // ---------------------------------------------------------------------------
