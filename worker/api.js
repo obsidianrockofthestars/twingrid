@@ -1117,6 +1117,15 @@ async function servicePost(env, path, body) {
   } catch (_) { return false; }
   return res.ok;
 }
+// Like servicePost but returns the inserted row (return=representation), or null. Used for the receipt row we PATCH later.
+async function servicePostRow(env, path, body) {
+  let res;
+  try {
+    res = await fetch(sbUrl(env, path), { method: "POST", headers: serviceHeaders(env, { "Content-Type": "application/json", Prefer: "return=representation" }), body: JSON.stringify(body) });
+  } catch (_) { return null; }
+  if (!res.ok) return null;
+  try { const rows = await res.json(); return Array.isArray(rows) && rows.length ? rows[0] : null; } catch (_) { return null; }
+}
 // One model call, text out or null. handleChat keeps its own inline call with its richer error envelope.
 // ponytail: fold both into this helper when a third caller arrives.
 async function anthropicText(env, system, messages) {
@@ -1140,8 +1149,19 @@ export async function runAutopilotTick(env, now) {
   const hourStart = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), hour)).toISOString();
   const receipt = { ran_at: t.toISOString(), grids_considered: 0, proposed: 0, errors: [] };
   const err = (code) => { if (receipt.errors.length < 50) receipt.errors.push(code); };
+  // Write the receipt "started" first, then PATCH it to "finished" at the end (or "crashed" on a throw): a dropped
+  // invocation leaves no row and a crash leaves a row stuck at "started", so the two no longer look the same. If the
+  // started insert itself fails, finish() falls back to a plain insert so a completed tick still leaves a receipt.
+  const startRow = await servicePostRow(env, "/rest/v1/twingrid_action_runs", Object.assign({ status: "started" }, receipt));
+  const runId = startRow && startRow.id != null ? startRow.id : null;
+  const finish = async (status) => {
+    const done = Object.assign({ status }, receipt);
+    const ok = runId != null ? !!(await servicePatch(env, "/rest/v1/twingrid_action_runs?id=eq." + runId, done)) : await servicePost(env, "/rest/v1/twingrid_action_runs", done);
+    if (!ok) console.log("receipt_failed");
+  };
+  try {
   const rules = await serviceGet(env, "/rest/v1/twingrid_rules?select=grid_id,owner,mode,topics,avoid,max_per_day,hour_utc,audience&mode=in.(together,autopilot)&max_per_day=gt.0&hour_utc=eq." + hour + "&limit=500");
-  if (!rules) { err("rules_unavailable"); await servicePost(env, "/rest/v1/twingrid_action_runs", receipt); return receipt; }
+  if (!rules) { err("rules_unavailable"); await finish("finished"); return receipt; }
   for (const r of rules) {
     if (!r || !UUID_RE.test(String(r.grid_id)) || !UUID_RE.test(String(r.owner))) continue;
     receipt.grids_considered++;
@@ -1190,8 +1210,13 @@ export async function runAutopilotTick(env, now) {
   // Sparks retention (M5): a conversation a visitor chose to leave is kept 90 days, then deleted. Reactions and notes stay until the owner deletes them.
   const cutoff = new Date(t.getTime() - SPARK_CONVERSATION_DAYS * 86400000).toISOString();
   if (!(await serviceDelete(env, "/rest/v1/twingrid_sparks?kind=eq.conversation&created_at=lt." + encodeURIComponent(cutoff)))) err("spark_sweep_failed");
-  if (!(await servicePost(env, "/rest/v1/twingrid_action_runs", receipt))) console.log("receipt_failed");
+  await finish("finished");
   return receipt;
+  } catch (e) {
+    err("tick_crashed");
+    await finish("crashed");
+    throw e;
+  }
 }
 // Access layer branch 2 (2026-09-08): a persona invites a visitor up from the Lobby to the Sunroom. One a day, proposed only,
 // never sent by the tick even in autopilot mode: the owner approves it from the queue and the Kindred request goes out then.
@@ -1280,6 +1305,32 @@ async function handleAutopilotTick(request, env) {
   if (!safeEqual(bearer(request) || "", secret)) return json(request, 401, { error: "unauthorized" });
   const receipt = await runAutopilotTick(env, new Date());
   return json(request, 200, receipt);
+}
+// The receipt monitor. Same auth as the tick. The cron is hourly ("0 * * * *"), so every full past UTC hour in the
+// window should hold one run row that reached "finished". A missing hour is a dropped invocation; a row still at
+// "started" (or "crashed") is a tick that did not complete. Read-only; the current, still-running hour is excluded.
+async function handleAutopilotHealth(request, env) {
+  const secret = typeof env.AUTOPILOT_AUTH === "string" ? env.AUTOPILOT_AUTH : "";
+  if (!secret) return json(request, 404, { error: "not_found" });
+  if (!safeEqual(bearer(request) || "", secret)) return json(request, 401, { error: "unauthorized" });
+  const now = new Date();
+  const HOURS = 24;
+  const curHour = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours());
+  const since = curHour - HOURS * 3600000;
+  const rows = await serviceGet(env, "/rest/v1/twingrid_action_runs?select=ran_at,status&ran_at=gte." + new Date(since).toISOString() + "&order=ran_at.asc&limit=200");
+  if (!rows) return json(request, 502, { error: "runs_unavailable" });
+  const byHour = new Map();
+  for (const r of rows) {
+    const d = new Date(r && r.ran_at); if (isNaN(d)) continue;
+    byHour.set(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours()), r.status || "finished");
+  }
+  const missing = [], unfinished = [];
+  for (let h = since; h < curHour; h += 3600000) {
+    const st = byHour.get(h);
+    if (st === undefined) missing.push(new Date(h).toISOString());
+    else if (st !== "finished") unfinished.push({ hour: new Date(h).toISOString(), status: st });
+  }
+  return json(request, 200, { window_hours: HOURS, expected: HOURS, ran: byHour.size, missing, unfinished, ok: missing.length === 0 && unfinished.length === 0 });
 }
 
 // ---------------------------------------------------------------------------
@@ -1731,6 +1782,7 @@ export async function handleApi(request, env) {
     if (path === "/api/media/voice" && method === "POST") return await handleMediaVoice(request, env);
     if (path === "/api/csp-report" && method === "POST") return await handleCspReport(request);
     if (path === "/api/autopilot/tick" && method === "POST") return await handleAutopilotTick(request, env);
+    if (path === "/api/autopilot/health" && method === "GET") return await handleAutopilotHealth(request, env);
     { const m = /^\/api\/actions\/(\d{1,12})\/decide$/.exec(path); if (m) return method === "POST" ? await handleActionDecide(request, env, m[1]) : json(request, 405, { error: "method_not_allowed" }); }
     if (path === "/api/actions" && method === "POST") return await handleActionPost(request, env);
     if (path === "/api/spark" && method === "POST") return await handleSpark(request, env);
@@ -1739,7 +1791,7 @@ export async function handleApi(request, env) {
     if (path === "/api/place/verify" && method === "POST") return await handlePlaceVerify(request, env);
     if (path === "/api/place/hit" && method === "POST") return await handlePlaceHit(request, env);
     if (path === "/api/learn" && method === "POST") return await handleLearn(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn") {
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/autopilot/health" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });
