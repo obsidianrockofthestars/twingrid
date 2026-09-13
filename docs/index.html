@@ -794,7 +794,6 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .exhead h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;margin:6px 0 10px;color:var(--ink)}
 #explore .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
 #account .exlede{color:var(--ink-soft);font-size:16.5px;line-height:1.6;max-width:62ch;margin:0}
-#explore .excap{font-size:14px;margin-top:10px}
 #explore .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
 #account .exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding-bottom:20px}
 #explore .excard{display:block;text-align:left;background:var(--card-w);border:1px solid var(--line-w);border-radius:16px;padding:22px;
@@ -1560,7 +1559,6 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="pk-kicker">Explore</div>
       <h1>Personas you can read</h1>
       <p class="exlede">Every one of these is a grid of plain cells somebody chose to publish. Open one to read how it thinks, or talk to it on your own key.</p>
-      <p class="exlede excap" id="excap" hidden aria-live="polite"></p>
       <div class="exfilters">
         <label class="exchk"><input type="checkbox" id="exhideofficial"> Hide starter personas</label>
         <button class="exclear" id="exclearhidden" type="button" hidden></button>
@@ -3366,7 +3364,8 @@ document.getElementById('apikey').value=localStorage.getItem('tg_key')||''; docu
 document.getElementById('savekey').onclick=()=>{localStorage.setItem('tg_key',document.getElementById('apikey').value.trim());localStorage.setItem('tg_model',document.getElementById('model').value.trim());settings.classList.remove('open');chat.classList.add('open');renderChat();};
 document.getElementById('exportgrid').onclick=()=>{const blob=new Blob([JSON.stringify(GRID,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(document.getElementById('gridname').value||'my-grid')+'.json';a.click();};
 function renderChat(){try{ pkChatSparkSync(); pkLearnSync(); }catch(_){} const b=document.getElementById('chatbody');b.innerHTML='';
-  const sys=document.createElement('div');sys.className='msg sys';const fc=activeFacets().length;sys.textContent=`system prompt = current composition (${fc} facets, ${activeFacets().reduce((a,n)=>a+ncells(n),0)} cells)`;b.appendChild(sys);
+  // the composition readout is for the workbench; a visitor in the Room or on a persona page never sees a console line
+  if(!/route-(room|profile)/.test(document.body.className)){ const sys=document.createElement('div');sys.className='msg sys';const fc=activeFacets().length;sys.textContent=`system prompt = current composition (${fc} facets, ${activeFacets().reduce((a,n)=>a+ncells(n),0)} cells)`;b.appendChild(sys); }
   history.forEach(m=>{const d=document.createElement('div');d.className='msg '+(m.role==='user'?'u':'a');d.textContent=m.content;b.appendChild(d);});
   b.scrollTop=b.scrollHeight;}
 // ---------- hosted chat (2026-09-01) ----------
@@ -3664,8 +3663,6 @@ async function renderExplore(){
   const grid=document.getElementById('exgrid'), foot=document.getElementById('exfoot');
   document.title='Explore \u00b7 Personakind';
   grid.innerHTML=''; foot.textContent='';
-  (async()=>{ try{ const {data}=await SB.rpc('twingrid_capacity_public'); const el=document.getElementById('excap'); if(!el||!Array.isArray(data)) return;
-    const pct=Math.max(...data.map(r=>Number(r.pct_used)||0)); el.textContent='Hosted capacity this month: '+pct+'% used. Hosted chat and image creation pause at 100%; your own key never does.'; el.hidden=false; }catch(_){} })();
   const empty=(title,msg)=>{ const d=document.createElement('div'); d.className='exempty';
     const h=document.createElement('h3'); h.textContent=title;
     const p=document.createElement('p'); p.textContent=msg; p.style.margin='0';

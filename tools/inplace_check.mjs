@@ -141,4 +141,16 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(room.indexOf('pkRoomSave(')>=0,'both go through the one data-only save');
 }
 
+// Visitor surfaces are a product, not a console (2026-09-13, Dylan: "a website that is actually usable"). The chat's
+// "system prompt = current composition" line is an editor readout and never shows in the Room or on a persona page, and
+// Explore carries no hosted-capacity readout at all. Read from the source, because both are strings a visitor would see.
+{
+  const rc=h.indexOf('function renderChat(){'), rcE=h.indexOf('b.scrollTop=b.scrollHeight;}',rc); const body=h.slice(rc,rcE);
+  ok(rc>0&&rcE>rc,'renderChat found');
+  ok(body.indexOf('system prompt = current composition')>=0,'the editor readout still exists for the workbench');
+  ok(body.indexOf('route-(room|profile)')>=0,'and it is guarded off the Room and the persona page');
+  ok(h.indexOf('Hosted capacity this month')<0,'Explore carries no capacity readout');
+  ok(h.indexOf('twingrid_capacity_public')<0,'and no longer calls the capacity RPC from the page');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
