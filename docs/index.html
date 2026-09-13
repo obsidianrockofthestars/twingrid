@@ -824,8 +824,11 @@ body.route-account{overflow:auto;background:var(--paper)}
 #explore .exname{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--ink);line-height:1.2}
 #account .exname{font-family:var(--serif);font-weight:600;font-size:19px;color:var(--ink);line-height:1.2}
 #explore .exmeta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);margin-top:3px}
-#explore .exrate{font-size:13px;color:var(--ink);margin-top:3px}
-#explore .exrate.exnone{color:var(--ink-soft)}
+#explore .exrate{display:flex;align-items:center;gap:1px;font-size:13px;color:var(--ink);margin-top:3px}
+#explore .exrate .spk{font-size:12px;line-height:1}
+#explore .exrate .spk.off{opacity:.22}
+#explore .exrate .exratelab{margin-left:5px;color:var(--ink-soft)}
+#explore .exrate.exnone .exratelab{color:var(--accent-w);font-weight:600}
 #account .exmeta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-dim);margin-top:3px}
 #explore .exsnip{color:var(--ink-soft);font-size:14px;line-height:1.55;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin:0 0 12px}
@@ -3747,6 +3750,19 @@ async function pkFacesWall(){ const card=document.querySelector('.pk-hero .pk-gr
   const grid=document.createElement('div'); grid.className='pkwall-grid';
   rows.forEach(r=>{ const a=document.createElement('a'); a.className='pkwall-face'; a.href='?room='+encodeURIComponent(r.id); const hv=document.createElement('div'); hv.className='hav'; const nm=String(r.name||'Untitled persona'); avatarInto(hv,r.image_url,(nm.trim()[0]||'P').toUpperCase(),true); const sp=document.createElement('span'); sp.textContent=nm; a.append(hv,sp); grid.appendChild(a); });
   card.appendChild(grid); }
+// v22.4: the rating as five sparks at a glance. Filled to the human average (persona lane if no human),
+// dim to five; at zero, five dim sparks and "Be the first", never a flat "No sparks yet" that reads as dead.
+function exSparkRow(el,score){
+  const sc=Array.isArray(score)?score:[];
+  const lane=sc.find(x=>x&&x.lane==='human')||sc.find(x=>x&&x.lane==='persona');
+  const avg=lane?(Number(lane.avg_rating)||0):0, n=lane?(Number(lane.n)||0):0;
+  const filled=Math.max(0,Math.min(5,Math.round(avg)));
+  for(let i=1;i<=5;i++){ const g=document.createElement('span'); g.className='spk'+(i<=filled?'':' off'); g.textContent='✨'; el.appendChild(g); }
+  const lab=document.createElement('span'); lab.className='exratelab';
+  if(n){ lab.textContent=avg.toFixed(1)+' · '+n+(n===1?' spark':' sparks'); }
+  else { lab.textContent='Be the first'; el.classList.add('exnone'); }
+  el.appendChild(lab);
+}
 async function renderExplore(){
   const grid=document.getElementById('exgrid'), foot=document.getElementById('exfoot');
   document.title='Explore \u00b7 Personakind';
@@ -3816,7 +3832,7 @@ async function renderExplore(){
     av.style.background=acc; av.style.color=th.accentText; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
     const idb=document.createElement('div');
     const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
-    const rt=document.createElement('div'); rt.className='exrate'; { const t=pkRatingText(scores[r.id]); rt.textContent='\u2728 '+t.main+(t.sub?(' \u00b7 '+t.sub):''); if(t.none) rt.classList.add('exnone'); }
+    const rt=document.createElement('div'); rt.className='exrate'; exSparkRow(rt,scores[r.id]);
     idb.append(n,rt); top.append(av,idb); card.appendChild(top);
 
     // one sentence, the same one the persona page leads with (v21); the cell count and the edit date meant nothing to a stranger
