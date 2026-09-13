@@ -153,4 +153,23 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(h.indexOf('twingrid_capacity_public')<0,'and no longer calls the capacity RPC from the page');
 }
 
+// The showpiece (2026-09-13, Dylan: "an actual cool looking website"). The landing's hero card becomes a wall of
+// faces from the public view once three or more public personas carry a portrait, every face a link into its room, and
+// the persona page leads with the portrait at real size plus a Talk to it button into the room. Read from the source.
+{
+  const fw=h.indexOf('async function pkFacesWall(');
+  ok(fw>0,'pkFacesWall exists');
+  const body=fw>0?h.slice(fw,h.indexOf(String.fromCharCode(10)+'async function',fw+10)):'';
+  ok(body.indexOf("twingrid_grids_public")>=0,'the wall reads the public view, never the base table');
+  ok(body.indexOf('avatarInto(')>=0,'faces go through avatarInto (bucket only)');
+  ok(body.indexOf('rows.length<3')>=0,'fewer than three faces keeps the static card');
+  ok(body.indexOf("'?room='")>=0,'every face links into its room');
+  const rS=h.indexOf('function route(){'), rE=h.indexOf("refreshAuth(); }", rS);
+  ok(h.slice(rS,rE+16).indexOf('pkFacesWall()')>=0,'the landing branch of route() renders the wall');
+  ok(h.indexOf('id="ptalk"')>=0,'the persona page hero carries a Talk to it button');
+  const pS=h.indexOf('async function renderProfile('), pE=h.indexOf(String.fromCharCode(10)+'async function',pS+10);
+  ok(h.slice(pS,pE).indexOf("getElementById('ptalk').href='?room='")>=0,'and renderProfile points it at the room');
+  ok(h.indexOf('#profile .pavatar:has(img)')>=0,'the portrait gets real size when there is one');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
