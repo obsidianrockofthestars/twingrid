@@ -1353,6 +1353,11 @@ body.route-profile #helpbtn{left:16px;right:auto}
   #profile .pnav .brand{font-size:18px}
   #profile .pnav .btn{padding:7px 10px;font-size:12.5px}
 }
+/* the landing's product frames (v21, 2026-09-13): real screens shipped as files, never mock cards */
+.pk-shot{margin:0;border-radius:16px;overflow:hidden;border:1px solid var(--line-w);box-shadow:0 18px 50px rgba(27,27,36,.14);background:var(--card-w)}
+.pk-shot img{display:block;width:100%;height:auto}
+.pk-shot figcaption{font-size:13px;line-height:1.5;color:var(--ink-dim);padding:10px 14px}
+.pk-shot-wide{max-width:920px;margin:0 auto 26px;text-align:left}
 #tutfoot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line-w);flex-wrap:wrap}
 #tutfoot label{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-soft);flex:1;min-height:44px;cursor:pointer}
 #tutfoot input{width:18px;height:18px;accent-color:var(--accent-w)}
@@ -1410,12 +1415,12 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div>
         <span class="pk-eyebrow"><span class="dot"></span>Make an AI that sounds like you</span>
         <h1 class="pk-h1">A version of you,<br>that you can <span class="u">actually read</span>.</h1>
-        <p class="pk-sub">A persona is a short handbook about you: who you are, what you want help with, what it should never do, and how you talk. Your AI reads it and acts like you. Every line is in plain words you can read and change, and it gets a page you can share.</p>
+        <p class="pk-sub">A persona is a short handbook about you, in your own words, that your AI reads and acts on. It gets a page of its own, a room where anyone can talk to it, and a guestbook.</p>
         <div class="pk-cta">
           <button class="pk-btn solid lg" data-auth>Build your persona free</button>
           <a class="pk-btn ghost lg" href="?explore">Read one first</a>
         </div>
-        <p class="pk-note">No password to start, just an email link. About five minutes. Private until you say otherwise.</p>
+        <p class="pk-note">Free to start. About five minutes. Private until you say otherwise.</p>
         <div class="pk-trustrow">
           <span class="pk-tag">You can read every word of it</span>
           <span class="pk-tag">Yours to keep</span>
@@ -1478,15 +1483,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
           <p>Most AI "personalities" are a mystery box: you type things in and hope. Yours is a page of short, labelled notes: who you are, what to do, what never to do, how you sound. Anyone can read it, including you. If a line is wrong, you change the line. What you read is exactly what it is.</p>
           <p style="color:var(--ink-dim);font-size:15px">Want more? There is an advanced editor for people who like knobs. You never have to open it.</p>
         </div>
-        <div class="pk-grid-card">
-          <div class="pk-gc-head"><span class="pk-gc-dot"></span><span class="pk-gc-title">What your AI reads</span></div>
-          <div class="pk-cells">
-            <div class="pk-cell"><span class="lb"><i class="i-context"></i>Who I am</span><p>Always part of it.</p></div>
-            <div class="pk-cell"><span class="lb"><i class="i-do"></i>How to help</span><p>Research first, then trust my gut.</p></div>
-            <div class="pk-cell"><span class="lb"><i class="i-voice"></i>How I sound</span><p>Conversational, a bit blunt.</p></div>
-            <div class="pk-cell"><span class="lb"><i class="i-dont"></i>Hard rules</span><p>Always tell me the truth.</p></div>
-          </div>
-        </div>
+        <figure class="pk-shot"><img src="/img/profile-1280.jpg" alt="A persona's page on Personakind: the portrait over a painted cover, its rating out of five sparks, Talk to it and Request Kindred, then the guestbook" width="1280" height="800" loading="lazy" decoding="async"><figcaption>A persona's page, as a stranger sees it.</figcaption></figure>
       </div>
     </div>
   </section>
@@ -1496,7 +1493,8 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="pk-social">
         <div class="pk-kicker">New</div>
         <h2>Give your persona a home</h2>
-        <p class="pk-lede" style="margin-bottom:26px">Tick one box and your persona gets its own page: a link you can send to anyone, where they can read it and talk to it. Until you tick it, nobody sees it but you. Think of it as a profile page, for a mind.</p>
+        <p class="pk-lede">Tick one box and your persona gets its own page and its own room: a link you can send to anyone. Until you tick it, nobody sees it but you.</p>
+        <figure class="pk-shot pk-shot-wide"><img src="/img/room-1280.jpg" alt="A persona's room on Personakind: the character standing on a painted stage beside the chat, with its rating in the bar" width="1280" height="800" loading="lazy" decoding="async"><figcaption>Its room. Anyone can walk in and talk.</figcaption></figure>
         <button class="pk-btn solid lg" data-auth>Start yours free</button>
         <a class="pk-btn ghost lg" href="?explore" style="margin-left:10px">Browse personas</a>
       </div>
@@ -1507,7 +1505,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
     <div class="pk-wrap">
       <div class="pk-kicker">Ready?</div>
       <h2 class="pk-h1" style="font-size:clamp(30px,4vw,44px);text-align:center;margin:8px 0 6px">Meet your Personakind.</h2>
-      <p class="pk-lede">One email link and you are building. No card, no catch, about five minutes.</p>
+      <p class="pk-lede">One free account and you are building. No card, no catch, about five minutes.</p>
       <button class="pk-btn solid lg" data-auth>Build your persona free</button>
     </div>
   </section>

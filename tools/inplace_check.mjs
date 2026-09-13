@@ -259,4 +259,20 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(/Hide the example personas/.test(mk),'the filter is in a stranger\'s words');
 }
 
+// The landing (v21, 2026-09-13). Below the fold the product is shown, never mocked: two real screens shipped as files, the hero
+// paragraph two sentences, the stale sign-in note gone. The hero's own card keeps its static cells only as the fallback the wall
+// of faces replaces once three portraits exist. Read from the markup and the disk.
+{
+  const l=h.indexOf('<div id="landing">'), lE=h.indexOf('<div id="auth"',l); const mk=h.slice(l,lE);
+  ok(l>0&&lE>l,'the landing found');
+  ok((mk.match(/class="pk-cells"/g)||[]).length===1,'one mock card left, the hero fallback, none below the fold');
+  const shots=[...mk.matchAll(/<img src="\/img\/([a-z0-9-]+\.jpg)"/g)].map(m=>m[1]);
+  ok(shots.length===2,'two product frames on the page: '+JSON.stringify(shots));
+  shots.forEach(f=>ok(fs.existsSync(new URL('../docs/img/'+f,import.meta.url)),'frame on disk: '+f));
+  const sub=(mk.match(/<p class="pk-sub">([\s\S]*?)<\/p>/)||['',''])[1];
+  ok((sub.match(/[.!?](\s|$)/g)||[]).length<=2,'the hero paragraph is two sentences at most: '+sub.slice(0,80));
+  ok(!/email link/.test(mk),'no stale email-link note');
+  ok(/class="pk-shot"/.test(mk)&&/\.pk-shot img\{/.test(h),'the frames are styled as figures');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
