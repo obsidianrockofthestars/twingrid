@@ -275,4 +275,11 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(/class="pk-shot"/.test(mk)&&/\.pk-shot img\{/.test(h),'the frames are styled as figures');
 }
 
+// The 390 pass (v21, 2026-09-13). Every surface was measured at 390 in the round it shipped; the one visitor string still in
+// jargon was the chat's placeholder, read by every stranger who opens a Room.
+{
+  const m=h.match(/<textarea id="chatinput" placeholder="([^"]*)"/); ok(!!m,'the chat input found');
+  ok(!!m&&!/composed/i.test(m[1]),'the chat placeholder is in a stranger's words: '+JSON.stringify(m&&m[1]));
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
