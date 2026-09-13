@@ -199,4 +199,26 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(/#profile \.pkcol\{/.test(h)&&/#profile \.pkcover\{/.test(h),'the column and the cover are styled inside #profile only');
 }
 
+// Reviews in the open (v21, 2026-09-13). Three surfaces read one aggregate: the hero (twingrid_spark_score), Explore's cards and the
+// Room's bar (twingrid_spark_scores, the same rows keyed by persona). The Spark box opens from the Room through the one box the
+// Guestbook uses, with a callback in place of the Guestbook's own refresh. Read from the source, because what is being fixed is
+// which surfaces carry the number at all.
+{
+  const sb=h.indexOf('function pkSparkBox(gridId,onDone)'); ok(sb>0,'pkSparkBox takes a done callback');
+  if(sb>0){ const sbE=h.indexOf('\nlet PK_SPARK_OWNER=null;',sb); const body=h.slice(sb,sbE);
+    ok(!/pkRenderSparks\(gridId\)/.test(body),'the box never refreshes the Guestbook directly; every path goes through done()');
+    ok((body.match(/done\(\)/g)||[]).length>=3,'rating, reaction and note all call done()'); }
+  const ex=h.indexOf('async function renderExplore('), exE=h.indexOf('\nconst CELL_LABEL=',ex);
+  ok(ex>0&&exE>ex&&/twingrid_spark_scores/.test(h.slice(ex,exE)),'Explore reads twingrid_spark_scores in bulk');
+  ok(/class="exrate"/.test(h.slice(ex,exE))||/className='exrate'/.test(h.slice(ex,exE)),'every card gets a rating line');
+  const rm=h.indexOf('async function renderRoom('), rmE=h.indexOf('\nfunction route(){',rm);
+  ok(rm>0&&rmE>rm&&/pkRoomRate\(id\)/.test(h.slice(rm,rmE)),'the Room reads its rating');
+  ok(/pkSparkBox\(id,\(\)=>pkRoomRate\(id\)\)/.test(h.slice(rm,rmE)),'the Room opens the same box and refreshes its own bar');
+  ok(/rb\.hidden=!!mine/.test(h.slice(rm,rmE)),'the owner never sees Rate this persona in the room');
+  const rr=h.indexOf('async function pkRoomRate('); ok(rr>0&&/twingrid_spark_scores/.test(h.slice(rr,rr+700)),'the Room bar reads the same view as Explore');
+  const top=h.indexOf('<div id="pkroom" hidden>'), wrap=h.indexOf('<div class="pkrmwrap">',top);
+  ['id="pkrmrate"','id="pkrmratebtn"','id="pkrmratebox"'].forEach(s=>{ const i=h.indexOf(s,top); ok(i>top&&i<wrap,s+' sits above the stage, never over the character'); });
+  ok(/#pkroom \.pkrmratebox \.phrbtn\{/.test(h),'the box is styled inside the room');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
