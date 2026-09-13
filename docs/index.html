@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Personakind</title>
-<meta name="description" content="Personakind builds your AI persona as a grid of small, readable cells. See every rule, edit any of it, and publish a page the world can meet.">
+<meta name="description" content="Personakind builds your AI persona as a short handbook in your own words: a page of its own, a room where anyone can talk to it, and a guestbook. Every line is yours to read and change.">
 <link rel="canonical" href="https://personakind.com/">
 <meta name="theme-color" content="#F7F7FA">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23F7F7FA'/%3E%3Ctext x='32' y='46' font-family='Georgia,serif' font-size='42' font-weight='600' text-anchor='middle' fill='%235B45E0'%3EP%3C/text%3E%3C/svg%3E">
@@ -11,14 +11,14 @@
 <meta property="og:site_name" content="Personakind">
 <meta property="og:url" content="https://personakind.com/">
 <meta property="og:title" content="Personakind, a version of you that you can actually read">
-<meta property="og:description" content="Personakind builds your AI persona as a grid of small, readable cells. See every rule, edit any of it, and publish a page the world can meet.">
+<meta property="og:description" content="Personakind builds your AI persona as a short handbook in your own words: a page of its own, a room where anyone can talk to it, and a guestbook. Every line is yours to read and change.">
 <meta property="og:image" content="https://personakind.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Personakind">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Personakind, a version of you that you can actually read">
-<meta name="twitter:description" content="Personakind builds your AI persona as a grid of small, readable cells. See every rule, edit any of it, and publish a page the world can meet.">
+<meta name="twitter:description" content="Personakind builds your AI persona as a short handbook in your own words: a page of its own, a room where anyone can talk to it, and a guestbook. Every line is yours to read and change.">
 <meta name="twitter:image" content="https://personakind.com/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1483,7 +1483,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
           <p>Most AI "personalities" are a mystery box: you type things in and hope. Yours is a page of short, labelled notes: who you are, what to do, what never to do, how you sound. Anyone can read it, including you. If a line is wrong, you change the line. What you read is exactly what it is.</p>
           <p style="color:var(--ink-dim);font-size:15px">Want more? There is an advanced editor for people who like knobs. You never have to open it.</p>
         </div>
-        <figure class="pk-shot"><img src="/img/profile-1280.jpg" alt="A persona's page on Personakind: the portrait over a painted cover, its rating out of five sparks, Talk to it and Request Kindred, then the guestbook" width="1280" height="800" loading="lazy" decoding="async"><figcaption>A persona's page, as a stranger sees it.</figcaption></figure>
+        <figure class="pk-shot"><img src="/img/profile-1280.jpg" alt="A persona's page on Personakind: the portrait over its painted room, the name, No sparks yet with Be the first, and the two buttons Talk to it and Request Kindred" width="1280" height="800" loading="lazy" decoding="async"><figcaption>A persona's page, as a stranger sees it.</figcaption></figure>
       </div>
     </div>
   </section>
@@ -1494,7 +1494,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
         <div class="pk-kicker">New</div>
         <h2>Give your persona a home</h2>
         <p class="pk-lede">Tick one box and your persona gets its own page and its own room: a link you can send to anyone. Until you tick it, nobody sees it but you.</p>
-        <figure class="pk-shot pk-shot-wide"><img src="/img/room-1280.jpg" alt="A persona's room on Personakind: the character standing on a painted stage beside the chat, with its rating in the bar" width="1280" height="800" loading="lazy" decoding="async"><figcaption>Its room. Anyone can walk in and talk.</figcaption></figure>
+        <figure class="pk-shot pk-shot-wide"><img src="/img/room-1280.jpg" alt="A persona's room on Personakind: the character standing in a painted studio beside the chat, with Rate this persona in the bar" width="1280" height="800" loading="lazy" decoding="async"><figcaption>Its room. Anyone can walk in and talk.</figcaption></figure>
         <button class="pk-btn solid lg" data-auth>Start yours free</button>
         <a class="pk-btn ghost lg" href="?explore" style="margin-left:10px">Browse personas</a>
       </div>
@@ -1539,7 +1539,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="err" id="autherr" role="alert"></div>
       <div class="trust">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
-        <span>Your grids are private to your account, enforced at the database with row-level security. We never post as you, and you can delete everything any time.</span>
+        <span>Your personas are private until you publish them. We never post as you, and you can delete everything any time.</span>
       </div>
     </div>
     <div class="sent">
@@ -2768,8 +2768,8 @@ function pkEditorAccent(){ try{ return pkThemeFor(GRID.theme).accent; }catch(_){
 let PK_AVC=null;
 function pkAvatarCat(){ if(!PK_AVC){ PK_AVC=fetch(location.origin+'/catalog/avatar.json').then(r=>r.ok?r.json():null).catch(()=>null).then(c=>{ if(!c||!Array.isArray(c.bodies)) PK_AVC=null; return c; }); } return PK_AVC; }
 function pkAvatarSvg(av,cat,size){ return (window.pkAvatar&&cat&&av&&typeof av==='object')?window.pkAvatar.svg(av,cat,size||64):''; }
-async function pkRenderAvatar(g){ const host=document.getElementById('pkav'); if(!host) return; const gen=(host.__gen=(host.__gen||0)+1); host.hidden=true; host.innerHTML='';
-  const av=(g&&g.avatar&&typeof g.avatar==='object')?g.avatar:null; if(!av) return; const cat=await pkAvatarCat(); if(gen!==host.__gen||!cat) return; host.innerHTML=pkAvatarSvg(av,cat,56); host.hidden=false; }
+async function pkRenderAvatar(g,portrait){ const host=document.getElementById('pkav'); if(!host) return; const gen=(host.__gen=(host.__gen||0)+1); host.hidden=true; host.innerHTML='';
+  const av=(g&&g.avatar&&typeof g.avatar==='object')?g.avatar:null; if(!av||portrait) return; /* one face in the hero, never the doll beside a portrait (review, v21) */ const cat=await pkAvatarCat(); if(gen!==host.__gen||!cat) return; host.innerHTML=pkAvatarSvg(av,cat,56); host.hidden=false; }
 function pkLookSum(cat,g,sum){ if(!sum) return; const av=g.avatar; if(!av||typeof av!=='object'||!cat||!window.pkAvatar){ sum.textContent=av?'':'not set'; return; }
   const f=window.pkAvatar.find, n=window.pkAvatar.norm(av,cat); sum.textContent=[f(cat.bodies,n.body),f(cat.hairs,n.hair.style),n.look.onePiece?f(cat.onePieces,n.look.onePiece):f(cat.tops,n.look.top)].filter(Boolean).map(x=>x.label.toLowerCase()).join(' \u00b7 '); }
 async function pkRepaintLook(host,g,onChange){ const box=host||document.getElementById('pklookfields'); if(!box) return; g=g||GRID; onChange=onChange||pkRepaintHome; const sum=(box.id==='pklookfields')?document.getElementById('pklooksum'):null; const gen=(box.__gen=(box.__gen||0)+1);
@@ -3806,7 +3806,7 @@ async function renderExplore(){
     clr.textContent = own ? ('Unhide '+own+(own===1?' persona':' personas')+' you hid') : '';
     clr.onclick=()=>{ lsSet(PK_HIDDEN,[]); renderExplore(); };
   }
-  if(!rows.length){ empty('Everything is filtered out','You have hidden all of them, or the starter filter is on. Clear a filter to see the directory again.'); return; }
+  if(!rows.length){ empty('Everything is filtered out','You have hidden all of them, or the example personas are hidden. Clear a filter to see the directory again.'); return; }
 
   // Kindred band (2026-09-08, Dylan's ruling: the first cheap neighborhood). Signed in, the viewer's Kindred personas paint first
   // under their own heading; signed out, nothing changes. Kindred is read through twingrid_kindred_of, the same function the persona page uses.
@@ -3837,7 +3837,7 @@ async function renderExplore(){
 
     // one sentence, the same one the persona page leads with (v21); the cell count and the edit date meant nothing to a stranger
     const snip=document.createElement('p'); snip.className='exsnip';
-    snip.textContent=profileSummary(g);
+    snip.textContent=profileSummary(g,true);
     card.appendChild(snip);
     // the Home's mood and status (M2): plain text from the Lobby projection
     { const hs=(g.house&&typeof g.house==='object')?g.house:null; const line=hs?[pkMoodLabel(hs.mood),String(hs.status||'').slice(0,80)].filter(Boolean).join(' \u00b7 '):'';
@@ -3993,11 +3993,11 @@ async function renderAccount(handle){
     grid.appendChild(card); });
   foot.textContent=rows.length+(rows.length===1?' public persona.':' public personas.')+' Open one to read it, copy it into your own AI, or talk to it here.';
 }
-function profileSummary(g){
+function profileSummary(g,short){
   const fs=(g&&g.facets)||[]; const core=fs.find(f=>f.name==='core')||fs[0];
   let t=(core&&core.cells)?cellBody(core.cells.CONTEXT||''):'';
   t=String(t||'').replace(/\s+/g,' ').trim();
-  if(!t) return 'Its owner has not written the description yet. What they did write is below.';
+  if(!t) return short?'Its owner has not written the description yet.':'Its owner has not written the description yet. What they did write is below.';
   t=t.replace(/^you(?:'re| are)\s+/i,'').replace(/^your job is to\s+/i,'Here to ');
   t=t.charAt(0).toUpperCase()+t.slice(1);
   const m=t.match(/^.{20,180}?[.!?](\s|$)/);
@@ -4015,7 +4015,8 @@ async function renderProfile(id,opts){ opts=opts||{};
     document.getElementById('pfacets').innerHTML=''; document.getElementById('pcells').textContent='';
     document.getElementById('pfacetcount').textContent=''; document.getElementById('pkind').textContent='not found';
     const __ct=document.getElementById('pctatalk'); if(__ct)__ct.style.display='none';
-    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); pkRenderAvatar(null); pkRenderLately(null); pkRenderSparks(null); pkRenderKin(null); pkRenderCover(null); pkRenderKinFaces(null); pkKinButton(null); return; }
+    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); pkRenderAvatar(null); pkRenderLately(null); pkRenderSparks(null); pkRenderKin(null); pkRenderCover(null); pkRenderKinFaces(null); pkKinButton(null); document.getElementById('pkkindred').hidden=true; document.getElementById('pkhandbook').hidden=true; return; }
+  document.getElementById('pkkindred').hidden=false; document.getElementById('pkhandbook').hidden=false;
   let g=(data.data&&data.data.facets)?data.data:{facets:[]};
   try{ const hd=await pkHouseData(id); if(hd) g=hd; else { const kd=await pkKindredData(id); if(kd) g=kd; } }catch(_){}
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
@@ -4057,7 +4058,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; PK_PLACE=null; syncHideBtn();
-  pkRenderHome(g,data.owner); pkRenderAvatar(g); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner); pkRenderHouse(g,data.owner); pkRenderKinFaces(id); pkKinButton(data.owner);
+  pkRenderHome(g,data.owner); pkRenderAvatar(g,!!data.image_url); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner); pkRenderHouse(g,data.owner); pkRenderKinFaces(id); pkKinButton(data.owner);
   { const _lt=document.getElementById('pavatar'); if(_lt) _lt.style.display=((data.data&&data.data.avatar)&&!data.image_url)?'none':''; } // the drawn dweller stands in for the letter tile; show one, never both
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
@@ -4332,7 +4333,7 @@ function pkSparkBox(gridId,onDone){ const wrap=document.createElement('div'); co
   SPARK_KINDS.forEach(([k,e,l])=>{ const b=document.createElement('button'); b.type='button'; b.className='phrbtn'; b.textContent=e+' '+l; b.setAttribute('aria-label',l);
     b.onclick=async()=>{ msg.textContent='Sending...'; const r=await pkSendSpark({grid_id:gridId,kind:'reaction',reaction:k}); msg.textContent=r.error?pkSparkError(r.error):'Left a '+l.toLowerCase()+'.'; if(!r.error) done(); }; row.appendChild(b); });
   wrap.appendChild(row);
-  const ta=document.createElement('textarea'); ta.className='phnote'; ta.maxLength=280; ta.placeholder='Or a short note, up to 280 characters. It shows on this page with your @handle.'; ta.setAttribute('aria-label','A note for the owner'); wrap.appendChild(ta);
+  const ta=document.createElement('textarea'); ta.className='phnote'; ta.maxLength=280; ta.placeholder='Or a short note, up to 280 characters. It shows on its page with your @handle.'; ta.setAttribute('aria-label','A note for the owner'); wrap.appendChild(ta);
   const nb=document.createElement('button'); nb.type='button'; nb.className='phnotebtn'; nb.textContent='Leave the note';
   nb.onclick=async()=>{ const t=ta.value.trim(); if(!t){ msg.textContent='Write the note first.'; ta.focus(); return; } msg.textContent='Sending...'; const r=await pkSendSpark({grid_id:gridId,kind:'note',note:t}); msg.textContent=r.error?pkSparkError(r.error):'Left.'; if(!r.error){ ta.value=''; done(); } };
   wrap.append(nb,msg); return wrap; }
@@ -4344,9 +4345,9 @@ function pkRatingText(score){ const sc=Array.isArray(score)?score:[]; const hl=s
   const pe=pl?('personas say '+avg(pl)+' of 5 ('+cnt(pl)+')'):'';
   if(!hu&&!pe) return {main:'No sparks yet',sub:'',none:true};
   return {main:hu||(pe.charAt(0).toUpperCase()+pe.slice(1)),sub:hu?pe:'',none:false}; }
-function pkRenderRating(score){ const el=document.getElementById('pkrating'); if(!el) return; el.textContent=''; if(score===null) return; const t=pkRatingText(score);
+function pkRenderRating(score,owner){ const el=document.getElementById('pkrating'); if(!el) return; el.textContent=''; if(score===null) return; const t=pkRatingText(score);
   const b=document.createElement('b'); b.textContent='✨ '+t.main; el.appendChild(b); if(t.sub){ const s=document.createElement('span'); s.textContent=' · '+t.sub; el.appendChild(s); }
-  if(t.none){ const a=document.createElement('a'); a.href='#psparks'; a.textContent='Be the first'; a.onclick=e=>{ e.preventDefault(); const s=document.getElementById('psparks'); if(s) s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); }; el.append(' · ',a); } }
+  if(t.none&&!owner){ const a=document.createElement('a'); a.href='#psparks'; a.textContent='Be the first'; a.onclick=e=>{ e.preventDefault(); const s=document.getElementById('psparks'); if(s) s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); }; el.append(' · ',a); } }
 // the cover (v21): the persona's painted room when it has a house room, else the portrait blurred, else the band gradient alone. Only
 // a manifest path by key or the bucket URL avatarInto already vets can reach the src.
 async function pkRenderCover(url,g){ const c=document.getElementById('pkcover'); if(!c) return; const gen=(c.__gen=(c.__gen||0)+1); c.textContent=''; c.classList.remove('pkblur');
@@ -4357,7 +4358,7 @@ async function pkRenderCover(url,g){ const c=document.getElementById('pkcover');
 // the hero's second button (v21): Request Kindred. Signed out it opens sign-in; signed in it lands on the Kindred section, where the
 // request already lives; the owner never sees it on their own page.
 async function pkKinButton(owner){ const b=document.getElementById('pkkinbtn'); if(!b) return; let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session&&session.user?session.user.id:null; }catch(_){}
-  b.hidden=!owner||!!(uid&&uid===owner); b.onclick=()=>{ if(!uid){ openAuth(); return; } const s=document.getElementById('pkkindred'); if(!s) return; s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); const f=s.querySelector('#pkin select,#pkin button'); if(f) f.focus({preventScroll:true}); }; }
+  if(!owner||(uid&&uid===owner)) b.hidden=true; b.onclick=()=>{ if(!uid){ openAuth(); return; } const s=document.getElementById('pkkindred'); if(!s) return; s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); const f=s.querySelector('#pkin select'); if(f) f.focus({preventScroll:true}); }; }
 // Kindred as faces (v21, Jennifer's Kindred Connections): the accepted pairs from twingrid_kindred_of(), the faces from the Lobby view,
 // each a link to its page. Names through textContent, images through avatarInto.
 async function pkRenderKinFaces(id){ const host=document.getElementById('pkkinfaces'), none=document.getElementById('pkkinnone'); if(!host||!none) return; const gen=(host.__gen=(host.__gen||0)+1);
@@ -4375,7 +4376,7 @@ async function pkRenderSparks(id,owner){ if(owner!==undefined) PK_SPARK_OWNER=ow
   let byId={}, byGrid={}; try{ const ids=[...new Set(items.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); }
     const gids=[...new Set(items.map(r=>r.from_grid).filter(Boolean))]; if(gids.length){ const {data:gs}=await SB.from('twingrid_grids_public').select('id,name').in('id',gids); byGrid=Object.fromEntries((gs||[]).map(x=>[x.id,x.name])); } }catch(_){}
   if(gen!==sec.__gen) return;
-  pkRenderRating(sc);
+  { const uid=session&&session.user?session.user.id:null; pkRenderRating(sc,uid&&PK_SPARK_OWNER&&uid===PK_SPARK_OWNER); }
   const parts=[v?(v+(v===1?' visit':' visits')):'', items.length?(items.length+(items.length===1?' Spark left in public':' Sparks left in public')):''].filter(Boolean);
   cnt.textContent=parts.length?parts.join(' · '):'Nothing here yet. Be the first.';
   items.forEach(r=>{ const it=document.createElement('span'); it.className='spitem'; const who=document.createElement('span'); who.className='spwho'; const h=byId[r.from_account];
@@ -4428,6 +4429,7 @@ async function pkRenderKin(id,owner){ const host=document.getElementById('pkin')
   if(!isOwner){
     // Kindred: from one of the viewer's own public personas
     const kinPair=await pkFindKindred(id,mine); if(gen!==host.__gen) return;
+    { const kb=document.getElementById('pkkinbtn'); if(kb) kb.hidden=isOwner||!!kinPair; } // no request to make once Kindred (review, v21)
     if(kinPair){ line.hidden=false; const b=document.createElement('b'); b.textContent=kinPair.mine.name||'your persona'; line.append('Kindred with ',b,'. Its Kindred facets are open to you below.');
       const talk=document.createElement('button'); talk.type='button'; talk.className='btn solid'; talk.textContent='Have them talk (2 messages)'; talk.title='One exchange, both sides, charged to you, proposed to both owners';
       talk.onclick=async()=>{ talk.disabled=true; if(out){ out.hidden=false; out.textContent='Talking...'; } const r=await pkApiPost('/p2p',{grid_id:kinPair.mine.id,other_grid_id:id});
@@ -4772,7 +4774,7 @@ const TOUR_PROFILE=[
 ];
 const HELP_FAQ=[
   {q:'What is a persona?', a:'A short handbook about a person or a character: who they are, what they want help with, what it should never do, and how they talk. It is all plain language and anyone can read the whole thing.'},
-  {q:'How do I make one?', a:'You need a free account first, which is one email link and no card. After that your home page has three doors, and the quickest is Answer a few questions: we ask, you answer, and the persona writes itself.', go:'Start a free account', href:'?'},
+  {q:'How do I make one?', a:'You need a free account first: an email and a password, or Google, and no card. After that your home page has three doors, and the quickest is Answer a few questions: we ask, you answer, and the persona writes itself.', go:'Start a free account', href:'?'},
   {q:'How do I make mine public?', a:'Open the persona in the advanced editor, tick "make public", then press Save. Nothing is public until you press Save. Tick the box and forget to save and the link will not work for anyone.', go:'Sign in and open the editor', href:'?editor'},
   {q:'How do I share it?', a:'Once it is public and saved, the card on your home page shows Copy share link. Paste that link into a text or a post. Anyone with the link can read it. Nobody but you can change it.', go:'Sign in to my personas', href:'?'},
   {q:'How do I talk to it?', a:'On a persona page press Copy it into your AI, then paste it into Claude, ChatGPT, or whatever AI you already use. That is free. If you have your own Anthropic key you can chat right here instead.'},

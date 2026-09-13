@@ -251,7 +251,7 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(!/short cells to read/.test(body),'no cell count on a card');
   ok(!/edited '\+new Date/.test(body)&&!/toLocaleDateString\(\)/.test(body),'no edit date on a card');
   ok(!/Published by @/.test(body),'no repeated publisher line');
-  ok(/profileSummary\(g\)/.test(body),'one sentence per card, the same sentence the persona page leads with');
+  ok(/profileSummary\(g,true\)/.test(body),'one sentence per card, the same sentence the persona page leads with');
   ok(/className='exrate'/.test(body)&&/className='exmood'/.test(body),'the rating and the mood line stay');
   ok(/#explore \.exav\{width:72px;height:72px/.test(h),'the face is 72 px');
   const m=h.indexOf('<div id="explore">'), mE=h.indexOf('<button id="helpbtn"',m); const mk=h.slice(m,mE);
@@ -280,6 +280,30 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
 {
   const m=h.match(/<textarea id="chatinput" placeholder="([^"]*)"/); ok(!!m,'the chat input found');
   ok(!!m&&!/composed/i.test(m[1]),'the chat placeholder is in plain words: '+JSON.stringify(m&&m[1]));
+}
+
+// The adversarial review's fifteen (v21, 2026-09-13): every one a visitor string, a stale frame or a control shown to the wrong
+// viewer. Each is asserted from the source so the checker, not the reviewer, holds the line from here on.
+{
+  const meta=(h.match(/<meta name="description" content="([^"]*)"/)||['',''])[1];
+  ok(!!meta&&!/grid|cells/i.test(meta),'the page description is in the landing’s words: '+meta.slice(0,60));
+  ok(!/grid of small, readable cells/.test(h),'no social description says grid of cells');
+  const a=h.indexOf('<div id="auth"'), aE=h.indexOf('</div>\n</div>',a); const auth=h.slice(a,aE);
+  ok(!/grids|row-level/i.test(auth),'the sign-in card says personas, not grids and row-level security');
+  const faq=(h.match(/\{q:'How do I make one\?', a:'([^']*)'/)||['',''])[1];
+  ok(!!faq&&!/email link/.test(faq),'the help answer matches the sign-in card');
+  const ex=h.indexOf('async function renderExplore('), exE=h.indexOf('\nconst CELL_LABEL=',ex); const exb=h.slice(ex,exE);
+  ok(!/starter filter/.test(exb),'the filtered-out empty state names the example personas');
+  ok(/profileSummary\(g,true\)/.test(exb),'the card takes the one-sentence form of the summary');
+  ok(/function profileSummary\(g,short\)/.test(h)&&/short\?'Its owner has not written the description yet\.'/.test(h),'profileSummary has a short form with no below');
+  ok(/It shows on its page with your @handle\./.test(h)&&!/It shows on this page with your @handle\./.test(h),'the note placeholder does not name the page it is on');
+  ok(/function pkRenderRating\(score,owner\)/.test(h)&&/if\(t\.none&&!owner\)/.test(h),'the owner gets no Be the first link');
+  ok(/pkRenderRating\(sc,uid&&PK_SPARK_OWNER&&uid===PK_SPARK_OWNER\)/.test(h),'pkRenderSparks passes the owner state');
+  ok(/async function pkRenderAvatar\(g,portrait\)/.test(h)&&/pkRenderAvatar\(g,!!data\.image_url\)/.test(h),'the doll never stands beside a portrait in the hero');
+  const kin=h.indexOf('async function pkRenderKin('), kinE=h.indexOf('\n// the first accepted pair',kin);
+  ok(kin>0&&/pkkinbtn.*hidden=isOwner\|\|!!kinPair/.test(h.slice(kin,kinE).replace(/\n/g,' ')),'Request Kindred is hidden for the owner and for a viewer already Kindred');
+  ok(/s\.querySelector\('#pkin select'\)/.test(h)&&!/'#pkin select,#pkin button'/.test(h),'the hero button never focuses the paid Have them talk control');
+  ok(/pkkindred'\)\.hidden=true/.test(h)&&/pkhandbook'\)\.hidden=true/.test(h),'a not-found persona hides the Kindred and handbook sections');
 }
 
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
