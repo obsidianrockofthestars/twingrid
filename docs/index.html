@@ -2386,7 +2386,7 @@ async function accountByHandle(h){ if(!HANDLE_RE.test(h)) return null;
 // Persona image on any avatar box: the image if the grid has one (our own bucket only, enforced by the database),
 // else the theme initial. src is an attribute set on an <img>, never markup.
 const MEDIA_BASE='https://jpepcqazscmhakxvutpg.supabase.co/storage/v1/object/public/twingrid-media/';
-function avatarInto(el,url,initial){ el.textContent=''; if(url&&typeof url==='string'&&url.indexOf(MEDIA_BASE)===0){ const im=document.createElement('img'); im.className='pkimg'; im.alt=''; im.decoding='async'; im.loading='lazy'; im.src=url; el.appendChild(im); } else { el.textContent=initial; } }
+function avatarInto(el,url,initial,eager){ el.textContent=''; if(url&&typeof url==='string'&&url.indexOf(MEDIA_BASE)===0){ const im=document.createElement('img'); im.className='pkimg'; im.alt=''; im.decoding='async'; im.loading=eager?'eager':'lazy'; if(eager) im.fetchPriority='high'; im.src=url; el.appendChild(im); } else { el.textContent=initial; } }
 const __handleCache={};
 // Account entry points: every [data-acct] button shows "@handle" and links to the signed-in user's page (or to Home,
 // where the claim card lives, when there is no handle yet); [data-home] shows when signed in; [data-anon] hides then.
@@ -2443,7 +2443,9 @@ async function renderRoom(id){
   const initial=(nm.trim().replace(/^(the|a|an|my)\s+/i,'')[0]||'P').toUpperCase();
   // the character: portrait, then paper doll, then a themed plate. Never an empty box.
   face.textContent='';
-  if(r.image_url){ avatarInto(face,r.image_url,initial); }
+  // the hero is eager at high priority: lazy is right for a card in a list and wrong for the one image the page
+  // exists to show. On 2026-09-13 the first frame of a portrait room read as an empty box while a lazy fetch waited.
+  if(r.image_url){ avatarInto(face,r.image_url,initial,true); }
   else if(d.avatar){ const cat=await pkAvatarCat(); if(cat&&window.pkAvatar){ try{ face.innerHTML=window.pkAvatar.svg(d.avatar,cat,520,{}); }catch(_){} } }
   if(!face.childNodes.length){ const p=document.createElement('div'); p.className='pkrmplate'; p.textContent=initial; face.appendChild(p); }
   // Anchor the mouth. In order: the owner's own data.face, then a MEASUREMENT of the paper doll's

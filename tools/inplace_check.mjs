@@ -89,4 +89,25 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   for(const n of inRoute) ok(inAuth.has(n),n+' routes itself but is not exempted in onAuthStateChange, so INITIAL_SESSION will re-route it to the landing or Home');
 }
 
+// Room hero eager-load (2026-09-13). avatarInto lazy-loads every avatar, which is right for a card in a list and
+// wrong for the one image the room exists to show: the first frame of a portrait room read as an empty box. The
+// room asks for the eager path with high fetch priority; every other caller keeps lazy, and a foreign URL still
+// falls back to the initial. Lifted with a stub document, then the room's call is read from the source.
+{
+  const src=cut("const MEDIA_BASE='","else { el.textContent=initial; } }");
+  const doc={createElement:t=>({tag:t,className:'',alt:'',decoding:'',loading:'',src:'',fetchPriority:''})};
+  const {avatarInto,MEDIA_BASE}=new Function('document',src+'\nreturn {avatarInto,MEDIA_BASE};')(doc);
+  const mkEl=()=>({textContent:'',kids:[],appendChild(n){ this.kids.push(n); }});
+  const a=mkEl(); avatarInto(a,MEDIA_BASE+'x.webp','P',true);
+  ok(a.kids.length===1&&a.kids[0].loading==='eager','the room hero loads eagerly: '+JSON.stringify(a.kids[0]&&a.kids[0].loading));
+  ok(a.kids.length===1&&a.kids[0].fetchPriority==='high','and at high fetch priority');
+  const b=mkEl(); avatarInto(b,MEDIA_BASE+'x.webp','P');
+  ok(b.kids.length===1&&b.kids[0].loading==='lazy','a card avatar still lazy-loads');
+  const c=mkEl(); avatarInto(c,'https://elsewhere.example/x.webp','P',true);
+  ok(c.kids.length===0&&c.textContent==='P','a foreign URL still falls back to the initial, eager or not');
+  const rS=h.indexOf('async function renderRoom('), rE=h.indexOf('\nfunction route(){',rS);
+  ok(rS>0&&rE>rS,'renderRoom found');
+  ok(/avatarInto\(face,r\.image_url,initial,true\)/.test(h.slice(rS,rE)),'renderRoom asks for the eager hero');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
