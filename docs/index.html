@@ -817,7 +817,7 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .excard:hover{border-color:var(--accent-w);box-shadow:0 10px 26px rgba(27,27,36,.10);transform:translateY(-2px)}
 #explore .excard .extop{display:flex;align-items:center;gap:13px;margin-bottom:13px}
 #account .excard .extop{display:flex;align-items:center;gap:13px;margin-bottom:13px}
-#explore .exav{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;color:#fff;
+#explore .exav{width:72px;height:72px;border-radius:20px;flex:none;display:grid;place-items:center;color:#fff;
   font-family:var(--serif);font-weight:600;font-size:21px}
 #account .exav{width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;color:#fff;
   font-family:var(--serif);font-weight:600;font-size:21px}
@@ -1626,9 +1626,9 @@ body.route-profile #helpbtn{left:16px;right:auto}
     <div class="exhead">
       <div class="pk-kicker">Explore</div>
       <h1>Personas you can read</h1>
-      <p class="exlede">Every one of these is a grid of plain cells somebody chose to publish. Open one to read how it thinks, or talk to it on your own key.</p>
+      <p class="exlede">Every one of these was published by its owner. Open one to read it, then step into its room and talk.</p>
       <div class="exfilters">
-        <label class="exchk"><input type="checkbox" id="exhideofficial"> Hide starter personas</label>
+        <label class="exchk"><input type="checkbox" id="exhideofficial"> Hide the example personas</label>
         <button class="exclear" id="exclearhidden" type="button" hidden></button>
       </div>
     </div>
@@ -3834,16 +3834,12 @@ async function renderExplore(){
     av.style.background=acc; av.style.color=th.accentText; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
     const idb=document.createElement('div');
     const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
-    const cells=g.facets.reduce((a,f)=>a+Object.keys(f.cells||{}).length,0);
-    const meta=document.createElement('div'); meta.className='exmeta';
-    meta.textContent=cells+' short cells to read \u00b7 edited '+new Date(r.updated_at).toLocaleDateString();
     const rt=document.createElement('div'); rt.className='exrate'; { const t=pkRatingText(scores[r.id]); rt.textContent='\u2728 '+t.main+(t.sub?(' \u00b7 '+t.sub):''); if(t.none) rt.classList.add('exnone'); }
-    idb.append(n,rt,meta); top.append(av,idb); card.appendChild(top);
+    idb.append(n,rt); top.append(av,idb); card.appendChild(top);
 
-    const core=g.facets.find(f=>f.name==='core')||g.facets[0];
-    const snipText=(core&&core.cells)?cellBody(core.cells.CONTEXT||core.cells.DO||''):'';
+    // one sentence, the same one the persona page leads with (v21); the cell count and the edit date meant nothing to a stranger
     const snip=document.createElement('p'); snip.className='exsnip';
-    snip.textContent=snipText||'This persona has not been filled in yet.';
+    snip.textContent=profileSummary(g);
     card.appendChild(snip);
     // the Home's mood and status (M2): plain text from the Lobby projection
     { const hs=(g.house&&typeof g.house==='object')?g.house:null; const line=hs?[pkMoodLabel(hs.mood),String(hs.status||'').slice(0,80)].filter(Boolean).join(' \u00b7 '):'';
@@ -3853,9 +3849,8 @@ async function renderExplore(){
     const a=byOwner[r.owner];
     if(a && a.is_official){
       officials++;
-      const b=document.createElement('span'); b.className='exbadge'; b.textContent='Starter persona';
-      const t=document.createElement('a'); t.href='?u='+encodeURIComponent(a.handle); t.textContent='Published by @'+a.handle; t.onclick=e=>{ e.stopPropagation(); };
-      by.append(b,t);
+      const b=document.createElement('span'); b.className='exbadge'; b.textContent='Example persona';
+      by.appendChild(b);
     } else if(a){
       const t=document.createElement('a'); t.href='?u='+encodeURIComponent(a.handle); t.textContent='@'+a.handle; t.onclick=e=>{ e.stopPropagation(); }; by.appendChild(t);
     } else {
@@ -3870,7 +3865,7 @@ async function renderExplore(){
   const n=rows.length;
   foot.textContent = n+' public '+(n===1?'persona':'personas')+' shown'
     + (nHidden? ', '+nHidden+' filtered out by you':'') + '. '
-    + (officials ? officials+' of these are starter personas published by Personakind itself and marked as such. They are examples, not members, and a real person is accountable for them. ' : '')
+    + (officials ? officials+' of these are example personas published by Personakind itself and marked as such. They are examples, not members, and a real person is accountable for them. ' : '')
     + 'Everything here is public because its owner chose to publish it.';
 }
 

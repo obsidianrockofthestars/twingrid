@@ -242,4 +242,21 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(/pkRenderCover\(data\.image_url,g\)/.test(h),'renderProfile hands the cover the persona data');
 }
 
+// Explore as the neighbourhood (v21, 2026-09-13). A card is a face, a name, its rating, its mood and one sentence; the internal
+// count, the edit date and the repeated publisher line are gone. Read from the source and the markup: the sweep is about what a
+// stranger is shown, and a renderer that still emits the old strings is the defect.
+{
+  const ex=h.indexOf('async function renderExplore('), exE=h.indexOf('\nconst CELL_LABEL=',ex); const body=h.slice(ex,exE);
+  ok(ex>0&&exE>ex,'renderExplore found');
+  ok(!/short cells to read/.test(body),'no cell count on a card');
+  ok(!/edited '\+new Date/.test(body)&&!/toLocaleDateString\(\)/.test(body),'no edit date on a card');
+  ok(!/Published by @/.test(body),'no repeated publisher line');
+  ok(/profileSummary\(g\)/.test(body),'one sentence per card, the same sentence the persona page leads with');
+  ok(/className='exrate'/.test(body)&&/className='exmood'/.test(body),'the rating and the mood line stay');
+  ok(/#explore \.exav\{width:72px;height:72px/.test(h),'the face is 72 px');
+  const m=h.indexOf('<div id="explore">'), mE=h.indexOf('<button id="helpbtn"',m); const mk=h.slice(m,mE);
+  ok(!/grid of plain cells/.test(mk),'the lede no longer says grid of plain cells');
+  ok(/Hide the example personas/.test(mk),'the filter is in a stranger\'s words');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
