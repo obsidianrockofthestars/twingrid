@@ -680,6 +680,12 @@ body.route-room #pkroom{display:flex}
 #pkroom .pkrmtop{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
 #pkroom .pkrmname{font-family:var(--serif);font-weight:600;font-size:17px}
 #pkroom .pkrmtag{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+/* the owner's strip (2026-09-13): the pick between portrait and Look, and the hint for placing the mouth. Its own row, so the
+   top bar never wraps at 390 and the stage never has a control drawn over the character. */
+#pkroom .pkrmown{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:6px 16px;min-height:36px;border-bottom:1px solid var(--line);background:var(--surface);font-size:13px;color:var(--text)}
+#pkroom .pkrmpick{display:inline-flex;gap:6px}
+#pkroom .pkrmpick .btn[aria-pressed="true"]{background:var(--pacc,var(--accent));color:var(--accent-ink,#fff);border-color:transparent}
+#pkroom .pkrmface.pkrmplace{cursor:crosshair}
 #pkroom .pkrmwrap{flex:1;display:grid;grid-template-columns:minmax(0,1fr) min(420px,38vw);min-height:0}
 #pkroom .pkrmstage{position:relative;display:grid;place-items:center;min-height:0;overflow:hidden;
   background:radial-gradient(120% 90% at 50% 8%, var(--surface2) 0%, var(--ground) 70%)}
@@ -2023,6 +2029,10 @@ body.route-profile #helpbtn{left:16px;right:auto}
     <span style="flex:1"></span>
     <a class="btn" id="pkrmpage" href="?">Read the persona</a>
   </div>
+  <div class="pkrmown" id="pkrmown" hidden>
+    <span class="pkrmpick" id="pkrmpick" hidden><button type="button" class="btn" data-hero="portrait" aria-pressed="false">Portrait</button><button type="button" class="btn" data-hero="look" aria-pressed="false">Look</button></span>
+    <span class="pkrmhint" id="pkrmhint" hidden></span>
+  </div>
   <div class="pkrmwrap">
     <div class="pkrmstage">
       <div class="pkrmfig" id="pkrmfig">
@@ -2423,11 +2433,17 @@ const PK_FACE_DEFAULT={x:0.5,y:0.63,w:0.20};
 function pkFaceOf(d){ const f=(d&&typeof d.face==='object'&&d.face)||{};
   const n=(v,dflt)=>(typeof v==='number'&&isFinite(v)&&v>=0&&v<=1)?v:dflt;
   return {x:n(f.x,PK_FACE_DEFAULT.x),y:n(f.y,PK_FACE_DEFAULT.y),w:n(f.w,PK_FACE_DEFAULT.w)}; }
+// A click on the portrait, read as fractions of the face box and clamped to it; the width is kept (Dylan's ruling 1, 2026-09-13).
+function pkFaceFromClick(fb,cx,cy,w){ if(!fb||!(fb.width>0)||!(fb.height>0)) return null; const c=v=>Math.min(1,Math.max(0,v));
+  return {x:c((cx-fb.left)/fb.width),y:c((cy-fb.top)/fb.height),w:(typeof w==='number'&&isFinite(w)&&w>0&&w<=1)?w:PK_FACE_DEFAULT.w}; }
+// Which character stands in the room: the owner's pick when there is something behind it, else portrait, then doll, then a plate (ruling 2).
+function pkRoomHero(r,d){ const p=!!(r&&r.image_url), l=!!(d&&d.avatar&&typeof d.avatar==='object'); if(d&&d.hero==='look'&&l) return 'look'; if(d&&d.hero==='portrait'&&p) return 'portrait'; return p?'portrait':(l?'look':'plate'); }
 async function renderRoom(id){
   const face=document.getElementById('pkrmface'), fig=document.getElementById('pkrmfig'), nameEl=document.getElementById('pkrmname');
   // the owner sees the house; everyone else sees the Lobby projection, the same split the chat already uses
-  let r=null;
-  try{ const a=await SB.from('twingrid_grids').select('id,name,data,image_url,voice_id').eq('id',id).maybeSingle(); r=a.data||null; }catch(_){}
+  // the base table answers only its operator (RLS: twingrid_operates(owner)), so a row from it means the viewer may also write it
+  let r=null, mine=false;
+  try{ const a=await SB.from('twingrid_grids').select('id,name,data,image_url,voice_id').eq('id',id).maybeSingle(); r=a.data||null; mine=!!r; }catch(_){}
   if(!r){ try{ const b=await SB.from('twingrid_grids_public').select('id,name,data,image_url,voice_id').eq('id',id).maybeSingle(); r=b.data||null; }catch(_){} }
   if(!r){ nameEl.textContent='That persona is private, or the link is wrong.'; face.textContent=''; return; }
   const nm=String(r.name||'Untitled persona');
@@ -2441,28 +2457,13 @@ async function renderRoom(id){
   try{ const th=pkThemeFor(d.theme); document.getElementById('pkroom').style.setProperty('--pacc',th.accent);
        document.getElementById('pkroom').style.setProperty('--accent-ink',th.accentText); }catch(_){}
   const initial=(nm.trim().replace(/^(the|a|an|my)\s+/i,'')[0]||'P').toUpperCase();
-  // the character: portrait, then paper doll, then a themed plate. Never an empty box.
-  face.textContent='';
-  // the hero is eager at high priority: lazy is right for a card in a list and wrong for the one image the page
-  // exists to show. On 2026-09-13 the first frame of a portrait room read as an empty box while a lazy fetch waited.
-  if(r.image_url){ avatarInto(face,r.image_url,initial,true); }
-  else if(d.avatar){ const cat=await pkAvatarCat(); if(cat&&window.pkAvatar){ try{ face.innerHTML=window.pkAvatar.svg(d.avatar,cat,520,{}); }catch(_){} } }
-  if(!face.childNodes.length){ const p=document.createElement('div'); p.className='pkrmplate'; p.textContent=initial; face.appendChild(p); }
-  // Anchor the mouth. In order: the owner's own data.face, then a MEASUREMENT of the paper doll's
-  // tagged mouth path (exact for every look, and it cannot drift when the art changes), then the
-  // head-and-shoulders default for a portrait. A plate is a letter and gets no mouth at all.
-  const plate=!!face.querySelector('.pkrmplate');
-  let fa=(d&&typeof d.face==='object')?pkFaceOf(d):null;
-  // Measured in RENDERED pixels against the face box. ViewBox units were wrong: the doll's viewBox is
-  // 64x96 and it draws at 520 px centred inside a 560 px square, so 26/96 of the viewBox is not 26/96
-  // of the box, and the first cut put the mouth across the eyes.
-  if(!fa){ const mp=face.querySelector('svg [data-part="mouth"]');
-    if(mp){ try{ const fb=face.getBoundingClientRect(), mb=mp.getBoundingClientRect();
-        if(fb.width&&fb.height&&mb.width){ fa={x:(mb.left+mb.width/2-fb.left)/fb.width, y:(mb.top+mb.height/2-fb.top)/fb.height, w:Math.max(0.05,(mb.width*1.8)/fb.width)}; } }catch(_){} } }
-  if(!fa) fa=pkFaceOf(d);
-  if(!plate){ const m=document.createElement('span'); m.className='pkrmmouth'; m.id='pkrmmouth';
-    m.style.setProperty('--fx',String(fa.x)); m.style.setProperty('--fy',String(fa.y)); m.style.setProperty('--fw',String(fa.w));
-    face.appendChild(m); }
+  await pkRoomFigure(id,r,d,mine,initial);
+  // the owner's pick, only when there are two characters to choose between (ruling 2, 2026-09-13); saved on data like the theme
+  const pick=document.getElementById('pkrmpick'), both=mine&&!!r.image_url&&!!(d.avatar&&typeof d.avatar==='object');
+  pick.hidden=!both; document.getElementById('pkrmown').hidden=!(both||!document.getElementById('pkrmhint').hidden);
+  if(both){ pick.querySelectorAll('button').forEach(b=>{ b.setAttribute('aria-pressed',String(pkRoomHero(r,d)===b.dataset.hero));
+    b.onclick=async()=>{ const v=b.dataset.hero; const err=await pkRoomSave(id,x=>{ x.hero=v; }); const hint=document.getElementById('pkrmhint'); if(err){ hint.hidden=false; hint.textContent=err; return; }
+      d.hero=v; await pkRoomFigure(id,r,d,mine,initial); pick.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.hero===v))); }; }); }
   fig.classList.add('pkrmbreathe');
   // the chat is the SAME drawer, moved into the room and docked by this route's CSS. Reusing it keeps
   // send, credits, voice, Sparks and learn exactly as they are; a second chat would be a second bug farm.
@@ -2481,6 +2482,42 @@ async function renderRoom(id){
   chat.classList.add('open'); renderChat();
   if(!localStorage.getItem('tg_key')){ refreshCredits().catch(()=>{}); }
 }
+// The character on the stage and the mouth on its face; re-run when the owner changes the pick. The mouth anchor, in order:
+// the owner's own data.face (portrait only: the doll measures itself and a saved click would misplace it), a MEASUREMENT of
+// the doll's tagged mouth path, then the head-and-shoulders default. A plate is a letter and gets no mouth at all.
+async function pkRoomFigure(id,r,d,mine,initial){
+  const face=document.getElementById('pkrmface'), hint=document.getElementById('pkrmhint');
+  face.textContent=''; face.classList.remove('pkrmplace'); face.onclick=null;
+  const hero=pkRoomHero(r,d);
+  // the hero is eager at high priority: lazy is right for a card in a list and wrong for the one image the page
+  // exists to show. On 2026-09-13 the first frame of a portrait room read as an empty box while a lazy fetch waited.
+  if(hero==='portrait'){ avatarInto(face,r.image_url,initial,true); }
+  else if(hero==='look'){ const cat=await pkAvatarCat(); if(cat&&window.pkAvatar){ try{ face.innerHTML=window.pkAvatar.svg(d.avatar,cat,520,{}); }catch(_){} } }
+  if(!face.childNodes.length){ const p=document.createElement('div'); p.className='pkrmplate'; p.textContent=initial; face.appendChild(p); }
+  const plate=!!face.querySelector('.pkrmplate');
+  let fa=(hero==='portrait'&&d&&typeof d.face==='object'&&d.face)?pkFaceOf(d):null;
+  // Measured in RENDERED pixels against the face box. ViewBox units were wrong: the doll's viewBox is
+  // 64x96 and it draws at 520 px centred inside a 560 px square, so 26/96 of the viewBox is not 26/96
+  // of the box, and the first cut put the mouth across the eyes.
+  if(!fa){ const mp=face.querySelector('svg [data-part="mouth"]');
+    if(mp){ try{ const fb=face.getBoundingClientRect(), mb=mp.getBoundingClientRect();
+        if(fb.width&&fb.height&&mb.width){ fa={x:(mb.left+mb.width/2-fb.left)/fb.width, y:(mb.top+mb.height/2-fb.top)/fb.height, w:Math.max(0.05,(mb.width*1.8)/fb.width)}; } }catch(_){} } }
+  if(!fa) fa=pkFaceOf({});
+  if(!plate){ const m=document.createElement('span'); m.className='pkrmmouth'; m.id='pkrmmouth';
+    m.style.setProperty('--fx',String(fa.x)); m.style.setProperty('--fy',String(fa.y)); m.style.setProperty('--fw',String(fa.w));
+    face.appendChild(m); }
+  // the owner places the mouth by clicking it, portrait only (ruling 1, 2026-09-13). ponytail: mouse and touch only; a keyboard
+  // path would be arrow-key nudging, add it if an owner asks.
+  const can=mine&&hero==='portrait'&&!plate;
+  hint.hidden=!can; if(can) hint.textContent='Click the mouth to place it.';
+  if(can){ face.classList.add('pkrmplace'); face.onclick=async(e)=>{ const nf=pkFaceFromClick(face.getBoundingClientRect(),e.clientX,e.clientY,fa.w); if(!nf) return;
+      const err=await pkRoomSave(id,x=>{ x.face=nf; }); if(err){ hint.textContent=err; return; }
+      d.face=nf; fa=nf; const m=document.getElementById('pkrmmouth'); if(m){ m.style.setProperty('--fx',String(nf.x)); m.style.setProperty('--fy',String(nf.y)); m.style.setProperty('--fw',String(nf.w)); }
+      hint.textContent='Mouth placed. Click again to move it.'; }; }
+}
+// The owner's room settings (the pick, the mouth) take the same data-only read-modify-write the theme uses, never a second column.
+async function pkRoomSave(id,fn){ try{ const {data:row,error:e1}=await SB.from('twingrid_grids').select('data').eq('id',id).maybeSingle(); if(e1||!row) return 'Could not read the persona: '+String((e1&&e1.message)||'').slice(0,100);
+  const x=Object.assign({},(row.data&&row.data.facets)?row.data:{facets:[]}); fn(x); const {error}=await SB.from('twingrid_grids').update({data:x}).eq('id',id); return error?('Could not save: '+String(error.message||'').slice(0,100)):null; }catch(_){ return 'Could not save.'; } }
 function route(){ const rm=onRoomRoute();
   if(rm){ document.body.className='marketing route-room'; app.style.display='none'; document.getElementById('pkroom').hidden=false; renderRoom(rm); return; }
   const twin=onProfileRoute();

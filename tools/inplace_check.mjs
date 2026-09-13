@@ -110,4 +110,35 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(/avatarInto\(face,r\.image_url,initial,true\)/.test(h.slice(rS,rE)),'renderRoom asks for the eager hero');
 }
 
+// The room's owner controls (2026-09-13, Dylan's rulings 1 and 2): the mouth is placed by one click on the portrait, read as
+// fractions of the face box and clamped to it; the character standing in the room is the owner's pick when it can be honoured,
+// else portrait, then doll, then a plate. Both writes go through one data-only save. Helpers lifted, then the room's source read.
+{
+  const s=h.indexOf('const PK_FACE_DEFAULT='), e=h.indexOf('async function renderRoom(',s);
+  ok(s>0&&e>s,'the face helpers found');
+  const NL=String.fromCharCode(10);
+  const L=new Function(h.slice(s,e)+NL+'return {pkFaceOf:pkFaceOf, fromClick:(typeof pkFaceFromClick==="function")?pkFaceFromClick:null, hero:(typeof pkRoomHero==="function")?pkRoomHero:null};')();
+  ok(!!L.fromClick,'pkFaceFromClick exists'); ok(!!L.hero,'pkRoomHero exists');
+  if(L.fromClick){
+    const fb={left:100,top:200,width:400,height:400};
+    const a=L.fromClick(fb,300,320,0.2); ok(!!a&&a.x===0.5&&Math.abs(a.y-0.3)<1e-9&&a.w===0.2,'a click lands as fractions of the face box: '+JSON.stringify(a));
+    const b=L.fromClick(fb,20,900,0.2); ok(!!b&&b.x===0&&b.y===1,'a click outside the box clamps to its edge: '+JSON.stringify(b));
+    const c=L.fromClick(fb,300,300,NaN); ok(!!c&&c.w===0.2,'a bad width falls back to the default');
+    ok(L.fromClick({left:0,top:0,width:0,height:0},1,1,0.2)===null,'a zero box places nothing');
+    const f=L.pkFaceOf({face:a}); ok(f.x===0.5&&Math.abs(f.y-0.3)<1e-9,'and the room reads it back through pkFaceOf');
+    ok(L.pkFaceOf({face:{x:2,y:-1,w:'a'}}).y===0.63,'an out-of-range face falls back to the default on read');
+  }
+  if(L.hero){
+    ok(L.hero({image_url:'u'},{avatar:{}})==='portrait','portrait first when no pick is saved');
+    ok(L.hero({image_url:'u'},{avatar:{},hero:'look'})==='look','the Look when the owner picked it');
+    ok(L.hero({image_url:'u'},{hero:'look'})==='portrait','a pick with nothing behind it is not honoured');
+    ok(L.hero({image_url:null},{avatar:{},hero:'portrait'})==='look','no portrait: the doll stands');
+    ok(L.hero({},{})==='plate','nothing: the plate');
+  }
+  const rS=h.indexOf('async function renderRoom('), rE=h.indexOf(NL+'function route(){',rS); const room=h.slice(rS,rE);
+  ok(room.indexOf('pkRoomHero(')>=0,'the room stands the picked character');
+  ok(room.indexOf('pkFaceFromClick(')>=0,'the room places the mouth from a click');
+  ok(room.indexOf('pkRoomSave(')>=0,'both go through the one data-only save');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
