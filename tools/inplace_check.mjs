@@ -221,4 +221,25 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(/#pkroom \.pkrmratebox \.phrbtn\{/.test(h),'the box is styled inside the room');
 }
 
+// The Room on a painted stage (v21, 2026-09-13). The backdrop is chosen by the persona's house room KEY through the manifest and
+// never by a path from data: the chooser is lifted and fed hostile keys, then the Room and the cover are read from the source.
+{
+  let ssrc=null; try{ ssrc=cut('const PK_STAGE_RE=',"||null; }"); }catch(_){}
+  ok(!!ssrc,'pkStageFor exists');
+  if(ssrc){
+    const {pkStageFor}=new Function(ssrc+'\nreturn {pkStageFor};')();
+    const rooms=[{key:'studio',stage:'/catalog/rooms/stage/studio.jpg'},{key:'library',stage:'/catalog/rooms/stage/library.jpg'},{key:'porch'}];
+    ok(pkStageFor(rooms,'library')==='/catalog/rooms/stage/library.jpg','a known room gives its own stage');
+    ok(pkStageFor(rooms,'porch')==='/catalog/rooms/stage/studio.jpg','a room with no painting falls to the studio');
+    ['../../x','https://evil.example/a.jpg','studio.jpg','',null,undefined,42,{key:'library'}].forEach(k=>ok(pkStageFor(rooms,k)==='/catalog/rooms/stage/studio.jpg','a hostile or missing key falls to the studio: '+JSON.stringify(k)));
+    ok(pkStageFor([{key:'studio',stage:'https://evil.example/x.jpg'}],'studio')===null,'a manifest path off the stage prefix is refused, not used');
+    ok(pkStageFor(null,'studio')===null&&pkStageFor([],'studio')===null,'no manifest, no stage, no throw');
+  }
+  const rm=h.indexOf('async function renderRoom('), rmE=h.indexOf('\nfunction route(){',rm);
+  ok(rm>0&&/pkStageOf\(d\)/.test(h.slice(rm,rmE)),'the Room picks its stage from the manifest by the house room key');
+  ok(/--pkstage/.test(h.slice(rm,rmE))&&/#pkroom \.pkrmstage\{[^}]*var\(--pkstage/.test(h),'the stage paints through one CSS variable on the stage element');
+  const cv=h.indexOf('async function pkRenderCover('); ok(cv>0&&/pkStageOf\(g\)/.test(h.slice(cv,cv+900)),'the profile cover takes the same painting when the persona has a house room');
+  ok(/pkRenderCover\(data\.image_url,g\)/.test(h),'renderProfile hands the cover the persona data');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
