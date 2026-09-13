@@ -329,4 +329,7 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(!r.cls.has('exnone'),'a rated row is not exnone');
 }
 
+// The empty room chat is an invitation, not a void (v22.3): renderChat shows the persona face and name.
+ok(/pkrmchatempty/.test(h) && h.includes("chatPeerName?('Say hi to '") && /route-room/.test(h.slice(h.indexOf('function renderChat('),h.indexOf('function renderChat(')+900)),'the empty room chat shows the persona face and name, not a blank void');
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
