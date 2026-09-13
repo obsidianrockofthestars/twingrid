@@ -19,3 +19,11 @@
   Content-Disposition: attachment; filename="personakind-mcp.mcpb"
 /personakind-mcp.zip
   Content-Disposition: attachment; filename="personakind-mcp.zip"
+
+# 2026-09-13 review fix (o): rooms, images and the object catalog are static once published, so cache them at the edge.
+/catalog/rooms/*
+  Cache-Control: public, max-age=604800
+/img/*
+  Cache-Control: public, max-age=604800
+/catalog/*.json
+  Cache-Control: public, max-age=3600
