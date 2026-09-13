@@ -699,7 +699,9 @@ body.route-room #pkroom{display:flex}
 #pkroom .pkrmratebox .phsparkmsg{margin:6px 0 0;font-size:13px;color:var(--muted);min-height:18px}
 #pkroom .pkrmwrap{flex:1;display:grid;grid-template-columns:minmax(0,1fr) min(420px,38vw);min-height:0}
 #pkroom .pkrmstage{position:relative;display:grid;place-items:center;min-height:0;overflow:hidden;
-  background:radial-gradient(120% 90% at 50% 8%, var(--surface2) 0%, var(--ground) 70%)}
+  /* the painted stage (v21): a vignette so the character reads, the interior chosen by the house room key (--pkstage), the old gradient beneath */
+  background-image:radial-gradient(62% 78% at 50% 52%, rgba(8,6,10,0) 0%, rgba(8,6,10,.30) 60%, rgba(8,6,10,.72) 100%),var(--pkstage,none),radial-gradient(120% 90% at 50% 8%, var(--surface2) 0%, var(--ground) 70%);
+  background-size:cover,cover,auto;background-position:50% 58%,50% 58%,50% 50%;background-repeat:no-repeat}
 #pkroom .pkrmfig{position:relative;display:grid;place-items:end center;height:min(72vh,560px);aspect-ratio:1/1}
 #pkroom .pkrmshadow{position:absolute;bottom:2%;left:50%;transform:translateX(-50%);width:56%;height:5%;border-radius:50%;
   background:radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,.55), rgba(0,0,0,0) 70%)}
@@ -2511,6 +2513,12 @@ function pkFaceOf(d){ const f=(d&&typeof d.face==='object'&&d.face)||{};
 // A click on the portrait, read as fractions of the face box and clamped to it; the width is kept (Dylan's ruling 1, 2026-09-13).
 function pkFaceFromClick(fb,cx,cy,w){ if(!fb||!(fb.width>0)||!(fb.height>0)) return null; const c=v=>Math.min(1,Math.max(0,v));
   return {x:c((cx-fb.left)/fb.width),y:c((cy-fb.top)/fb.height),w:(typeof w==='number'&&isFinite(w)&&w>0&&w<=1)?w:PK_FACE_DEFAULT.w}; }
+// the stage (v21, 2026-09-13): the painted interior behind the Room's character and the profile's cover, chosen by the persona's house
+// room KEY through the manifest, never by a path from data. An unknown or hostile key, or a persona with no house, gets the studio.
+const PK_STAGE_RE=/^\/catalog\/rooms\/stage\/[a-z-]+\.jpg$/;
+function pkStageFor(rooms,key){ const rs=Array.isArray(rooms)?rooms:[]; const ok=r=>(r&&typeof r.stage==='string'&&PK_STAGE_RE.test(r.stage))?r.stage:null;
+  const hit=(typeof key==='string')?rs.find(r=>r&&r.key===key):null; return ok(hit)||ok(rs.find(r=>r&&r.key==='studio'))||null; }
+async function pkStageOf(d){ const man=await pkSprites(); const room=(d&&d.house&&typeof d.house==='object')?d.house.room:null; return pkStageFor(man&&man.rooms,room); }
 // Which character stands in the room: the owner's pick when there is something behind it, else portrait, then doll, then a plate (ruling 2).
 function pkRoomHero(r,d){ const p=!!(r&&r.image_url), l=!!(d&&d.avatar&&typeof d.avatar==='object'); if(d&&d.hero==='look'&&l) return 'look'; if(d&&d.hero==='portrait'&&p) return 'portrait'; return p?'portrait':(l?'look':'plate'); }
 async function renderRoom(id){
@@ -2532,6 +2540,8 @@ async function renderRoom(id){
   try{ const th=pkThemeFor(d.theme); document.getElementById('pkroom').style.setProperty('--pacc',th.accent);
        document.getElementById('pkroom').style.setProperty('--accent-ink',th.accentText); }catch(_){}
   const initial=(nm.trim().replace(/^(the|a|an|my)\s+/i,'')[0]||'P').toUpperCase();
+  // the painted stage behind the character (v21): by the house room key through the manifest; the studio when there is no house
+  pkStageOf(d).then(s=>{ const st=document.querySelector('#pkroom .pkrmstage'); if(st) st.style.setProperty('--pkstage', s?('url("'+location.origin+s+'")'):'none'); });
   await pkRoomFigure(id,r,d,mine,initial);
   // the owner's pick, only when there are two characters to choose between (ruling 2, 2026-09-13); saved on data like the theme
   const pick=document.getElementById('pkrmpick'), both=mine&&!!r.image_url&&!!(d.avatar&&typeof d.avatar==='object');
@@ -4016,7 +4026,7 @@ async function renderProfile(id,opts){ opts=opts||{};
   let g=(data.data&&data.data.facets)?data.data:{facets:[]};
   try{ const hd=await pkHouseData(id); if(hd) g=hd; else { const kd=await pkKindredData(id); if(kd) g=kd; } }catch(_){}
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
-  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); pkRenderCover(data.image_url); document.getElementById('ptalk').href='?room='+encodeURIComponent(id); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
+  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); pkRenderCover(data.image_url,g); document.getElementById('ptalk').href='?room='+encodeURIComponent(id); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
   handleFor(data.owner).then(h=>{ if(!h) return; pby.hidden=false; pby.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; pby.append('by ',a);
     try{ const q=new URLSearchParams(location.search); if(q.get('t')&&!q.get('u')){ q.delete('t'); q.set('u',h); q.set('p',nm); window.history.replaceState(null,'','?'+q.toString()); } }catch(_){} });
   document.getElementById('pcells').textContent='';
@@ -4344,9 +4354,13 @@ function pkRatingText(score){ const sc=Array.isArray(score)?score:[]; const hl=s
 function pkRenderRating(score){ const el=document.getElementById('pkrating'); if(!el) return; el.textContent=''; if(score===null) return; const t=pkRatingText(score);
   const b=document.createElement('b'); b.textContent='✨ '+t.main; el.appendChild(b); if(t.sub){ const s=document.createElement('span'); s.textContent=' · '+t.sub; el.appendChild(s); }
   if(t.none){ const a=document.createElement('a'); a.href='#psparks'; a.textContent='Be the first'; a.onclick=e=>{ e.preventDefault(); const s=document.getElementById('psparks'); if(s) s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); }; el.append(' · ',a); } }
-// the cover (v21): the portrait, blurred, as a band behind the hero; the band gradient alone when there is no portrait. Only the bucket
-// URL avatarInto already vets can reach the src. A painted room interior takes this band when the Room ships one.
-function pkRenderCover(url){ const c=document.getElementById('pkcover'); if(!c) return; c.textContent=''; c.classList.remove('pkblur'); if(!url) return; avatarInto(c,url,'',true); if(c.querySelector('img')) c.classList.add('pkblur'); }
+// the cover (v21): the persona's painted room when it has a house room, else the portrait blurred, else the band gradient alone. Only
+// a manifest path by key or the bucket URL avatarInto already vets can reach the src.
+async function pkRenderCover(url,g){ const c=document.getElementById('pkcover'); if(!c) return; const gen=(c.__gen=(c.__gen||0)+1); c.textContent=''; c.classList.remove('pkblur');
+  // a persona with a house room takes its painted interior as the cover (v21); the path comes from the manifest by key, never from data
+  const s=(g&&g.house&&typeof g.house==='object'&&g.house.room)?await pkStageOf(g):null; if(gen!==c.__gen) return;
+  if(s){ const im=document.createElement('img'); im.className='pkimg'; im.alt=''; im.decoding='async'; im.src=location.origin+s; c.appendChild(im); return; }
+  if(url){ avatarInto(c,url,'',true); if(c.querySelector('img')) c.classList.add('pkblur'); } }
 // the hero's second button (v21): Request Kindred. Signed out it opens sign-in; signed in it lands on the Kindred section, where the
 // request already lives; the owner never sees it on their own page.
 async function pkKinButton(owner){ const b=document.getElementById('pkkinbtn'); if(!b) return; let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session&&session.user?session.user.id:null; }catch(_){}

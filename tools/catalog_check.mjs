@@ -243,6 +243,9 @@ if (problems.length) {
     for (const r of rooms) { if (!r) continue; for (const f of ['floor', 'wall', 'trim']) if (!mats.has(r[f]) || r[f] === 'accent') problems.push('room ' + r.key + ' ' + f + ' is not a material: ' + r[f]);
       if (typeof r.window !== 'boolean') problems.push('room ' + r.key + ' window must be boolean');
       if (r.bg !== undefined) { if (typeof r.bg !== 'string' || !/^\/catalog\/rooms\/[a-z-]+\.jpg$/.test(r.bg)) problems.push('room ' + r.key + ' bg must be a /catalog/rooms/<key>.jpg path'); else if (!existsSync(new URL('../docs' + r.bg, import.meta.url))) problems.push('room ' + r.key + ' bg file missing: ' + r.bg); }
+      // the stage (v21, 2026-09-13): the painted interior behind the Room's character; the page builds nothing from data, it reads this path by key
+      if (r.stage !== '/catalog/rooms/stage/' + r.key + '.jpg') problems.push('room ' + r.key + ' stage must be /catalog/rooms/stage/' + r.key + '.jpg, got ' + JSON.stringify(r.stage));
+      else if (!existsSync(new URL('../docs' + r.stage, import.meta.url))) problems.push('room ' + r.key + ' stage file missing: ' + r.stage);
       if (typeof r.note !== 'string' || r.note.length >= 60 || DASH_RE.test(r.note)) problems.push('room ' + r.key + ' note must be a short string with no dash'); }
     const sprites = Array.isArray(man.sprites) ? man.sprites : []; const ids = new Set((data && data.objects || []).map((o) => o.id)); const seen = new Set();
     for (const sp of sprites) { const w = 'sprite ' + (sp && sp.id);
