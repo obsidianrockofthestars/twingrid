@@ -279,7 +279,7 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
 // jargon was the chat's placeholder, read by every stranger who opens a Room.
 {
   const m=h.match(/<textarea id="chatinput" placeholder="([^"]*)"/); ok(!!m,'the chat input found');
-  ok(!!m&&!/composed/i.test(m[1]),'the chat placeholder is in a stranger's words: '+JSON.stringify(m&&m[1]));
+  ok(!!m&&!/composed/i.test(m[1]),'the chat placeholder is in plain words: '+JSON.stringify(m&&m[1]));
 }
 
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
