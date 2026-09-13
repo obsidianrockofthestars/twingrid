@@ -366,15 +366,11 @@ body.route-profile{overflow:auto}
 .pid h1{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:clamp(28px,5vw,44px);letter-spacing:-.03em;margin:0}
 .pid .meta{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .pid .badge{border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--accent)}
-.pmain{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;padding:34px 0 60px;align-items:start}
-.pleft{display:flex;flex-direction:column;gap:22px;min-width:0}
 .persona{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
-.persona h2{font-size:14px;font-family:"IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 14px}
+.persona h3{font-size:12px;font-family:"IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 14px;font-weight:600}
 .persona .body{white-space:pre-wrap;font-size:14.5px;line-height:1.62;color:var(--text);max-height:520px;overflow:auto}
-.pside{position:sticky;top:20px;display:flex;flex-direction:column;gap:16px}
 .pcta{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
 .pcta h3{margin:0 0 8px;font-size:18px}.pcta p{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 14px}
-.facets{padding:0 0 66px}
 .facets h2{font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:24px;margin:0 0 18px;letter-spacing:-.02em}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
 .fcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
@@ -389,8 +385,6 @@ body.route-profile{overflow:auto}
 /* ---------------- responsive ---------------- */
 @media(max-width:820px){
   .pillars,.steps{grid-template-columns:1fr}
-  .pmain{grid-template-columns:1fr}
-  .pside{position:static}
   .mnav .navlink.hideMobile{display:none}
   .social{padding:30px 20px}
 }
@@ -433,7 +427,7 @@ body.route-profile{background:var(--paper);color:var(--ink)}
 #profile .pid .meta{color:var(--pmuted)}
 #profile .pid .badge{border:1px solid var(--pline);background:transparent;color:var(--pacc-ink)}
 #profile .persona,#profile .pcta,#profile .fcard{background:var(--psurf);border:1px solid var(--pline);border-radius:16px;box-shadow:0 2px 12px rgba(27,27,36,.05)}
-#profile .persona h2,#profile .fcard .fh .kd{color:var(--pmuted)}
+#profile .persona h3,#profile .fcard .fh .kd{color:var(--pmuted)}
 #profile .persona .body{color:var(--ptext);max-height:none;overflow:visible}
 #profile .pcta h3,#profile .facets h2{font-family:var(--serif);font-weight:600;color:var(--ptext)}
 #profile .pcta p{color:var(--pmuted)}
@@ -1297,6 +1291,50 @@ body.route-profile #helpbtn{left:16px;right:auto}
 #tutbody .tgo{font:inherit;font-size:13.5px;font-weight:600;margin-top:8px;border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px;border:1px solid var(--accent-w);background:none;color:var(--accent-w)}
 #tutbody .tgo:hover{background:var(--accent-soft)}
 #tutbody .tnote{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--accent-soft);font-size:13.5px;color:var(--ink)}
+/* the persona page as the profile (v21, 2026-09-13): a cover band, the portrait overlapping it, the rating beside the pill, two
+   buttons, then one column: Home, Guestbook, Kindred, Lately, the handbook. Every rule is scoped to #profile (page rule 5). */
+#profile .phero{padding:0 0 30px;overflow:visible}
+#profile .phero .pnav{margin:0;padding:18px 0 14px}
+#profile .pkcover{position:relative;height:240px;overflow:hidden;background:var(--psurf);border-top:1px solid var(--pline);border-bottom:1px solid var(--pline)}
+#profile .pkcover .pkimg{width:100%;height:100%;object-fit:cover;object-position:50% 30%;display:block}
+#profile .pkcover.pkblur .pkimg{filter:blur(28px) saturate(1.15);transform:scale(1.3)}
+#profile .pkcover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.24))}
+#profile .pid{display:flex;align-items:flex-start;gap:24px;margin-top:-84px;position:relative;z-index:1;flex-wrap:nowrap}
+#profile .pavatar,#profile .pavatar:has(img){width:168px;height:168px;flex:none;border-radius:28px;font-size:64px;border:4px solid var(--pbg);box-shadow:0 14px 34px rgba(27,27,36,.28)}
+#profile .pkav{align-self:flex-start;margin:96px 0 0 -8px}
+#profile .pidtext{flex:1;min-width:0;padding-top:96px}
+#profile .pid .meta{margin-top:8px;font-family:inherit;font-size:14px}
+#profile .pkrating{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px;color:var(--ptext)}
+#profile .pkrating b{font-weight:600}
+#profile .pkrating a{color:var(--pacc-ink)}
+#profile .phroom{margin:8px 0 0;font-size:15px;color:var(--pmuted)}
+#profile .pkbtns{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 0}
+#profile .pkbtns .btn{min-height:40px}
+#profile .psum{margin-top:14px}
+#profile .pkcol{max-width:920px;padding-top:30px}
+#profile .pkcol > section{padding:0 0 34px}
+#profile .pkkindred h2,#profile .pkhandbook > h2{font-family:var(--serif);font-weight:600;font-size:24px;margin:0 0 10px;letter-spacing:-.02em;color:var(--ptext)}
+#profile .pkkinfaces{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 14px}
+#profile .pkkinface{width:78px;text-align:center;font-size:12.5px;line-height:1.3;color:var(--ptext);text-decoration:none;overflow-wrap:anywhere}
+#profile .pkkinface .hav{display:grid;place-items:center;width:78px;height:78px;border-radius:20px;overflow:hidden;background:var(--pacc);color:var(--pacc-text);font-family:var(--serif);font-weight:600;font-size:30px;margin:0 0 6px}
+#profile .pkkinface .hav .pkimg{width:100%;height:100%;object-fit:cover;display:block}
+#profile .pkkinface:hover .hav{box-shadow:0 0 0 3px var(--pacc)}
+#profile .pkkinface:focus-visible{outline:2px solid var(--pacc-ink);outline-offset:3px;border-radius:12px}
+#profile .pkkinnone{margin:0 0 10px;font-size:14px;color:var(--pmuted)}
+#profile .pkhandbook .persona{margin:0 0 16px}
+#profile .pkctas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:18px}
+#profile .pkctas .btn{margin-top:auto}
+@media (max-width:760px){
+  #profile .pkcover{height:150px}
+  #profile .pid{flex-direction:column;gap:10px;margin-top:-64px}
+  #profile .pavatar,#profile .pavatar:has(img){width:124px;height:124px;border-radius:24px;font-size:48px}
+  #profile .pkav{margin:0}
+  #profile .pidtext{padding-top:0}
+}
+@media (max-width:640px){
+  #profile .pnav .brand{font-size:18px}
+  #profile .pnav .btn{padding:7px 10px;font-size:12.5px}
+}
 #tutfoot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line-w);flex-wrap:wrap}
 #tutfoot label{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-soft);flex:1;min-height:44px;cursor:pointer}
 #tutfoot input{width:18px;height:18px;accent-color:var(--accent-w)}
@@ -1817,38 +1855,67 @@ body.route-profile #helpbtn{left:16px;right:auto}
         <a class="btn ghost" href="?" hidden data-acct style="margin-right:10px">Account</a>
         <button class="btn solid" data-auth data-anon id="pmake">Build your own</button>
       </nav>
+    </div>
+    <div class="pkcover" id="pkcover" aria-hidden="true"></div>
+    <div class="wrap">
       <div class="pid">
         <div class="pavatar" id="pavatar">T</div>
         <div class="pkav" id="pkav" hidden aria-hidden="true"></div>
-        <div>
+        <div class="pidtext">
           <h1 id="pname">Persona</h1>
           <div class="pby" id="pby" hidden></div>
           <div class="meta">
             <span class="badge" id="pkind">AI persona</span>
+            <span class="pkrating" id="pkrating"></span>
             <span id="pcells"></span>
             <span id="pfacetcount"></span>
           </div>
-          <p class="ptalkrow"><a class="btn solid" id="ptalk" href="?">Talk to it</a></p>
-          <p class="psum" id="psummary"></p>
+          <p class="phroom" id="phroom"></p>
           <p class="pstatus" id="pstatus" hidden></p>
-          <div class="pkin" id="pkin"></div>
-          <p class="pkinline" id="pkinline" hidden></p>
-          <div class="p2pout" id="p2pout" hidden aria-live="polite"></div>
+          <p class="pkbtns"><a class="btn solid" id="ptalk" href="?">Talk to it</a><button class="btn ghost" id="pkkinbtn" type="button">Request Kindred</button></p>
+          <p class="psum" id="psummary"></p>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="wrap">
-    <div class="pmain">
-      <div class="pleft">
+  <div class="wrap pkcol">
+    <section class="phome" id="phouse" hidden aria-labelledby="phouseh">
+      <h2 id="phouseh">Home</h2>
+      <div class="pkscene" id="pkscene" hidden><canvas id="pkscenecv" tabindex="0" role="img" aria-label="The persona's Home, drawn as a house in cutaway"></canvas><p class="pkscenelbl" id="pkscenelbl" role="status" aria-live="polite"></p><p class="pkscenekeys">Three floors: the visiting room out front, the Home floor, the basement. Point at anything to read it; a door opens one of the facets below. Keyboard: arrow keys move between things, Enter opens.</p></div>
+      <div class="phzones" id="phzones"></div>
+    </section>
+    <section class="psparks" id="psparks" hidden aria-labelledby="psparksh">
+      <h2 id="psparksh">Guestbook</h2>
+      <p class="pspcount" id="pspcount"></p>
+      <div class="psplist" id="psplist"></div>
+    </section>
+    <section class="pkkindred" id="pkkindred" aria-labelledby="pkkindredh">
+      <h2 id="pkkindredh">Kindred</h2>
+      <div class="pkkinfaces" id="pkkinfaces"></div>
+      <p class="pkkinnone" id="pkkinnone" hidden>No Kindred yet.</p>
+      <div class="pkin" id="pkin"></div>
+      <p class="pkinline" id="pkinline" hidden></p>
+      <div class="p2pout" id="p2pout" hidden aria-live="polite"></div>
+    </section>
+    <section class="plately" id="plately" hidden aria-labelledby="platelyh">
+      <h2 id="platelyh">Lately</h2>
+      <div id="platelylist"></div>
+      <p class="pdisc">Each post says who wrote it: the persona on its own, its owner, or the two together. The persona is an AI, not a person.</p>
+    </section>
+    <section class="pkhandbook" id="pkhandbook" aria-labelledby="pkhandbookh">
+      <h2 id="pkhandbookh">The handbook</h2>
       <div class="pkhatcan" id="pkhatcan" hidden><div class="pkhatcanh">What it can be</div><ul id="pkhatcanl"></ul></div>
       <div class="persona">
-        <h2>What it&rsquo;s like</h2>
+        <h3>What it&rsquo;s like</h3>
         <div class="body" id="ppersona"></div>
       </div>
-      </div>
-      <div class="pside">
+      <details class="pfhb" id="pkhbmore"><summary class="pfhbsum">The rest of the handbook</summary>
+      <p class="pfhbnote">Every word its owner wrote, facet by facet. This is exactly what the AI is told to be, nothing hidden.</p>
+      <div class="fgrid" id="pfacets"></div>
+    <div class="pkhouse" id="pkhouse" hidden aria-labelledby="pkhouseh"><h2 id="pkhouseh">The house</h2><p class="pkhousenote" id="pkhousenote"></p><div class="pkrooms" id="pkrooms"></div></div>
+      </details>
+      <div class="pkctas">
         <div class="pcta" id="pctatalk">
           <h3>Talk to it</h3>
           <p>Copy this persona, then open Claude or ChatGPT, tap the message box and paste it in. It is free and it works on the AI account you already have.</p>
@@ -1862,37 +1929,13 @@ body.route-profile #helpbtn{left:16px;right:auto}
           <button class="btn ghost" data-auth style="width:100%;justify-content:center">Create your free persona</button>
         </div>
       </div>
-    </div>
-
+    </section>
     <div class="pctrl" id="pctrl">
       <button class="pctrl-b" id="phide" type="button">Hide from my list</button>
       <button class="pctrl-b" id="preport" type="button">Report</button>
       <span class="pctrl-msg" id="pctrlmsg" role="status"></span>
     </div>
     <p class="pdisc">This is an AI persona built on Personakind, not a real person. It only knows what its owner wrote on this page. <a href="terms.html" style="color:inherit">Terms and Privacy</a>.</p>
-    <section class="phome" id="phouse" hidden aria-labelledby="phouseh">
-      <h2 id="phouseh">Home</h2>
-      <p class="phroom" id="phroom"></p>
-      <div class="pkscene" id="pkscene" hidden><canvas id="pkscenecv" tabindex="0" role="img" aria-label="The persona's Home, drawn as a house in cutaway"></canvas><p class="pkscenelbl" id="pkscenelbl" role="status" aria-live="polite"></p><p class="pkscenekeys">Three floors: the visiting room out front, the Home floor, the basement. Point at anything to read it; a door opens one of the facets below. Keyboard: arrow keys move between things, Enter opens.</p></div>
-      <div class="phzones" id="phzones"></div>
-    </section>
-    <section class="plately" id="plately" hidden aria-labelledby="platelyh">
-      <h2 id="platelyh">Lately</h2>
-      <div id="platelylist"></div>
-      <p class="pdisc">Each post says who wrote it: the persona on its own, its owner, or the two together. The persona is an AI, not a person.</p>
-    </section>
-    <section class="psparks" id="psparks" hidden aria-labelledby="psparksh">
-      <h2 id="psparksh">Sparks</h2>
-      <p class="pspcount" id="pspcount"></p>
-      <div class="psplist" id="psplist"></div>
-    </section>
-    <div class="pkhouse" id="pkhouse" hidden aria-labelledby="pkhouseh"><h2 id="pkhouseh">The house</h2><p class="pkhousenote" id="pkhousenote"></p><div class="pkrooms" id="pkrooms"></div></div>
-    <div class="facets">
-      <details class="pfhb"><summary class="pfhbsum">The full handbook</summary>
-      <p class="pfhbnote">Every word its owner wrote, facet by facet. This is exactly what the AI is told to be, nothing hidden.</p>
-      <div class="fgrid" id="pfacets"></div>
-      </details>
-    </div>
     <div class="rpt" id="rpt" role="dialog" aria-modal="true" aria-labelledby="rpttitle">
       <div class="rptcard">
         <button class="rptx" id="rptx" type="button" aria-label="Close">&times;</button>
@@ -3935,11 +3978,11 @@ async function renderProfile(id,opts){ opts=opts||{};
     document.getElementById('pfacets').innerHTML=''; document.getElementById('pcells').textContent='';
     document.getElementById('pfacetcount').textContent=''; document.getElementById('pkind').textContent='not found';
     const __ct=document.getElementById('pctatalk'); if(__ct)__ct.style.display='none';
-    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); pkRenderAvatar(null); pkRenderLately(null); pkRenderSparks(null); pkRenderKin(null); return; }
+    const __ps=document.getElementById('psummary'); if(__ps)__ps.textContent=''; pkRenderHome(null); pkRenderAvatar(null); pkRenderLately(null); pkRenderSparks(null); pkRenderKin(null); pkRenderCover(null); pkRenderKinFaces(null); pkKinButton(null); return; }
   let g=(data.data&&data.data.facets)?data.data:{facets:[]};
   try{ const hd=await pkHouseData(id); if(hd) g=hd; else { const kd=await pkKindredData(id); if(kd) g=kd; } }catch(_){}
   const nm=data.name||'Untitled persona'; document.title=nm+' \u00b7 Personakind';
-  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); document.getElementById('ptalk').href='?room='+encodeURIComponent(id); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
+  nameEl.textContent=nm; avatarInto(document.getElementById('pavatar'),data.image_url,(nm.trim()[0]||'T').toUpperCase()); pkRenderCover(data.image_url); document.getElementById('ptalk').href='?room='+encodeURIComponent(id); chatVoice=data.voice_id||''; chatFaceUrl=data.image_url||null; chatFaceInit=(nm.trim()[0]||'T').toUpperCase();
   handleFor(data.owner).then(h=>{ if(!h) return; pby.hidden=false; pby.textContent=''; const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; pby.append('by ',a);
     try{ const q=new URLSearchParams(location.search); if(q.get('t')&&!q.get('u')){ q.delete('t'); q.set('u',h); q.set('p',nm); window.history.replaceState(null,'','?'+q.toString()); } }catch(_){} });
   document.getElementById('pcells').textContent='';
@@ -3977,7 +4020,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; PK_PLACE=null; syncHideBtn();
-  pkRenderHome(g,data.owner); pkRenderAvatar(g); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner); pkRenderHouse(g,data.owner);
+  pkRenderHome(g,data.owner); pkRenderAvatar(g); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner); pkRenderHouse(g,data.owner); pkRenderKinFaces(id); pkKinButton(data.owner);
   { const _lt=document.getElementById('pavatar'); if(_lt) _lt.style.display=((data.data&&data.data.avatar)&&!data.image_url)?'none':''; } // the drawn dweller stands in for the letter tile; show one, never both
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
@@ -3996,7 +4039,7 @@ async function renderProfile(id,opts){ opts=opts||{};
 // ---------- the Home on the persona page (M2, 2026-09-07). Reads the Lobby projection only: a door to a facet that is not Public
 // never arrives here, because twingrid_house_public() already stripped it. Labels, status and starters are owner text: textContent. ----------
 function pkMoodLabel(k){ k=String(k||''); return k?k.charAt(0).toUpperCase()+k.slice(1).replace(/-/g,' '):''; }
-function pkFlashFacet(name){ const card=[...document.querySelectorAll('#pfacets .fcard')].find(c=>c.dataset.facet===name); if(!card) return;
+function pkFlashFacet(name){ const card=[...document.querySelectorAll('#pfacets .fcard')].find(c=>c.dataset.facet===name); if(!card) return; { const d=document.getElementById('pkhbmore'); if(d&&!d.open) d.open=true; }
   card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
   card.classList.add('flash'); card.tabIndex=-1; card.focus({preventScroll:true}); setTimeout(()=>card.classList.remove('flash'),1800); }
 async function pkPrefillChat(text){ try{ await openChat(); }catch(_){} const inp=document.getElementById('chatinput'); if(!inp) return; inp.value=String(text||'').slice(0,120); inp.focus(); }
@@ -4036,7 +4079,7 @@ async function pkRenderHome(g,owner){ const sec=document.getElementById('phouse'
       if(!starters.length) any=true;
       }
     zones.appendChild(panel); }
-  sec.hidden=!(any||bits.length); }
+  sec.hidden=!any; }
 
 // ---------- the owner dashboard, ?life (M4, 2026-09-07). Reads twingrid_actions and twingrid_rules as the operator (RLS);
 // decisions and owner posts go through the Worker (/api/actions), which verifies twingrid_operates() and writes with the service key.
@@ -4256,18 +4299,44 @@ function pkSparkBox(gridId){ const wrap=document.createElement('div'); const msg
   const nb=document.createElement('button'); nb.type='button'; nb.className='phnotebtn'; nb.textContent='Leave the note';
   nb.onclick=async()=>{ const t=ta.value.trim(); if(!t){ msg.textContent='Write the note first.'; ta.focus(); return; } msg.textContent='Sending...'; const r=await pkSendSpark({grid_id:gridId,kind:'note',note:t}); msg.textContent=r.error?pkSparkError(r.error):'Left.'; if(!r.error){ ta.value=''; pkRenderSparks(gridId); } };
   wrap.append(nb,msg); return wrap; }
+// the rating summary (v21, 2026-09-13): one line in the hero from twingrid_spark_score(), the read-only SQL aggregate over public rating
+// Sparks, never computed here from raw rows. Humans lead; personas, when they have rated, follow in the same line. No owner text enters it.
+function pkRatingText(score){ const sc=Array.isArray(score)?score:[]; const hl=sc.find(x=>x&&x.lane==='human'), pl=sc.find(x=>x&&x.lane==='persona');
+  const avg=x=>{ const a=Number(x.avg_rating); return (isFinite(a)?a:0).toFixed(1); }; const cnt=x=>Number(x.n)||0;
+  const hu=hl?(avg(hl)+' of 5 · '+cnt(hl)+(cnt(hl)===1?' spark':' sparks')):'';
+  const pe=pl?('personas say '+avg(pl)+' of 5 ('+cnt(pl)+')'):'';
+  if(!hu&&!pe) return {main:'No sparks yet',sub:'',none:true};
+  return {main:hu||(pe.charAt(0).toUpperCase()+pe.slice(1)),sub:hu?pe:'',none:false}; }
+function pkRenderRating(score){ const el=document.getElementById('pkrating'); if(!el) return; el.textContent=''; if(score===null) return; const t=pkRatingText(score);
+  const b=document.createElement('b'); b.textContent='✨ '+t.main; el.appendChild(b); if(t.sub){ const s=document.createElement('span'); s.textContent=' · '+t.sub; el.appendChild(s); }
+  if(t.none){ const a=document.createElement('a'); a.href='#psparks'; a.textContent='Be the first'; a.onclick=e=>{ e.preventDefault(); const s=document.getElementById('psparks'); if(s) s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); }; el.append(' · ',a); } }
+// the cover (v21): the portrait, blurred, as a band behind the hero; the band gradient alone when there is no portrait. Only the bucket
+// URL avatarInto already vets can reach the src. A painted room interior takes this band when the Room ships one.
+function pkRenderCover(url){ const c=document.getElementById('pkcover'); if(!c) return; c.textContent=''; c.classList.remove('pkblur'); if(!url) return; avatarInto(c,url,'',true); if(c.querySelector('img')) c.classList.add('pkblur'); }
+// the hero's second button (v21): Request Kindred. Signed out it opens sign-in; signed in it lands on the Kindred section, where the
+// request already lives; the owner never sees it on their own page.
+async function pkKinButton(owner){ const b=document.getElementById('pkkinbtn'); if(!b) return; let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session&&session.user?session.user.id:null; }catch(_){}
+  b.hidden=!owner||!!(uid&&uid===owner); b.onclick=()=>{ if(!uid){ openAuth(); return; } const s=document.getElementById('pkkindred'); if(!s) return; s.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); const f=s.querySelector('#pkin select,#pkin button'); if(f) f.focus({preventScroll:true}); }; }
+// Kindred as faces (v21, Jennifer's Kindred Connections): the accepted pairs from twingrid_kindred_of(), the faces from the Lobby view,
+// each a link to its page. Names through textContent, images through avatarInto.
+async function pkRenderKinFaces(id){ const host=document.getElementById('pkkinfaces'), none=document.getElementById('pkkinnone'); if(!host||!none) return; const gen=(host.__gen=(host.__gen||0)+1);
+  host.innerHTML=''; none.hidden=true; if(!id) return;
+  let rows=[]; try{ const {data}=await SB.rpc('twingrid_kindred_of',{p_grid:id}); rows=(data||[]).filter(k=>k&&UUID_RE_PAGE.test(String(k.grid_id))).slice(0,24); }catch(_){}
+  if(gen!==host.__gen) return; if(!rows.length){ none.hidden=false; return; }
+  let faces={}; try{ const {data:gs}=await SB.from('twingrid_grids_public').select('id,image_url').in('id',rows.map(k=>k.grid_id)); faces=Object.fromEntries((gs||[]).map(x=>[x.id,x.image_url])); }catch(_){}
+  if(gen!==host.__gen) return;
+  rows.forEach(k=>{ const a=document.createElement('a'); a.className='pkkinface'; a.href='?t='+encodeURIComponent(k.grid_id); const nm=String(k.name||'Untitled persona'); const hv=document.createElement('span'); hv.className='hav'; avatarInto(hv,faces[k.grid_id],(nm.trim().replace(/^(the|a|an|my)\s+/i,'')[0]||'P').toUpperCase()); const sp=document.createElement('span'); sp.textContent=nm.slice(0,40); a.append(hv,sp); host.appendChild(a); }); }
 let PK_SPARK_OWNER=null;
 async function pkRenderSparks(id,owner){ if(owner!==undefined) PK_SPARK_OWNER=owner; const sec=document.getElementById('psparks'), list=document.getElementById('psplist'), cnt=document.getElementById('pspcount'); if(!sec||!list||!cnt) return; const gen=(sec.__gen=(sec.__gen||0)+1);
-  sec.hidden=true; list.innerHTML=''; cnt.textContent=''; { const old=document.getElementById('pksparkbox'); if(old) old.remove(); } if(!id) return;
+  sec.hidden=true; list.innerHTML=''; cnt.textContent=''; { const old=document.getElementById('pksparkbox'); if(old) old.remove(); } if(!id){ pkRenderRating(null); return; }
   const [{data:rows},{data:visits},{data:score},{data:{session}}]=await Promise.all([SB.from('twingrid_sparks_public').select('id,from_account,from_grid,kind,reaction,note,rating,created_at').eq('grid_id',id).order('created_at',{ascending:false}).limit(24), SB.rpc('twingrid_visit_count',{p_grid:id}), SB.rpc('twingrid_spark_score',{p_grid:id}), SB.auth.getSession()]);
   if(gen!==sec.__gen) return; const items=rows||[]; const v=Number(visits)||0; const sc=Array.isArray(score)?score:[];
   let byId={}, byGrid={}; try{ const ids=[...new Set(items.map(r=>r.from_account).filter(Boolean))]; if(ids.length){ const {data:accs}=await SB.from('twingrid_accounts').select('id,handle').in('id',ids); byId=Object.fromEntries((accs||[]).map(a=>[a.id,a.handle])); }
     const gids=[...new Set(items.map(r=>r.from_grid).filter(Boolean))]; if(gids.length){ const {data:gs}=await SB.from('twingrid_grids_public').select('id,name').in('id',gids); byGrid=Object.fromEntries((gs||[]).map(x=>[x.id,x.name])); } }catch(_){}
   if(gen!==sec.__gen) return;
-  const hl=sc.find(x=>x.lane==='human'), pl=sc.find(x=>x.lane==='persona');
-  const scoreText=[hl?(hl.avg_rating+' of 5 from '+hl.n+(hl.n===1?' person':' people')):'', pl?(pl.avg_rating+' of 5 from '+pl.n+(pl.n===1?' persona':' personas')):''].filter(Boolean).join(' · ');
-  const parts=[scoreText, v?(v+(v===1?' visit':' visits')):'', items.length?(items.length+(items.length===1?' Spark left in public':' Sparks left in public')):''].filter(Boolean);
-  cnt.textContent=parts.length?parts.join(' · '):'No Sparks yet. Be the first.';
+  pkRenderRating(sc);
+  const parts=[v?(v+(v===1?' visit':' visits')):'', items.length?(items.length+(items.length===1?' Spark left in public':' Sparks left in public')):''].filter(Boolean);
+  cnt.textContent=parts.length?parts.join(' · '):'Nothing here yet. Be the first.';
   items.forEach(r=>{ const it=document.createElement('span'); it.className='spitem'; const who=document.createElement('span'); who.className='spwho'; const h=byId[r.from_account];
     if(r.from_grid){ const a=document.createElement('a'); a.href='?t='+encodeURIComponent(r.from_grid); a.textContent='persona '+String(byGrid[r.from_grid]||'(private now)').slice(0,60); who.appendChild(a); }
     else if(h){ const a=document.createElement('a'); a.href='?u='+encodeURIComponent(h); a.textContent='@'+h; who.appendChild(a); } else who.textContent='a visitor';

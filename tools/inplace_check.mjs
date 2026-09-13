@@ -172,4 +172,31 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(h.indexOf('#profile .pavatar:has(img)')>=0,'the portrait gets real size when there is one');
 }
 
+// The persona page as the profile (v21, 2026-09-13). The rating line is a pure function of the SQL aggregate's rows, lifted and fed
+// every shape it can meet; the section order and the hero's two controls are read from the markup, because the whole point of the
+// round is where things sit, and a renderer that works in the wrong place is the bug being fixed.
+{
+  let rsrc=null; try{ rsrc=cut('function pkRatingText(score)',"none:false}; }"); }catch(_){}
+  ok(!!rsrc,'pkRatingText exists');
+  if(rsrc){
+    const {pkRatingText}=new Function(rsrc+'\nreturn {pkRatingText};')();
+    const none=pkRatingText([]); ok(none.none===true&&none.main==='No sparks yet','no rows reads No sparks yet');
+    const hu=pkRatingText([{lane:'human',avg_rating:4.6,n:12}]); ok(hu.main==='4.6 of 5 · 12 sparks'&&hu.sub===''&&!hu.none,'humans lead: '+hu.main);
+    const both=pkRatingText([{lane:'persona',avg_rating:4,n:3},{lane:'human',avg_rating:'4.5',n:1}]); ok(both.main==='4.5 of 5 · 1 spark','one spark, one decimal, a string survives: '+both.main); ok(both.sub==='personas say 4.0 of 5 (3)','personas follow: '+both.sub);
+    const p=pkRatingText([{lane:'persona',avg_rating:3.2,n:2}]); ok(p.main==='Personas say 3.2 of 5 (2)'&&!p.none,'personas alone lead, capitalised: '+p.main);
+    ok(pkRatingText(null).none===true&&pkRatingText([{lane:'human'}]).main==='0.0 of 5 · 0 sparks','a bad shape never throws');
+  }
+  const at=s=>{ const i=h.indexOf(s); ok(i>0,'markup has '+s); return i; };
+  const hero=h.indexOf('<div class="phero">'), body=h.indexOf('<div class="wrap pkcol">');
+  ok(hero>0&&body>hero,'the hero precedes the column');
+  const rating=at('id="pkrating"'), kinbtn=at('id="pkkinbtn"'), talk=at('id="ptalk"'), cover=at('id="pkcover"');
+  ok(rating>hero&&rating<body&&kinbtn>hero&&kinbtn<body&&talk>hero&&talk<body&&cover>hero&&cover<body,'the cover, the rating and both buttons sit in the hero');
+  const order=['id="phouse"','id="psparks"','id="pkkindred"','id="plately"','id="pkhandbookh"','id="pfacets"'].map(at);
+  ok(order.every((v,i)=>i===0||v>order[i-1]),'Home, Guestbook, Kindred, Lately, the handbook, the cards: in that order');
+  ok(/<h2 id="psparksh">Guestbook<\/h2>/.test(h),'the Sparks section is the Guestbook');
+  const sp=h.indexOf('async function pkRenderSparks('), spE=sp>0?h.indexOf('\n',h.indexOf('sec.hidden=false; }',sp)):-1;
+  ok(sp>0&&spE>sp&&/sec\.insertBefore\(box,list\)/.test(h.slice(sp,spE)),'the Spark box is inserted before the list, never after it');
+  ok(/#profile \.pkcol\{/.test(h)&&/#profile \.pkcover\{/.test(h),'the column and the cover are styled inside #profile only');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
