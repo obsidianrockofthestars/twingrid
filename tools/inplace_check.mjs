@@ -304,6 +304,12 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(kin>0&&/pkkinbtn.*hidden=isOwner\|\|!!kinPair/.test(h.slice(kin,kinE).replace(/\n/g,' ')),'Request Kindred is hidden for the owner and for a viewer already Kindred');
   ok(/s\.querySelector\('#pkin select'\)/.test(h)&&!/'#pkin select,#pkin button'/.test(h),'the hero button never focuses the paid Have them talk control');
   ok(/pkkindred'\)\.hidden=true/.test(h)&&/pkhandbook'\)\.hidden=true/.test(h),'a not-found persona hides the Kindred and handbook sections');
+  // First-run routing (v22.1): the hero primary button takes a new person straight into the
+  // questionnaire, not to a signed-in dead end. Both "Build your persona free" CTAs carry data-path.
+  const bpf=(h.match(/<button[^>]*>Build your persona free<\/button>/g)||[]);
+  ok(bpf.length===2,'two Build your persona free CTAs found ('+bpf.length+')');
+  ok(bpf.every(b=>/data-path="questions"/.test(b)),'the hero CTA routes into the questionnaire, not a dead end');
+  ok(bpf.every(b=>!/data-auth/.test(b)),'the hero CTA is not a bare auth control');
 }
 
 
