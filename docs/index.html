@@ -758,6 +758,20 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .acplan{margin:6px 0 22px;padding:14px 16px;border:1px solid var(--line-w);border-radius:14px;background:var(--paper-2)}
 #account .acplan .acrow{margin-top:8px}
 #account .acplan .note{margin:0;color:var(--ink-soft)}
+#account .pkacset{list-style:none;margin:10px 0 0;padding:0}
+#account .pkacset>li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:12px 0;border-top:1px solid var(--line-w)}
+#account .pkacl{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:2px}
+#account .pkacl b{font-size:15px;color:var(--ink)}
+#account .pkacl span{font-size:13.5px;color:var(--ink-soft)}
+#account .pkacform{flex:1 1 100%;display:flex;flex-direction:column;gap:6px;max-width:420px}
+#account .pkacform[hidden]{display:none}
+#account .pkacform input{min-height:40px;padding:8px 10px;border:1px solid var(--line-w);border-radius:10px;font:inherit;background:var(--paper);color:var(--ink)}
+#account .pkacset .btn{min-height:40px}
+#account .btn.solid.pkdanger{background:#B42318;border-color:#B42318;color:#fff}
+#account .btn.solid.pkdanger:hover{background:#912018}
+#account .btn.solid.pkdanger:disabled{opacity:.55;cursor:not-allowed}
+#account .pkacchk{display:flex;align-items:center;gap:8px;min-height:24px;cursor:pointer}
+#account .pkacchk[hidden]{display:none}
 #account .pkaglist{margin:10px 0 14px;padding-left:20px;color:var(--ink-soft);font-size:13px;line-height:1.6}
 #account .pkaglist li{margin:4px 0}
 #account .pkaginput{font:inherit;font-size:15px;min-height:24px;padding:9px 12px;border:1px solid var(--ink-dim);border-radius:10px;background:var(--card-w);color:var(--ink);flex:1 1 200px;max-width:280px}
@@ -1764,11 +1778,22 @@ body.route-profile #helpbtn{left:16px;right:auto}
         </form>
       </div>
     </div>
-    <section class="acplan" id="acplan" hidden aria-label="Your account">
-      <div class="pk-kicker" style="text-align:left">Your account</div>
+    <section class="acplan" id="acplan" hidden aria-label="Account settings">
+      <div class="pk-kicker" style="text-align:left">Account settings</div>
       <div class="acrow"><span class="note" id="acemail"></span></div>
-      <div class="acrow"><span class="note" id="acplanline">Reading your plan...</span></div>
-      <div class="acrow"><button class="btn solid" type="button" id="acplanbtn">Plan and renew</button><a class="btn" id="acmanage" href="#" target="_blank" rel="noopener noreferrer" hidden>Manage subscription</a><button class="btn" type="button" id="acsignout">Sign out</button></div>
+      <ul class="pkacset">
+        <li><div class="pkacl"><b>Change password</b><span>Pick a new password for signing in with your email.</span></div><button class="btn" type="button" data-pkac="pw" aria-expanded="false">Change password</button>
+          <form class="pkacform" id="pkacpw" hidden><label class="note" for="pkacpw1">New password, at least 8 characters</label><input id="pkacpw1" type="password" minlength="8" autocomplete="new-password"><label class="note" for="pkacpw2">Type it again</label><input id="pkacpw2" type="password" minlength="8" autocomplete="new-password"><div class="acrow"><button class="btn solid" type="submit">Save new password</button><span class="acmsg" role="status"></span></div></form></li>
+        <li><div class="pkacl"><b>Change email</b><span>We send a link to the new address. Your email changes when you click it.</span></div><button class="btn" type="button" data-pkac="em" aria-expanded="false">Change email</button>
+          <form class="pkacform" id="pkacem" hidden><label class="note" for="pkacem1">New email</label><input id="pkacem1" type="email" autocomplete="email"><div class="acrow"><button class="btn solid" type="submit">Send the link</button><span class="acmsg" role="status"></span></div></form></li>
+        <li><div class="pkacl"><b>Manage subscription</b><span id="acplanline">Reading your plan...</span><span>Cancel any time from Manage or cancel, or email support@personakind.com.</span></div><div class="acrow" style="margin:0"><button class="btn" type="button" id="acplanbtn">See plans</button><a class="btn" id="acmanage" href="#" target="_blank" rel="noopener noreferrer" hidden>Manage or cancel</a></div></li>
+        <li><div class="pkacl"><b>Sign out everywhere</b><span>Ends your session on every phone, tablet and computer, this one too.</span></div><button class="btn" type="button" data-pkac="all" aria-expanded="false">Sign out everywhere</button>
+          <div class="pkacform" id="pkacall" hidden><div class="acrow"><button class="btn solid" type="button" id="pkacallyes">Yes, sign out everywhere</button><span class="acmsg" role="status"></span></div></div></li>
+        <li><div class="pkacl"><b>Download my data</b><span>Saves your account and every persona you own as a file.</span></div><button class="btn" type="button" id="pkacdl">Download my data</button><span class="acmsg" id="pkacdlmsg" role="status"></span></li>
+        <li><div class="pkacl"><b>Delete account</b><span>Permanently deletes your account and everything in it. This cannot be undone.</span></div><button class="btn" type="button" id="pkacdel" aria-expanded="false">Delete account</button>
+          <div class="pkacform" id="pkacdelbox" hidden><p class="note" id="pkacdeltext" role="status"></p><label class="note pkacchk" id="pkacdelplanrow" hidden><input type="checkbox" id="pkacdelplan"> I have cancelled my plan, or I accept it may still renew</label><label class="note" for="pkacdelin">Type DELETE to confirm</label><input id="pkacdelin" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"><div class="acrow"><button class="btn solid pkdanger" type="button" id="pkacdelgo" disabled>Delete my account forever</button><span class="acmsg" role="status"></span></div></div></li>
+      </ul>
+      <div class="acrow"><button class="btn" type="button" id="acsignout">Sign out on this device</button></div>
       <div class="acrow" style="margin-top:10px"><label class="note" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:24px"><input type="checkbox" id="acbiz" style="width:16px;height:16px;margin:0"> This is a business account (it can claim a Place)</label><span class="note" id="acbizmsg" role="status"></span></div>
       <p class="note" style="margin-top:10px">Only you see this box. Your public page starts below it.</p>
     </section>
@@ -2410,7 +2435,7 @@ function homeHandleUi(owner,myHandle){
       return; }
     __handleCache[owner]=h; msg.textContent='Done. @'+h+' is yours.'; syncAcctNav(); setTimeout(()=>renderHome(),600); };
 }
-document.getElementById('hsignout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
+document.getElementById('hsignout').onclick=async()=>{ await SB.auth.signOut({scope:'local'}); location.href=location.origin+location.pathname; };
 document.querySelectorAll('[data-hpath]').forEach(b=>b.addEventListener('click',()=>{ try{ sessionStorage.setItem('pk_pending_path',b.dataset.hpath); }catch(_){} location.href=location.origin+location.pathname+'?editor'; }));
 async function renderMod(){
   const list=document.getElementById('mlist'), tabs=document.getElementById('mtabs'), lede=document.getElementById('mlede');
@@ -2477,7 +2502,7 @@ const __handleCache={};
 // where the claim card lives, when there is no handle yet); [data-home] shows when signed in; [data-anon] hides then.
 async function syncAcctNav(){ let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session?session.user.id:null; }catch(_){}
   const h=uid?await handleFor(uid):null;
-  document.querySelectorAll('[data-acct]').forEach(a=>{ a.hidden=!uid; a.textContent='Account'; a.href=h?('?u='+encodeURIComponent(h)):'?'; a.title=h?'Your page: name, bio, public personas':'Claim your handle on Home'; });
+  document.querySelectorAll('[data-acct]').forEach(a=>{ a.hidden=!uid; a.textContent='Account'; a.href=h?('?u='+encodeURIComponent(h)):'?account'; a.title=h?'Your page and account settings':'Account settings'; });
   document.querySelectorAll('[data-home]').forEach(a=>{ a.hidden=!uid; });
   document.querySelectorAll('[data-anon]').forEach(b=>{ b.hidden=!!uid; }); }
 async function handleFor(uid){ if(!uid) return null; if(uid in __handleCache) return __handleCache[uid];
@@ -2619,6 +2644,7 @@ function route(){ const rm=onRoomRoute();
   if(acct){ const pn=accountPersonaParam(); app.style.display='none';
     if(pn){ document.body.className='marketing route-profile'; resolveHandlePersona(acct,pn).then(r=>{ if(r.id) renderProfile(r.id,{handle:acct}); else renderProfile('00000000-0000-0000-0000-000000000000',{handle:acct,missingName:pn}); }); return; }
     document.body.className='marketing route-account'; renderAccount(acct); return; }
+  if(new URLSearchParams(location.search).has('account')){ document.body.className='marketing route-account'; app.style.display='none'; renderSettings(); return; }
   if(onLifeRoute()){ document.body.className='marketing route-life'; app.style.display='none'; renderLife(); return; }
   if(onPlacesRoute()){ document.body.className='marketing route-places'; app.style.display='none'; renderPlaces(); return; }
   if(onExploreRoute()){ document.body.className='marketing route-explore'; app.style.display='none'; renderExplore(); return; }
@@ -2700,7 +2726,7 @@ document.getElementById('pkauthswap').onclick=()=>{ pkAuthSet(pkAuthMode==='sign
 ['email','password'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); pkAuthGo(); } }));
 document.querySelectorAll('[data-auth]').forEach(b=>b.addEventListener('click',()=>{ document.getElementById('password').value=''; }));
 document.getElementById('resend').onclick=()=>{ authCard.classList.remove('done'); document.getElementById('email').focus(); };
-document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
+document.getElementById('signout').onclick=async()=>{ await SB.auth.signOut({scope:'local'}); location.href=location.origin+location.pathname; };
 function termsBar(session){ const bar=document.getElementById('termsbar'); if(!bar) return; const u=session&&session.user; const md=(u&&u.user_metadata)||{};
   bar.hidden = !(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')!==TERMS_VERSION); }
 document.getElementById('termsagree').onclick=async()=>{ try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} document.getElementById('termsbar').hidden=true;
@@ -3979,13 +4005,82 @@ function pkagRender(session){
       'Add "create": true to make a new hat. It always starts Private.'; }
   paint(); paintLog();
 }
+// Account settings (2026-09-14, Dylan: "Let's not hide it, it should be easy to do all of that"). Each row opens its own form in place.
+// Plain Sign out is this device only; Sign out everywhere is the one place the global scope is used.
+function pkAccountSettings(session){
+  const say=(el,t)=>{ const m=el&&el.querySelector('.acmsg'); if(m) m.textContent=t; };
+  document.querySelectorAll('[data-pkac]').forEach(b=>{ b.onclick=()=>{ const f=document.getElementById('pkac'+b.dataset.pkac); if(!f) return; f.hidden=!f.hidden; b.setAttribute('aria-expanded',String(!f.hidden)); if(!f.hidden){ const i=f.querySelector('input,button.solid'); if(i) i.focus(); } }; });
+  const stale=async()=>{ const {data:{session:s}}=await SB.auth.getSession(); if(s) return false; openAuth(); pkAuthSet('signin'); return true; };
+  const pw=document.getElementById('pkacpw');
+  pw.onsubmit=async(e)=>{ e.preventDefault(); const a=document.getElementById('pkacpw1').value, b=document.getElementById('pkacpw2').value;
+    if(a.length<8){ say(pw,'Your password needs at least 8 characters.'); return; } if(a!==b){ say(pw,'The two passwords do not match.'); return; }
+    if(await stale()) return; say(pw,'Saving...');
+    const {error}=await SB.auth.updateUser({password:a});
+    if(error){ if(/session|jwt|expired|reauth/i.test(error.message||'')){ say(pw,'Please sign in again, then change it.'); openAuth(); pkAuthSet('signin'); return; } say(pw,String(error.message||'Could not change the password.').slice(0,160)); return; }
+    pw.reset(); say(pw,'Password changed. Use the new one next time you sign in.'); };
+  const em=document.getElementById('pkacem');
+  em.onsubmit=async(e)=>{ e.preventDefault(); const v=document.getElementById('pkacem1').value.trim();
+    if(!pkEmailOk(v)){ say(em,'Please enter a valid email address.'); return; } if(session&&session.user&&v.toLowerCase()===String(session.user.email||'').toLowerCase()){ say(em,'That is already your email.'); return; }
+    if(await stale()) return; say(em,'Sending...');
+    const {error}=await SB.auth.updateUser({email:v},{emailRedirectTo:authReturn()});
+    if(error){ say(em,String(error.message||'Could not change the email.').slice(0,160)); return; }
+    em.reset(); say(em,'Check '+v+' for a link. Your email changes when you click it.'); };
+  document.getElementById('pkacallyes').onclick=async()=>{ const box=document.getElementById('pkacall'); say(box,'Signing out everywhere...'); const {error}=await SB.auth.signOut({scope:'global'}); if(error){ say(box,'Could not sign out everywhere. Try again.'); return; } location.href=location.origin+location.pathname; };
+  document.getElementById('pkacdl').onclick=pkDownloadData;
+}
+// Download my data: the signed-in user's own rows only. Every read filters on their id and RLS stands behind the filter;
+// the operator's act-as id is deliberately not used, so an export is never someone else's account.
+async function pkDownloadData(){ const msg=document.getElementById('pkacdlmsg'); const {data:{session}}=await SB.auth.getSession(); if(!session){ openAuth(); pkAuthSet('signin'); return; }
+  msg.textContent='Gathering...'; const me=session.user.id;
+  const out={exported_at:new Date().toISOString(),email:session.user.email||null,user_id:me};
+  const reads=[['account',SB.from('twingrid_accounts').select('id,handle,display_name,bio,avatar_theme,avatar_image_url,voice_id,kind,adult_confirmed_at,created_at,updated_at').eq('id',me)],
+    ['personas',SB.from('twingrid_grids').select('id,name,data,is_public,image_url,voice_id,created_at,updated_at').eq('owner',me)],
+    ['guestbook',SB.from('twingrid_sparks').select('id,grid_id,kind,reaction,rating,note,is_public,created_at').eq('owner',me)],
+    ['rules',SB.from('twingrid_rules').select('*').eq('owner',me)],
+    ['life_log',SB.from('twingrid_actions').select('*').eq('owner',me)],
+    ['proposals',SB.from('twingrid_proposals').select('*').eq('owner',me)],
+    ['places',SB.from('twingrid_places').select('*').eq('owner',me)]];
+  for(const [k,q] of reads){ try{ const {data,error}=await q; out[k]=error?{error:'could not read'}:data; }catch(_){ out[k]={error:'could not read'}; } }
+  const n=Array.isArray(out.personas)?out.personas.length:0;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:'application/json'})); a.download='personakind-my-data-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  msg.textContent='Saved '+n+' persona'+(n===1?'':'s')+' to your downloads.'; }
+// ?account (2026-09-14): settings for a signed-in member with no handle yet, so Account is never a dead end.
+async function renderSettings(){ const {data:{session}}=await SB.auth.getSession();
+  if(!session){ location.replace(location.origin+location.pathname); return; }
+  const h=await handleFor(session.user.id); if(h){ window.history.replaceState(null,'','?u='+encodeURIComponent(h)); renderAccount(h); return; }
+  document.title='Account settings · Personakind'; document.getElementById('acname').textContent='Your account'; document.getElementById('achandle').textContent='No handle yet. Claim one on Home to get a public page.';
+  document.getElementById('acgrid').innerHTML=''; document.getElementById('acfoot').textContent=''; document.getElementById('aceditbtn').hidden=true; document.getElementById('acsharebtn').hidden=true;
+  accountPanel(session); }
+// Delete account (2026-09-14): two steps. Step one asks the Worker what would go and names it; step two needs DELETE typed, and the
+// plan box ticked only when a plan is active and that box is on screen. The Worker deletes the caller's own account, read off the JWT.
+function pkAccountDelete(){
+  const btn=document.getElementById('pkacdel'), box=document.getElementById('pkacdelbox'), text=document.getElementById('pkacdeltext'), inp=document.getElementById('pkacdelin'), go=document.getElementById('pkacdelgo'), planRow=document.getElementById('pkacdelplanrow'), plan=document.getElementById('pkacdelplan'), msg=box.querySelector('.acmsg');
+  const ready=()=>{ go.disabled=!(inp.value.trim()==='DELETE'&&(planRow.hidden||plan.checked)); };
+  inp.oninput=ready; plan.onchange=ready;
+  const call=async(body)=>{ const token=await hostedToken(); if(!token){ openAuth(); pkAuthSet('signin'); return null; } try{ const r=await fetch(HOSTED_API+'/account/delete',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)}); let j={}; try{ j=await r.json(); }catch(_){} return {status:r.status,j:j||{}}; }catch(_){ return {status:0,j:{}}; } };
+  const many=(k,w)=>(Number(k)||0)+' '+w+((Number(k)||0)===1?'':'s');
+  btn.onclick=async()=>{ box.hidden=!box.hidden; btn.setAttribute('aria-expanded',String(!box.hidden)); if(box.hidden) return;
+    inp.value=''; inp.disabled=false; plan.checked=false; planRow.hidden=true; msg.textContent=''; ready(); text.textContent='Checking what your account holds...';
+    const res=await call({dry_run:true}); if(!res) return; const s=res.j.summary||{};
+    if(res.j.error==='contact_support'){ text.textContent='This is an official Personakind account, so support deletes it. Email support@personakind.com from this address.'; inp.disabled=true; ready(); return; }
+    if(res.status!==200){ text.textContent='Could not check your account right now. Try again in a moment.'; return; }
+    text.textContent='This permanently deletes your account, '+many(s.personas,'persona')+' ('+(Number(s.published)||0)+' published), your guestbook of '+many(s.guestbook,'spark')+', '+many(s.images,'image')+', '+many(s.kindred,'Kindred connection')+' and '+many(s.sparks_given,'spark')+' you left for others'+((Number(s.designs)||0)?', and '+many(s.designs,'print design'):'')+'. Payment records stay for tax purposes, without your name or contact details. It cannot be undone.';
+    if(s.plan_active){ planRow.hidden=false; text.textContent+=' You have an active hosted plan: cancel it first under Manage subscription, or it may still renew.'; }
+    ready(); inp.focus(); };
+  go.onclick=async()=>{ if(go.disabled) return; go.disabled=true; msg.textContent='Deleting...';
+    const res=await call({confirm:'DELETE',ack_plan:!planRow.hidden&&plan.checked}); if(!res){ ready(); return; }
+    if(res.status===200&&res.j.deleted){ try{ await SB.auth.signOut({scope:'local'}); }catch(_){} location.href=location.origin+location.pathname+'?deleted=1'; return; }
+    msg.textContent=res.j.error==='contact_support'?'Support needs to delete this one. Email support@personakind.com.':res.j.error==='rate_limited'?'Too many tries. Wait an hour and try again.':'Nothing was deleted. Try again in a moment.'; ready(); };
+}
 // Account home (Dylan, 2026-09-06): on your own @handle page, signed in, one box with email, plan, renew, manage, sign out.
 function accountPanel(session){ const box=document.getElementById('acplan'); box.hidden=false;
   const email=session&&session.user&&session.user.email; document.getElementById('acemail').textContent=email?('Signed in as '+email):'Signed in';
   const line=document.getElementById('acplanline'); const manage=document.getElementById('acmanage'); manage.hidden=true; manage.href='#';
   refreshCredits().then(()=>{ line.textContent=document.getElementById('planline').textContent||'No hosted plan yet.'; }).catch(()=>{ line.textContent='Could not read your plan right now.'; });
   document.getElementById('acplanbtn').onclick=async()=>{ await refreshCredits(); showProCard(); };
-  document.getElementById('acsignout').onclick=async()=>{ await SB.auth.signOut(); location.href=location.origin+location.pathname; };
+  document.getElementById('acsignout').onclick=async()=>{ await SB.auth.signOut({scope:'local'}); location.href=location.origin+location.pathname; };
+  pkAccountSettings(session); pkAccountDelete();
   try{ pkBizToggle(session&&session.user?session.user.id:null); }catch(_){}
   try{ pkagRender(session); }catch(_){}
   (async()=>{ try{ const p=await rcInstance(); const info=await p.getCustomerInfo(); const u=info&&info.managementURL; if(u&&/^https:\/\//.test(u)){ manage.href=u; manage.hidden=false; } }catch(_){} })(); }
