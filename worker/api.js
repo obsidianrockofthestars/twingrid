@@ -2167,6 +2167,41 @@ async function handleAgentTokenRevoke(request, env) {
   return json(request, 200, { ok: true, id: row.id, revoked_at: row.revoked_at });
 }
 
+// POST /api/account/delete { dry_run?, confirm: "DELETE", ack_plan? } (2026-09-14). The account is ALWAYS the caller's own, read
+// off their Supabase JWT through GoTrue: no id in the body is read, so there is nothing to point at someone else's account.
+// dry_run returns what would go, in counts, for the page's two-step confirm. Files go first through the Storage API
+// (storage.protect_delete blocks them in SQL), then one transaction deletes the rows and the login; a refusal or a failed
+// file delete touches no row. A print-portal customer, an operator of another account, a moderator or an official account
+// goes to support.
+async function handleAccountDelete(request, env) {
+  const user = await verifyUser(env, bearer(request));
+  if (!user) return json(request, 401, { error: "unauthorized" });
+  if (await rateLimited(env, "acdel:" + user.id, 10, 3600)) return json(request, 429, { error: "rate_limited" });
+  const b = await readJson(request);
+  if (b.error) return json(request, 400, { error: b.error });
+  const body = (b.value && typeof b.value === "object") ? b.value : {};
+  const fp = await rpcService(env, "twingrid_account_footprint", { p_uid: user.id });
+  if (!fp.ok || !fp.value || typeof fp.value !== "object") return json(request, 502, { error: "account_unavailable" });
+  const f = fp.value;
+  const media = (Array.isArray(f.media) ? f.media : []).filter((n) => typeof n === "string" && n.startsWith(user.id + "/") && !n.includes(".."));
+  const n = (v) => Number(v) || 0;
+  const summary = { personas: n(f.personas), published: n(f.published), guestbook: n(f.guestbook), sparks_given: n(f.sparks_given), kindred: n(f.kindred), places: n(f.places), images: media.length, plan_active: f.plan_active === true };
+  if (f.other_app === true || n(f.operates) > 0 || f.moderator === true || f.official === true || media.length > 1000) return json(request, 409, { error: "contact_support", summary });
+  if (body.dry_run === true) return json(request, 200, { summary });
+  if (body.confirm !== "DELETE") return json(request, 400, { error: "confirm_required", summary });
+  if (summary.plan_active && body.ack_plan !== true) return json(request, 409, { error: "plan_active", summary });
+  if (media.length) {
+    let res;
+    try {
+      res = await fetch(sbUrl(env, "/storage/v1/object/twingrid-media"), { method: "DELETE", headers: serviceHeaders(env, { "Content-Type": "application/json" }), body: JSON.stringify({ prefixes: media }) });
+    } catch (_) { return json(request, 502, { error: "media_delete_failed" }); }
+    if (!res.ok) return json(request, 502, { error: "media_delete_failed" });
+  }
+  const del = await rpcService(env, "twingrid_delete_account", { p_uid: user.id });
+  if (!del.ok) return json(request, 502, { error: "delete_failed" });
+  return json(request, 200, { deleted: true, summary });
+}
+
 export async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, "") || "/";
@@ -2197,7 +2232,8 @@ export async function handleApi(request, env) {
     if (path === "/api/agent/token/revoke" && method === "POST") return await handleAgentTokenRevoke(request, env);
     if (path === "/api/agent/answers" && method === "POST") return await handleAgentAnswers(request, env);
     if (path === "/api/agent/cells" && method === "POST") return await handleAgentCells(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/autopilot/health" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn" || path === "/api/agent/token" || path === "/api/agent/token/revoke" || path === "/api/agent/answers" || path === "/api/agent/cells") {
+    if (path === "/api/account/delete" && method === "POST") return await handleAccountDelete(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/autopilot/health" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn" || path === "/api/agent/token" || path === "/api/agent/token/revoke" || path === "/api/agent/answers" || path === "/api/agent/cells" || path === "/api/account/delete") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });
