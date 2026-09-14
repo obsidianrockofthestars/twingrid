@@ -956,6 +956,10 @@ export async function handleMcp(request, env) {
   if (isBatch && messages.length === 0) {
     return jsonResponse(rpcError(null, -32600, "Invalid Request: empty batch"), 400);
   }
+  // One anonymous POST must not fan out to hundreds of database reads (review finding 9, 2026-09-13).
+  if (isBatch && messages.length > 16) {
+    return jsonResponse(rpcError(null, -32600, "Invalid Request: batch over 16 messages"), 400);
+  }
 
   const responses = [];
   for (const msg of messages) {

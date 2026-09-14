@@ -479,10 +479,15 @@ function validateChatBody(b) {
 // Optional light rate limit (KV). Skipped when RATE_KV is not bound.
 // ---------------------------------------------------------------------------
 
+// The atomic counter first (twingrid_rate_hit, one upsert per hit, service role only): a KV read then put has no
+// compare-and-swap, so a parallel burst all read the same count and all passed (review finding 6, 2026-09-13). The KV
+// path stays as the fallback when the database cannot answer. Still off when RATE_KV is not bound.
 async function rateLimited(env, key, limit, windowSec) {
   if (!env.RATE_KV || typeof env.RATE_KV.get !== "function") return false;
+  const bucket = Math.floor(Date.now() / (windowSec * 1000));
+  const hit = await rpcService(env, "twingrid_rate_hit", { p_key: key, p_limit: limit, p_bucket: bucket });
+  if (hit.ok && typeof hit.value === "boolean") return hit.value;
   try {
-    const bucket = Math.floor(Date.now() / (windowSec * 1000));
     const k = "rl:" + key + ":" + bucket;
     const cur = Number((await env.RATE_KV.get(k)) || 0);
     if (cur >= limit) return true;
@@ -1173,7 +1178,7 @@ export async function runAutopilotTick(env, now) {
       rule_ref: "rules:" + r.mode + ":" + String(hour).padStart(2, "0") + "z", body: {},
     }, extra || {}));
     try {
-      const todays = await serviceGet(env, "/rest/v1/twingrid_actions?select=created_at,status&grid_id=eq." + encodeURIComponent(r.grid_id) + "&created_at=gte." + encodeURIComponent(dayStart) + "&limit=50");
+      const todays = await serviceGet(env, "/rest/v1/twingrid_actions?select=kind,created_at,status&grid_id=eq." + encodeURIComponent(r.grid_id) + "&created_at=gte." + encodeURIComponent(dayStart) + "&order=created_at.desc&limit=200"); // kind is read below (review finding 7)
       if (!todays) { err("actions_unavailable"); continue; }
       if (!todays.some((a) => a && a.kind === "invite")) { try { if (await proposeInvite(env, r, hour)) receipt.proposed++; } catch (_) { err("invite_error"); } }
       if (!todays.some((a) => a && a.kind === "visit")) { try { if (await proposeVisit(env, r, hour, t, err)) receipt.proposed++; } catch (_) { err("visit_error"); } }
@@ -1213,6 +1218,8 @@ export async function runAutopilotTick(env, now) {
   // Sparks retention (M5): a conversation a visitor chose to leave is kept 90 days, then deleted. Reactions and notes stay until the owner deletes them.
   const cutoff = new Date(t.getTime() - SPARK_CONVERSATION_DAYS * 86400000).toISOString();
   if (!(await serviceDelete(env, "/rest/v1/twingrid_sparks?kind=eq.conversation&created_at=lt." + encodeURIComponent(cutoff)))) err("spark_sweep_failed");
+  // Limiter rows (review finding 6): the longest window is a day, so a row untouched for two days is dead.
+  if (!(await serviceDelete(env, "/rest/v1/twingrid_rate?updated_at=lt." + encodeURIComponent(new Date(t.getTime() - 2 * 86400000).toISOString())))) err("rate_sweep_failed");
   await finish("finished");
   return receipt;
   } catch (e) {
@@ -1758,12 +1765,13 @@ async function handleLearn(request, env) {
 // Log two short fields, never the whole report (it can carry the page URL with a query string).
 async function handleCspReport(request) {
   let d = null, b = null;
-  try {
-    const j = await request.json();
+  const p = await readJson(request); // the 256 KB cap every other route has (review finding 8); anything refused is still a 204
+  if (!p.error) {
+    const j = p.value;
     const r = (j && (j["csp-report"] || (Array.isArray(j) && j[0] && j[0].body) || j)) || {};
     d = String(r["violated-directive"] || r.effectiveDirective || r["effective-directive"] || "").slice(0, 60);
     b = String(r["blocked-uri"] || r.blockedURL || "").slice(0, 120);
-  } catch (_) {}
+  }
   console.log("csp_report " + JSON.stringify({ d, b }));
   return new Response(null, { status: 204 });
 }
