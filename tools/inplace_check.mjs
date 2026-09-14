@@ -465,4 +465,12 @@ ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesE
   ok(eEl.className==='msg a','outside the Room an assistant message is a plain bubble, no face row');
 }
 
+// Share link uses the pretty path (v22): a persona with a handle shares /@handle/Persona, which the Worker cards.
+{
+  const src=cut('function shareUrlFor(id,name,handle)','encodeURIComponent(id); }');
+  const {shareUrlFor}=new Function('location',src+' return {shareUrlFor};')({origin:'https://personakind.com',pathname:'/'});
+  ok(shareUrlFor("gid","The Coach","coach")==="https://personakind.com/@coach/The%20Coach","a persona with a handle shares the pretty path: "+shareUrlFor("gid","The Coach","coach"));
+  ok(shareUrlFor("gid","Nameless","")==="https://personakind.com/?t=gid","no handle falls back to the uuid form: "+shareUrlFor("gid","Nameless",""));
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
