@@ -312,6 +312,23 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(bpf.every(b=>!/data-auth/.test(b)),'the hero CTA is not a bare auth control');
 }
 
+// Explore rating as sparks (v22.4): five glyphs filled to the average, "Be the first" at zero, never a flat dead label.
+{
+  const src=cut('function exSparkRow(el,score)','  el.appendChild(lab);')+'}';
+  const doc={createElement:()=>({className:'',textContent:''})};
+  const {exSparkRow}=new Function('document',src+' return {exSparkRow};')(doc);
+  const mkEl=()=>{ const o={kids:[],cls:new Set()}; o.appendChild=n=>o.kids.push(n); o.classList={add:c=>o.cls.add(c)}; return o; };
+  const z=mkEl(); exSparkRow(z,[]);
+  ok(z.kids.length===6,'zero rating renders five sparks and a label ('+z.kids.length+')');
+  ok(z.kids.slice(0,5).every(g=>g.className.includes('off')),'all five sparks dim at zero');
+  ok(z.kids[5].textContent==='Be the first','zero rating invites, not a flat dead label: '+JSON.stringify(z.kids[5].textContent));
+  ok(z.cls.has('exnone'),'zero rating marks the row exnone');
+  const r=mkEl(); exSparkRow(r,[{lane:'human',avg_rating:4.2,n:3}]);
+  ok(r.kids.slice(0,4).every(g=>!g.className.includes('off'))&&r.kids[4].className.includes('off'),'4.2 fills four sparks and dims one');
+  ok(r.kids[5].textContent==='4.2 · 3 sparks','the label carries the average and count: '+JSON.stringify(r.kids[5].textContent));
+  ok(!r.cls.has('exnone'),'a rated row is not exnone');
+}
+
 
 // ============================================================
 // The review's eighteen (2026-09-13 page-sweep). Every visitor-facing string in plain words, every
