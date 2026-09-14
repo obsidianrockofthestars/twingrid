@@ -500,4 +500,38 @@ ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesE
   await els.pkacallyes.onclick(); ok(calls.length===3&&calls[2][0]==='signOut'&&calls[2][1].scope==='global','Sign out everywhere uses the global scope');
 }
 
+// Delete account (2026-09-14). Step one names what goes from the Worker's own counts; the button stays off until DELETE is typed;
+// the plan box is demanded only when a plan is active AND the box is on screen (Rendered-Control, both directions); a shared
+// login is sent to support with the input off; the confirm body carries no account id at all.
+{
+  const box=cut('<section class="acplan" id="acplan"','</section>'); ok(box.includes('<b>Delete account</b>'),'settings row labelled in words: Delete account');
+  ok(h.includes('#account .btn.solid.pkdanger{background:#B42318'),'the delete button out-specifies #account .btn.solid, so it renders red, not violet');
+  const dsrc=cut('function pkAccountDelete()',"'Nothing was deleted. Try again in a moment.'; ready(); };\n}");
+  const els={}; const mk=(id)=>els[id]||(els[id]={id,hidden:false,disabled:false,checked:false,value:'',textContent:'',setAttribute(){},focus(){},querySelector(sel){ return sel==='.acmsg'?mk(id+':msg'):null; }});
+  let reply=null; const sent=[]; let signedOut=null;
+  const fetchStub=async(url,init)=>{ sent.push({url,body:JSON.parse(init.body),auth:init.headers.Authorization}); return {status:reply.status,json:async()=>reply.j}; };
+  const loc={origin:'',pathname:'/',href:''};
+  const make=()=>new Function('document','fetch','hostedToken','HOSTED_API','openAuth','pkAuthSet','SB','location',dsrc+'\nreturn pkAccountDelete;')({getElementById:mk},fetchStub,async()=>'jwt','/api',()=>{},()=>{},{auth:{signOut:async(x)=>{ signedOut=x; }}},loc);
+  make()();
+  mk('pkacdelbox').hidden=true; reply={status:200,j:{summary:{personas:3,published:1,guestbook:4,images:2,kindred:1,sparks_given:0,designs:2,charges_kept:1,plan_active:false}}};
+  await els.pkacdel.onclick();
+  ok(sent.length===1&&sent[0].body.dry_run===true,'opening the row asks for a dry run first');
+  ok(/3 personas \(1 published\)/.test(els.pkacdeltext.textContent)&&/4 sparks/.test(els.pkacdeltext.textContent)&&/2 images/.test(els.pkacdeltext.textContent),'the confirm names what goes: '+els.pkacdeltext.textContent);
+  ok(/2 print designs/.test(els.pkacdeltext.textContent)&&/Payment records stay for tax purposes, without your name or contact details/.test(els.pkacdeltext.textContent),'the confirm names print designs and says charges stay for tax, nameless: '+els.pkacdeltext.textContent);
+  ok(els.pkacdelplanrow.hidden===true,'no plan, no plan box');
+  ok(els.pkacdelgo.disabled===true,'the delete button is off before DELETE is typed');
+  els.pkacdelin.value='delete'; els.pkacdelin.oninput(); ok(els.pkacdelgo.disabled===true,'lowercase delete does not arm it');
+  els.pkacdelin.value='DELETE'; els.pkacdelin.oninput(); ok(els.pkacdelgo.disabled===false,'DELETE typed arms it when no plan box is on screen');
+  reply={status:200,j:{deleted:true}}; await els.pkacdelgo.onclick();
+  ok(sent.length===2&&Object.keys(sent[1].body).sort().join(',')==='ack_plan,confirm'&&sent[1].body.confirm==='DELETE','the confirm body carries confirm and ack_plan only, never an account id: '+JSON.stringify(sent[1].body));
+  ok(sent[1].auth==='Bearer jwt','the account comes from the caller JWT');
+  ok(signedOut&&signedOut.scope==='local'&&/\?deleted=1$/.test(loc.href),'after delete this device signs out locally and lands on the landing');
+  mk('pkacdelbox').hidden=true; reply={status:200,j:{summary:{personas:1,published:0,guestbook:0,images:0,kindred:0,sparks_given:0,plan_active:true}}};
+  await els.pkacdel.onclick(); ok(els.pkacdelplanrow.hidden===false,'an active plan shows the plan box');
+  els.pkacdelin.value='DELETE'; els.pkacdelin.oninput(); ok(els.pkacdelgo.disabled===true,'with the plan box on screen, DELETE alone does not arm it');
+  els.pkacdelplan.checked=true; els.pkacdelplan.onchange(); ok(els.pkacdelgo.disabled===false,'ticking the plan box arms it');
+  mk('pkacdelbox').hidden=true; reply={status:409,j:{error:'contact_support',summary:{}}};
+  await els.pkacdel.onclick(); ok(els.pkacdelin.disabled===true&&/official/.test(els.pkacdeltext.textContent)&&/support@personakind\.com/.test(els.pkacdeltext.textContent),'only an official account goes to support, with the input off');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);

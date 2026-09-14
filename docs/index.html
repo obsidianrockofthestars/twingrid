@@ -767,6 +767,11 @@ body.route-account{overflow:auto;background:var(--paper)}
 #account .pkacform[hidden]{display:none}
 #account .pkacform input{min-height:40px;padding:8px 10px;border:1px solid var(--line-w);border-radius:10px;font:inherit;background:var(--paper);color:var(--ink)}
 #account .pkacset .btn{min-height:40px}
+#account .btn.solid.pkdanger{background:#B42318;border-color:#B42318;color:#fff}
+#account .btn.solid.pkdanger:hover{background:#912018}
+#account .btn.solid.pkdanger:disabled{opacity:.55;cursor:not-allowed}
+#account .pkacchk{display:flex;align-items:center;gap:8px;min-height:24px;cursor:pointer}
+#account .pkacchk[hidden]{display:none}
 #account .pkaglist{margin:10px 0 14px;padding-left:20px;color:var(--ink-soft);font-size:13px;line-height:1.6}
 #account .pkaglist li{margin:4px 0}
 #account .pkaginput{font:inherit;font-size:15px;min-height:24px;padding:9px 12px;border:1px solid var(--ink-dim);border-radius:10px;background:var(--card-w);color:var(--ink);flex:1 1 200px;max-width:280px}
@@ -1783,6 +1788,8 @@ body.route-profile #helpbtn{left:16px;right:auto}
         <li><div class="pkacl"><b>Sign out everywhere</b><span>Ends your session on every phone, tablet and computer, this one too.</span></div><button class="btn" type="button" data-pkac="all" aria-expanded="false">Sign out everywhere</button>
           <div class="pkacform" id="pkacall" hidden><div class="acrow"><button class="btn solid" type="button" id="pkacallyes">Yes, sign out everywhere</button><span class="acmsg" role="status"></span></div></div></li>
         <li><div class="pkacl"><b>Download my data</b><span>Saves your account and every persona you own as a file.</span></div><button class="btn" type="button" id="pkacdl">Download my data</button><span class="acmsg" id="pkacdlmsg" role="status"></span></li>
+        <li><div class="pkacl"><b>Delete account</b><span>Permanently deletes your account and everything in it. This cannot be undone.</span></div><button class="btn" type="button" id="pkacdel" aria-expanded="false">Delete account</button>
+          <div class="pkacform" id="pkacdelbox" hidden><p class="note" id="pkacdeltext" role="status"></p><label class="note pkacchk" id="pkacdelplanrow" hidden><input type="checkbox" id="pkacdelplan"> I have cancelled my plan, or I accept it may still renew</label><label class="note" for="pkacdelin">Type DELETE to confirm</label><input id="pkacdelin" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"><div class="acrow"><button class="btn solid pkdanger" type="button" id="pkacdelgo" disabled>Delete my account forever</button><span class="acmsg" role="status"></span></div></div></li>
       </ul>
       <div class="acrow"><button class="btn" type="button" id="acsignout">Sign out on this device</button></div>
       <div class="acrow" style="margin-top:10px"><label class="note" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:24px"><input type="checkbox" id="acbiz" style="width:16px;height:16px;margin:0"> This is a business account (it can claim a Place)</label><span class="note" id="acbizmsg" role="status"></span></div>
@@ -4043,6 +4050,27 @@ async function renderSettings(){ const {data:{session}}=await SB.auth.getSession
   document.title='Account settings · Personakind'; document.getElementById('acname').textContent='Your account'; document.getElementById('achandle').textContent='No handle yet. Claim one on Home to get a public page.';
   document.getElementById('acgrid').innerHTML=''; document.getElementById('acfoot').textContent=''; document.getElementById('aceditbtn').hidden=true; document.getElementById('acsharebtn').hidden=true;
   accountPanel(session); }
+// Delete account (2026-09-14): two steps. Step one asks the Worker what would go and names it; step two needs DELETE typed, and the
+// plan box ticked only when a plan is active and that box is on screen. The Worker deletes the caller's own account, read off the JWT.
+function pkAccountDelete(){
+  const btn=document.getElementById('pkacdel'), box=document.getElementById('pkacdelbox'), text=document.getElementById('pkacdeltext'), inp=document.getElementById('pkacdelin'), go=document.getElementById('pkacdelgo'), planRow=document.getElementById('pkacdelplanrow'), plan=document.getElementById('pkacdelplan'), msg=box.querySelector('.acmsg');
+  const ready=()=>{ go.disabled=!(inp.value.trim()==='DELETE'&&(planRow.hidden||plan.checked)); };
+  inp.oninput=ready; plan.onchange=ready;
+  const call=async(body)=>{ const token=await hostedToken(); if(!token){ openAuth(); pkAuthSet('signin'); return null; } try{ const r=await fetch(HOSTED_API+'/account/delete',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)}); let j={}; try{ j=await r.json(); }catch(_){} return {status:r.status,j:j||{}}; }catch(_){ return {status:0,j:{}}; } };
+  const many=(k,w)=>(Number(k)||0)+' '+w+((Number(k)||0)===1?'':'s');
+  btn.onclick=async()=>{ box.hidden=!box.hidden; btn.setAttribute('aria-expanded',String(!box.hidden)); if(box.hidden) return;
+    inp.value=''; inp.disabled=false; plan.checked=false; planRow.hidden=true; msg.textContent=''; ready(); text.textContent='Checking what your account holds...';
+    const res=await call({dry_run:true}); if(!res) return; const s=res.j.summary||{};
+    if(res.j.error==='contact_support'){ text.textContent='This is an official Personakind account, so support deletes it. Email support@personakind.com from this address.'; inp.disabled=true; ready(); return; }
+    if(res.status!==200){ text.textContent='Could not check your account right now. Try again in a moment.'; return; }
+    text.textContent='This permanently deletes your account, '+many(s.personas,'persona')+' ('+(Number(s.published)||0)+' published), your guestbook of '+many(s.guestbook,'spark')+', '+many(s.images,'image')+', '+many(s.kindred,'Kindred connection')+' and '+many(s.sparks_given,'spark')+' you left for others'+((Number(s.designs)||0)?', and '+many(s.designs,'print design'):'')+'. Payment records stay for tax purposes, without your name or contact details. It cannot be undone.';
+    if(s.plan_active){ planRow.hidden=false; text.textContent+=' You have an active hosted plan: cancel it first under Manage subscription, or it may still renew.'; }
+    ready(); inp.focus(); };
+  go.onclick=async()=>{ if(go.disabled) return; go.disabled=true; msg.textContent='Deleting...';
+    const res=await call({confirm:'DELETE',ack_plan:!planRow.hidden&&plan.checked}); if(!res){ ready(); return; }
+    if(res.status===200&&res.j.deleted){ try{ await SB.auth.signOut({scope:'local'}); }catch(_){} location.href=location.origin+location.pathname+'?deleted=1'; return; }
+    msg.textContent=res.j.error==='contact_support'?'Support needs to delete this one. Email support@personakind.com.':res.j.error==='rate_limited'?'Too many tries. Wait an hour and try again.':'Nothing was deleted. Try again in a moment.'; ready(); };
+}
 // Account home (Dylan, 2026-09-06): on your own @handle page, signed in, one box with email, plan, renew, manage, sign out.
 function accountPanel(session){ const box=document.getElementById('acplan'); box.hidden=false;
   const email=session&&session.user&&session.user.email; document.getElementById('acemail').textContent=email?('Signed in as '+email):'Signed in';
@@ -4050,7 +4078,7 @@ function accountPanel(session){ const box=document.getElementById('acplan'); box
   refreshCredits().then(()=>{ line.textContent=document.getElementById('planline').textContent||'No hosted plan yet.'; }).catch(()=>{ line.textContent='Could not read your plan right now.'; });
   document.getElementById('acplanbtn').onclick=async()=>{ await refreshCredits(); showProCard(); };
   document.getElementById('acsignout').onclick=async()=>{ await SB.auth.signOut({scope:'local'}); location.href=location.origin+location.pathname; };
-  pkAccountSettings(session);
+  pkAccountSettings(session); pkAccountDelete();
   try{ pkBizToggle(session&&session.user?session.user.id:null); }catch(_){}
   try{ pkagRender(session); }catch(_){}
   (async()=>{ try{ const p=await rcInstance(); const info=await p.getCustomerInfo(); const u=info&&info.managementURL; if(u&&/^https:\/\//.test(u)){ manage.href=u; manage.hidden=false; } }catch(_){} })(); }
