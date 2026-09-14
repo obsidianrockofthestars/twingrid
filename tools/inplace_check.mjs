@@ -87,6 +87,9 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   const inRoute=names(h.slice(rS,rE)), inAuth=names(h.slice(aS,aE));
   ok(inRoute.size>=5,'route() dispatches its pages ('+inRoute.size+' found)');
   for(const n of inRoute) ok(inAuth.has(n),n+' routes itself but is not exempted in onAuthStateChange, so INITIAL_SESSION will re-route it to the landing or Home');
+  // 2026-09-14: ?account shipped in #76 as an inline URLSearchParams test inside route(), which this name check cannot see,
+  // and went live rendering Home for every member with no handle. A route is a named on*Route() or it is not a route.
+  ok(!/URLSearchParams\(location\.search\)/.test(h.slice(rS,rE)),'route() reads the query only through named on*Route() functions, never inline, so the exemption check can see every route');
 }
 
 // Room hero eager-load (2026-09-13). avatarInto lazy-loads every avatar, which is right for a card in a list and
