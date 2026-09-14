@@ -533,5 +533,9 @@ ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesE
   mk('pkacdelbox').hidden=true; reply={status:409,j:{error:'contact_support',summary:{}}};
   await els.pkacdel.onclick(); ok(els.pkacdelin.disabled===true&&/official/.test(els.pkacdeltext.textContent)&&/support@personakind\.com/.test(els.pkacdeltext.textContent),'only an official account goes to support, with the input off');
 }
+// The sent card's go back button (2026-09-14, Dylan's screenshot): .btn.ghost is transparent and inherits the editor's light button ink,
+// so on the white auth card its label was near invisible. The auth card gives it the public ink and line.
+ok(/#auth \.authcard \.btn\.ghost\{[^}]*border-color:var\(--ink-soft\)/.test(h),'the go back outline clears 3 to 1 on the white card (--line-w measured 1.34 to 1)');
+ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth card ghost button (go back) uses the public ink, not the editor ink');
 
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
