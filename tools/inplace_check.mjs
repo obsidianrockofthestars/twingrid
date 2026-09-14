@@ -304,6 +304,149 @@ ok(pkagQLine(QS[0])==='- "core.DO.01": How do I like help?','a text line carries
   ok(kin>0&&/pkkinbtn.*hidden=isOwner\|\|!!kinPair/.test(h.slice(kin,kinE).replace(/\n/g,' ')),'Request Kindred is hidden for the owner and for a viewer already Kindred');
   ok(/s\.querySelector\('#pkin select'\)/.test(h)&&!/'#pkin select,#pkin button'/.test(h),'the hero button never focuses the paid Have them talk control');
   ok(/pkkindred'\)\.hidden=true/.test(h)&&/pkhandbook'\)\.hidden=true/.test(h),'a not-found persona hides the Kindred and handbook sections');
+  // First-run routing (v22.1): the hero primary button takes a new person straight into the
+  // questionnaire, not to a signed-in dead end. Both "Build your persona free" CTAs carry data-path.
+  const bpf=(h.match(/<button[^>]*>Build your persona free<\/button>/g)||[]);
+  ok(bpf.length===2,'two Build your persona free CTAs found ('+bpf.length+')');
+  ok(bpf.every(b=>/data-path="questions"/.test(b)),'the hero CTA routes into the questionnaire, not a dead end');
+  ok(bpf.every(b=>!/data-auth/.test(b)),'the hero CTA is not a bare auth control');
 }
+
+// Explore rating as sparks (v22.4): five glyphs filled to the average, "Be the first" at zero, never a flat dead label.
+{
+  const src=cut('function exSparkRow(el,score)','  el.appendChild(lab);')+'}';
+  const doc={createElement:()=>({className:'',textContent:''})};
+  const {exSparkRow}=new Function('document',src+' return {exSparkRow};')(doc);
+  const mkEl=()=>{ const o={kids:[],cls:new Set()}; o.appendChild=n=>o.kids.push(n); o.classList={add:c=>o.cls.add(c)}; return o; };
+  const z=mkEl(); exSparkRow(z,[]);
+  ok(z.kids.length===6,'zero rating renders five sparks and a label ('+z.kids.length+')');
+  ok(z.kids.slice(0,5).every(g=>g.className.includes('off')),'all five sparks dim at zero');
+  ok(z.kids[5].textContent==='Be the first','zero rating invites, not a flat dead label: '+JSON.stringify(z.kids[5].textContent));
+  ok(z.cls.has('exnone'),'zero rating marks the row exnone');
+  const r=mkEl(); exSparkRow(r,[{lane:'human',avg_rating:4.2,n:3}]);
+  ok(r.kids.slice(0,4).every(g=>!g.className.includes('off'))&&r.kids[4].className.includes('off'),'4.2 fills four sparks and dims one');
+  ok(r.kids[5].textContent==='4.2 · 3 sparks','the label carries the average and count: '+JSON.stringify(r.kids[5].textContent));
+  ok(!r.cls.has('exnone'),'a rated row is not exnone');
+}
+
+// The empty room chat is an invitation, not a void (v22.3): renderChat shows the persona face and name.
+ok(/pkrmchatempty/.test(h) && h.includes("chatPeerName?('Say hi to '") && /route-room/.test(h.slice(h.indexOf('function renderChat('),h.indexOf('function renderChat(')+900)),'the empty room chat shows the persona face and name, not a blank void');
+
+// ============================================================
+// The review's eighteen (2026-09-13 page-sweep). Every visitor-facing string in plain words, every
+// link resolving, the Room's two broken controls working, the page cheaper and more accessible.
+// Each fix is asserted here so the checker, not the reviewer, holds the line from here on.
+// ============================================================
+const aboutHtml=fs.readFileSync(new URL('../docs/about.html',import.meta.url),'utf8');
+const pricingHtml=fs.readFileSync(new URL('../docs/pricing.html',import.meta.url),'utf8');
+const supportHtml=fs.readFileSync(new URL('../docs/support.html',import.meta.url),'utf8');
+const changelogHtml=fs.readFileSync(new URL('../docs/changelog.html',import.meta.url),'utf8');
+const headersTxt=fs.readFileSync(new URL('../docs/_headers',import.meta.url),'utf8');
+
+// (a) every href='?<key>=' literal in the module uses a key route() actually dispatches. The known-key
+// set is read from the on*Route() predicates themselves, never hardcoded, so a new route stays covered.
+{
+  const keys=new Set(); const reFn=/function on[A-Za-z]*Route\(\)\{[^\n]*/g; let m;
+  while((m=reFn.exec(h))){ const reKey=/\.(?:has|get)\('([a-zA-Z]+)'\)/g; let km; while((km=reKey.exec(m[0]))) keys.add(km[1]); }
+  ok(keys.size>=5,'on*Route() keys collected ('+keys.size+'): '+[...keys].join(','));
+  const hrefs=[...h.matchAll(/href='\?([a-zA-Z]+)='/g)].map(mm=>mm[1]);
+  ok(hrefs.length>0,'href=\'?key=\' literals found in the module ('+hrefs.length+')');
+  hrefs.forEach(k=>ok(keys.has(k),"href='?"+k+"=' is not a route() key ("+[...keys].join(',')+')'));
+}
+
+// (b) the Room only auto-enables speech for the free browser voice; a paid Gemini voice never switches on for a visitor without the gesture.
+{
+  const rm=h.indexOf('async function renderRoom('), rmE=h.indexOf('\nfunction route(){',rm);
+  ok(rm>0&&rmE>rm,'renderRoom found');
+  ok(/if\(!speakOn\s*&&\s*chatVoice===['"]browser['"]\)\{\s*const b=document\.getElementById\('chatspk'\)/.test(h.slice(rm,rmE)),'auto-speak only fires for the free browser voice');
+}
+
+// (c) leaving a conversation as a Spark is offered from the Room too, not only the persona page and account view.
+ok(/const onPage=onProfileRoute\(\)\|\|onRoomRoute\(\)\|\|\(onAccountRoute\(\)&&accountPersonaParam\(\)\)/.test(h),'pkChatSparkSync includes the Room');
+
+// (d) the three drawer close buttons are real buttons a screen reader can name, and the CSS selector that hides the Room's own close button matches something.
+ok(/<button class="x" id="dx" type="button" aria-label="Close">/.test(h),'dx: type=button + aria-label');
+ok(/<button class="x" id="chatx" data-roomhide type="button" aria-label="Close">/.test(h),'chatx: data-roomhide + type=button + aria-label');
+ok(/<button class="x" id="setx" type="button" aria-label="Close">/.test(h),'setx: type=button + aria-label');
+
+// (e) every .x close button meets the 24px minimum target.
+ok(/\.x\{font-size:20px;cursor:pointer;background:none;border:0;color:var\(--muted\);min-width:24px;min-height:24px;display:inline-grid;place-items:center\}/.test(h),'.x carries a 24px minimum target');
+
+// (f) no relative terms.html link is left.
+ok(!/href="terms\.html"/.test(h),'no href="terms.html" remains');
+
+// (g) support.html describes the real sign-in flow, not a dead magic link.
+ok(!/sign-in link/i.test(supportHtml),'support.html: no stale "sign-in link" wording');
+ok(/forgot your password/i.test(supportHtml)&&/google/i.test(supportHtml),'support.html: names Forgot your password and Continue with Google');
+
+// (h) the changelog names the week's shipped work, newest first, in plain words.
+ok(/2026-09-13/.test(changelogHtml),'changelog.html: has a 2026-09-13 entry');
+['Room','Kindred','Spark','Home','Guestbook','Explore'].forEach(w=>ok(new RegExp(w).test(changelogHtml),'changelog.html: names '+w));
+
+// (i) about.html and pricing.html describe the product in the shipped vocabulary, never grid/cells/facet.
+{
+  const visible=s=>s.replace(/<!--[\s\S]*?-->/g,'').replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<script[\s\S]*?<\/script>/gi,'');
+  ok(!/\b(grid|grids|cells?|facets?)\b/i.test(visible(aboutHtml)),'about.html: no grid/cells/facet in visible text');
+  ok(!/\b(grid|grids|cells?|facets?)\b/i.test(visible(pricingHtml)),'pricing.html: no grid/cells/facet in visible text');
+}
+
+// (j) a no-script visitor still gets the brand, one sentence, and the way to the static pages.
+{
+  const ns=(h.match(/<noscript>([\s\S]*?)<\/noscript>/)||['',''])[1];
+  ok(!!ns,'a <noscript> block exists');
+  ok(/\/about/.test(ns),'the noscript block names /about');
+}
+
+// (k) the chat log announces new messages to assistive tech.
+ok(/<div class="dbody" id="chatbody" role="log" aria-live="polite" aria-relevant="additions" tabindex="0">/.test(h),'chatbody carries the log/live-region attributes');
+
+// (l) Explore's public query is bounded.
+{
+  const ex=h.indexOf('async function renderExplore('), exE=h.indexOf('\nconst CELL_LABEL=',ex);
+  const flat=(ex>0&&exE>ex)?h.slice(ex,exE).replace(/\s+/g,''):'';
+  ok(/\.select\('id,name,data,owner,updated_at,image_url'\)\.eq\('is_public',true\)\.order\('updated_at',\{ascending:false\}\)\.limit\(48\)/.test(flat),"renderExplore's public query carries .limit(48)");
+}
+
+// (m) the Room's stage image is asked for eagerly and at its real size, so it never lays out from zero.
+{
+  const cv=h.indexOf('async function pkRenderCover('), cvE=h.indexOf('\n// the hero',cv);
+  const body=(cv>0&&cvE>cv)?h.slice(cv,cvE):'';
+  ok(/im\.fetchPriority=['"]high['"]/.test(body)&&/im\.width=1280/.test(body)&&/im\.height=720/.test(body),'pkRenderCover sizes and prioritises the stage image');
+}
+
+// (n) Fraunces loads no italic weights; the two rules that set font-style:italic let the browser synthesize it.
+{
+  const link=(h.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2\?[^"]*">/)||[''])[0];
+  ok(!!link,'the Google Fonts link found');
+  ok(!/ital,1/.test(link)&&!/:ital/.test(link),'the fonts link carries no Fraunces italic entries');
+}
+
+// (o) rooms, images and the object catalog are cached at the edge; the OWASP-review security headers are untouched.
+ok(/\/catalog\/rooms\/\*\r?\n\s*Cache-Control: public, max-age=604800/.test(headersTxt),'_headers: /catalog/rooms/* cached a week');
+ok(/\/img\/\*\r?\n\s*Cache-Control: public, max-age=604800/.test(headersTxt),'_headers: /img/* cached a week');
+ok(/\/catalog\/\*\.json\r?\n\s*Cache-Control: public, max-age=3600/.test(headersTxt),'_headers: /catalog/*.json cached an hour');
+['X-Frame-Options: SAMEORIGIN','X-Content-Type-Options: nosniff','Content-Security-Policy-Report-Only:'].forEach(s=>ok(headersTxt.indexOf(s)>=0,'_headers: existing security header kept: '+s));
+
+// (p) none of the review's flagged internal words reach a visitor (code comments are exempt).
+{
+  const codeStripped=h.replace(/\/\*[\s\S]*?\*\//g,'').split('\n').map(l=>l.replace(/\/\/.*/,'')).join('\n');
+  ['starter persona','starter filter','email link','composed persona','grid of'].forEach(s=>
+    ok(!new RegExp(s,'i').test(codeStripped),'no visitor-facing "'+s+'"'));
+}
+
+// (q) INITIAL_SESSION firing after route() already painted Places or the Life log must not repaint or
+// recount a visit; each carries the same generation-guard shape as renderHome's __homeGen / pkRenderSparks's sec.__gen.
+{
+  const chk=(name,genName)=>{ const s=h.indexOf('async function '+name+'('); ok(s>0,name+' found');
+    if(s>0){ const e=h.indexOf('\nasync function ',s+10); const body=h.slice(s,e>0?e:s+2000);
+      ok(new RegExp(genName).test(body),name+' carries a generation guard ('+genName+')'); } };
+  chk('renderPlaces','__placesGen'); chk('renderPlace','__placeGen'); chk('renderLife','__lifeGen');
+}
+
+// Dylan's two rulings of 2026-09-13: no real person's grid on the page (review item 16), the billing SDK off the first paint (item 24)
+ok(!/id="showdata"/.test(h)&&!/\bSHOW\b/.test(h.slice(h.indexOf('<script type="module">'))),'no showcase grid island ships on the page (review item 16)');
+ok(/newshow'\)\.onclick=async\(\)=>\{ const t=await fetch\('\/templates\/founder\.json'\)/.test(h),'New from showcase seeds from the fictional Founder template');
+ok(!/^\s*import [^\n]*revenuecat/m.test(h)&&/const rcSdk=\(\)=>import\('https:\/\/esm\.sh\/@revenuecat\/purchases-js@1\.55\.0'\)/.test(h),'the RevenueCat SDK is a dynamic import (review item 24)');
+ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesError\}=await rcSdk\(\)/.test(h),'the buy path loads the SDK and its error types on demand');
 
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);

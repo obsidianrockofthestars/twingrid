@@ -64,6 +64,7 @@ let tokenRows = [], writeRows = [], agentGrids = {};
 // filter, which is what a concurrent edit looks like.
 let patchMode = "";
 function resetAgent() {
+  rateRows = {}; // the atomic limiter's fake is global; each agent check starts with an empty limiter, as its own KV map does
   tokenRows = [
     { id: TOK_ID, owner: USER_ID, label: "my ai", token_hash: shaHex(AG_TOKEN), created_at: "2026-09-11T00:00:00+00:00", last_used_at: null, revoked_at: null },
     { id: TOK_REV_ID, owner: USER_ID, label: "old", token_hash: shaHex(AG_REVOKED), created_at: "2026-09-01T00:00:00+00:00", last_used_at: null, revoked_at: "2026-09-10T00:00:00+00:00" },
@@ -111,6 +112,7 @@ let sparksRows = [];
 let visitCounts = {};
 let actionsRows = [];
 let runsRows = [];
+let rateRows = {}; let rateFail = false; const rateDeletes = []; // twingrid_rate_hit and the tick's sweep (review finding 6)
 let anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house.";
 
 globalThis.fetch = async (url, init) => {
@@ -180,16 +182,32 @@ globalThis.fetch = async (url, init) => {
     if (method === "GET") return respond(200, runsRows.slice());   // the health monitor
     throw new Error("runs: POST insert, PATCH by id, or GET only");
   }
+  // The atomic limiter (review finding 6): one synchronous increment per call, like the SQL upsert.
+  if (u.endsWith("/rest/v1/rpc/twingrid_rate_hit")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("the limiter is service role only");
+    if (rateFail) return respond(500, { message: "down" });
+    const cur = rateRows[body.p_key];
+    const n = cur && cur.bucket === body.p_bucket ? cur.n + 1 : 1;
+    rateRows[body.p_key] = { bucket: body.p_bucket, n };
+    return respond(200, n > body.p_limit);
+  }
+  if (u.includes("/rest/v1/twingrid_rate?")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY || method !== "DELETE") throw new Error("rate rows: service role DELETE only");
+    rateDeletes.push(u); return new Response(null, { status: 204 });
+  }
   if (u.includes("/rest/v1/twingrid_actions")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("actions are touched with the service key");
     if (method === "POST") { actionsRows.push(Object.assign({ id: actionsRows.length + 1, created_at: new Date().toISOString() }, body)); return new Response(null, { status: 201 }); }
+    // PostgREST returns only the selected columns, so the fake does too (review finding 7: a branch on an unselected column was dead).
+    const sel = /[?&]select=([^&]+)/.exec(u); const cols = sel ? decodeURIComponent(sel[1]).split(",") : null;
+    const project = (rows) => cols ? rows.map((a) => Object.fromEntries(cols.filter((c) => c in a).map((c) => [c, a[c]]))) : rows;
     const idm = /[?&]id=eq\.(\d+)/.exec(u); if (idm) {
       const row = actionsRows.find((a) => a.id === Number(idm[1]));
       if (method === "PATCH") { if (!row || (/status=eq\.proposed/.test(u) && row.status !== "proposed")) return respond(200, []); Object.assign(row, body); return respond(200, [row]); }
-      return respond(200, row ? [row] : []);
+      return respond(200, project(row ? [row] : []));
     }
     const m = /grid_id=eq\.([0-9a-f-]+)/.exec(u); const gid = m ? m[1] : "";
-    return respond(200, actionsRows.filter((a) => a.grid_id === gid));
+    return respond(200, project(actionsRows.filter((a) => a.grid_id === gid)));
   }
   // The agent lane reads and writes the grid with the SERVICE key (there is no user JWT behind an agent
   // token), so the owner check in the Worker is the only boundary. This branch must sit ABOVE the
@@ -1626,7 +1644,8 @@ await check("agent: the rate limit covers a revoked and an unknown token, not ju
   const spent = calls.length - before;
   const after = calls.length;
   await agPost("answers", { grid_id: AG_GRID_ID }, AG_REVOKED, KV_ENV);
-  eq(calls.length - after, 0, "a limited attempt never reaches the database");
+  // the limiter's own atomic counter is the one call a limited attempt makes; no token lookup, no grid read
+  eq(calls.slice(after).filter((c) => !c.url.endsWith("/rest/v1/rpc/twingrid_rate_hit")).length, 0, "a limited attempt never reaches the database");
   // an unknown token shares the shape: limited, and on its own bucket
   let u = null;
   for (let i = 0; i < 121; i++) u = await agPost("answers", { grid_id: AG_GRID_ID }, "pka_" + "Z".repeat(43), KV_ENV);
@@ -1672,6 +1691,73 @@ await check("agent: the four routes are POST only", async () => {
     const r = await handleApi(new Request("https://personakind.com/api/agent/" + p, { method: "GET" }), AG_ENV);
     eq(r.status, 405, "GET " + p);
   }
+});
+
+// ---------------------------------------------------------------------------
+// The review's Worker four (2026-09-13)
+// ---------------------------------------------------------------------------
+const visitReq = (env) => handleApi(req("/api/spark", { method: "POST", headers: H({ "cf-connecting-ip": "203.0.113.9" }), body: JSON.stringify({ grid_id: GRID_ID, kind: "visit" }) }), env);
+
+await check("limiter: a parallel burst of twelve visits from one address counts three, not twelve (review finding 6)", async () => {
+  resetSparks(); rateRows = {}; rateFail = false;
+  const store = new Map(); const tick = () => new Promise((r) => setTimeout(r, 5));
+  const SLOW_KV = { get: async (k) => { await tick(); return store.get(k) || null; }, put: async (k, v) => { await tick(); store.set(k, v); } };
+  const env = Object.assign({}, ENV, { RATE_KV: SLOW_KV });
+  const bodies = await Promise.all((await Promise.all(Array.from({ length: 12 }, () => visitReq(env)))).map((r) => r.json()));
+  eq(bodies.filter((b) => b.counted === true).length, 3, "counted"); eq(visitCounts[GRID_ID], 3, "service function calls");
+});
+
+await check("limiter: when the atomic counter cannot be reached, the KV path still limits (review finding 6)", async () => {
+  resetSparks(); rateRows = {}; rateFail = true;
+  const store = new Map(); const KV = { get: async (k) => store.get(k) || null, put: async (k, v) => { store.set(k, v); } };
+  const env = Object.assign({}, ENV, { RATE_KV: KV });
+  const bodies = [];
+  try { for (let i = 0; i < 5; i++) bodies.push(await (await visitReq(env)).json()); } finally { rateFail = false; }
+  eq(bodies.filter((b) => b.counted === true).length, 3, "three counted"); eq(store.size, 1, "the KV path carried it");
+  if (!calls.some((c) => c.url.endsWith("/rest/v1/rpc/twingrid_rate_hit"))) throw new Error("the atomic counter was never asked");
+});
+
+await check("autopilot tick: deletes limiter rows older than two days, once per tick (review finding 6)", async () => {
+  resetAutopilot([]); rateDeletes.length = 0;
+  await runAutopilotTick(ENV, NOW);
+  eq(rateDeletes.length, 1, "one sweep");
+  const m = /updated_at=lt\.([^&]+)/.exec(rateDeletes[0]); if (!m) throw new Error("the sweep names a cutoff");
+  eq(decodeURIComponent(m[1]), new Date(NOW.getTime() - 2 * 86400000).toISOString(), "two days before the tick");
+});
+
+await check("csp-report: a body over the 256 KB cap is answered 204 and never parsed (review finding 8)", async () => {
+  const logs = []; const orig = console.log; console.log = (s) => logs.push(String(s));
+  let r;
+  try {
+    const big = JSON.stringify({ "csp-report": { "violated-directive": "img-src", "blocked-uri": "https://x.example/" + "a".repeat(300000) } });
+    r = await handleApi(new Request("https://personakind.com/api/csp-report", { method: "POST", headers: H({ "content-type": "application/csp-report" }), body: big }), ENV);
+  } finally { console.log = orig; }
+  eq(r.status, 204, "status");
+  if (logs.some((l) => l.includes("img-src"))) throw new Error("the oversized report was parsed");
+});
+
+await check("mcp: a batch over 16 messages is refused with -32600 before any runs; 16 still run (review finding 9)", async () => {
+  const { handleMcp } = await import("./mcp.js");
+  const batch = (n) => new Request("https://personakind.com/mcp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Array.from({ length: n }, (_, i) => ({ jsonrpc: "2.0", id: i + 1, method: "ping" }))) });
+  const big = await handleMcp(batch(17), ENV);
+  eq(big.status, 400, "17 status"); const bj = await big.json(); eq(bj && bj.error && bj.error.code, -32600, "17 code");
+  const ok = await handleMcp(batch(16), ENV);
+  eq(ok.status, 200, "16 status"); eq((await ok.json()).length, 16, "16 answers");
+});
+
+await check("autopilot tick: a second tick in the same hour proposes no second invite and no second visit, and spends no second credit (review finding 7)", async () => {
+  // The older "one a day" checks re-tick an hour later, when the rules query no longer matches the persona, so the
+  // guards on today's invite and visit never ran. Same hour, same persona, both guards must hold.
+  resetAutopilot([Object.assign({}, RULE, { mode: "autopilot" })]); kindredRows = []; blocksRows = [];
+  sparksRows = [{ id: 1, grid_id: GRID_ID, from_account: STRANGER_ID, kind: "rating", rating: 5, created_at: "2026-09-07T10:00:00.000Z" }];
+  await runAutopilotTick(ENV, NOW);
+  await runAutopilotTick(ENV, new Date("2026-09-07T15:40:00Z"));
+  eq(actionsRows.filter((a) => a.kind === "invite").length, 1, "one invite");
+  await seedKindred("accepted"); resetAutopilot([Object.assign({}, RULE, { mode: "autopilot" })]); blocksRows = []; balance = 3; anthropicReply = "4 sparks. Warm porch, honest voice.";
+  await runAutopilotTick(ENV, NOW);
+  const spent = 3 - balance;
+  await runAutopilotTick(ENV, new Date("2026-09-07T15:40:00Z"));
+  eq(actionsRows.filter((a) => a.kind === "visit").length, 1, "one visit"); eq(3 - balance, spent, "no second credit");
 });
 
 console.log("\n" + pass + " passed, " + fail + " failed");
