@@ -513,10 +513,11 @@ ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesE
   const loc={origin:'',pathname:'/',href:''};
   const make=()=>new Function('document','fetch','hostedToken','HOSTED_API','openAuth','pkAuthSet','SB','location',dsrc+'\nreturn pkAccountDelete;')({getElementById:mk},fetchStub,async()=>'jwt','/api',()=>{},()=>{},{auth:{signOut:async(x)=>{ signedOut=x; }}},loc);
   make()();
-  mk('pkacdelbox').hidden=true; reply={status:200,j:{summary:{personas:3,published:1,guestbook:4,images:2,kindred:1,sparks_given:0,plan_active:false}}};
+  mk('pkacdelbox').hidden=true; reply={status:200,j:{summary:{personas:3,published:1,guestbook:4,images:2,kindred:1,sparks_given:0,designs:2,charges_kept:1,plan_active:false}}};
   await els.pkacdel.onclick();
   ok(sent.length===1&&sent[0].body.dry_run===true,'opening the row asks for a dry run first');
   ok(/3 personas \(1 published\)/.test(els.pkacdeltext.textContent)&&/4 sparks/.test(els.pkacdeltext.textContent)&&/2 images/.test(els.pkacdeltext.textContent),'the confirm names what goes: '+els.pkacdeltext.textContent);
+  ok(/2 print designs/.test(els.pkacdeltext.textContent)&&/Payment records stay for tax purposes, without your name or contact details/.test(els.pkacdeltext.textContent),'the confirm names print designs and says charges stay for tax, nameless: '+els.pkacdeltext.textContent);
   ok(els.pkacdelplanrow.hidden===true,'no plan, no plan box');
   ok(els.pkacdelgo.disabled===true,'the delete button is off before DELETE is typed');
   els.pkacdelin.value='delete'; els.pkacdelin.oninput(); ok(els.pkacdelgo.disabled===true,'lowercase delete does not arm it');
@@ -530,7 +531,7 @@ ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesE
   els.pkacdelin.value='DELETE'; els.pkacdelin.oninput(); ok(els.pkacdelgo.disabled===true,'with the plan box on screen, DELETE alone does not arm it');
   els.pkacdelplan.checked=true; els.pkacdelplan.onchange(); ok(els.pkacdelgo.disabled===false,'ticking the plan box arms it');
   mk('pkacdelbox').hidden=true; reply={status:409,j:{error:'contact_support',summary:{}}};
-  await els.pkacdel.onclick(); ok(els.pkacdelin.disabled===true&&/support@personakind\.com/.test(els.pkacdeltext.textContent),'a shared login goes to support with the input off');
+  await els.pkacdel.onclick(); ok(els.pkacdelin.disabled===true&&/official/.test(els.pkacdeltext.textContent)&&/support@personakind\.com/.test(els.pkacdeltext.textContent),'only an official account goes to support, with the input off');
 }
 
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);

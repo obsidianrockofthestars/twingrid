@@ -2169,10 +2169,11 @@ async function handleAgentTokenRevoke(request, env) {
 
 // POST /api/account/delete { dry_run?, confirm: "DELETE", ack_plan? } (2026-09-14). The account is ALWAYS the caller's own, read
 // off their Supabase JWT through GoTrue: no id in the body is read, so there is nothing to point at someone else's account.
-// dry_run returns what would go, in counts, for the page's two-step confirm. Files go first through the Storage API
-// (storage.protect_delete blocks them in SQL), then one transaction deletes the rows and the login; a refusal or a failed
-// file delete touches no row. A print-portal customer, an operator of another account, a moderator or an official account
-// goes to support.
+// dry_run returns what would go, in counts, for the page's two-step confirm. Dylan's ruling: everything personal goes, charges
+// stay for tax. Files go first through the Storage API (storage.protect_delete blocks them in SQL), the caller's own folder in
+// each of the three buckets, then one transaction deletes the rows and the login; a refusal or a failed file delete touches no
+// row. Only an official account goes to support.
+const ACCOUNT_BUCKETS = ["twingrid-media", "customer-uploads", "generated-pdfs"];
 async function handleAccountDelete(request, env) {
   const user = await verifyUser(env, bearer(request));
   if (!user) return json(request, 401, { error: "unauthorized" });
@@ -2183,17 +2184,20 @@ async function handleAccountDelete(request, env) {
   const fp = await rpcService(env, "twingrid_account_footprint", { p_uid: user.id });
   if (!fp.ok || !fp.value || typeof fp.value !== "object") return json(request, 502, { error: "account_unavailable" });
   const f = fp.value;
-  const media = (Array.isArray(f.media) ? f.media : []).filter((n) => typeof n === "string" && n.startsWith(user.id + "/") && !n.includes(".."));
+  const files = (Array.isArray(f.files) ? f.files : []).filter((x) => Array.isArray(x) && ACCOUNT_BUCKETS.includes(x[0]) && typeof x[1] === "string" && x[1].startsWith(user.id + "/") && !x[1].includes(".."));
   const n = (v) => Number(v) || 0;
-  const summary = { personas: n(f.personas), published: n(f.published), guestbook: n(f.guestbook), sparks_given: n(f.sparks_given), kindred: n(f.kindred), places: n(f.places), images: media.length, plan_active: f.plan_active === true };
-  if (f.other_app === true || n(f.operates) > 0 || f.moderator === true || f.official === true || media.length > 1000) return json(request, 409, { error: "contact_support", summary });
+  const summary = { personas: n(f.personas), published: n(f.published), guestbook: n(f.guestbook), sparks_given: n(f.sparks_given), kindred: n(f.kindred), places: n(f.places),
+    designs: n(f.designs), images: files.filter((x) => x[0] === "twingrid-media").length, charges_kept: n(f.charges) + n(f.orders), plan_active: f.plan_active === true };
+  if (f.official === true || files.length > 1000) return json(request, 409, { error: "contact_support", summary });
   if (body.dry_run === true) return json(request, 200, { summary });
   if (body.confirm !== "DELETE") return json(request, 400, { error: "confirm_required", summary });
   if (summary.plan_active && body.ack_plan !== true) return json(request, 409, { error: "plan_active", summary });
-  if (media.length) {
+  for (const bucket of ACCOUNT_BUCKETS) {
+    const names = files.filter((x) => x[0] === bucket).map((x) => x[1]);
+    if (!names.length) continue;
     let res;
     try {
-      res = await fetch(sbUrl(env, "/storage/v1/object/twingrid-media"), { method: "DELETE", headers: serviceHeaders(env, { "Content-Type": "application/json" }), body: JSON.stringify({ prefixes: media }) });
+      res = await fetch(sbUrl(env, "/storage/v1/object/" + bucket), { method: "DELETE", headers: serviceHeaders(env, { "Content-Type": "application/json" }), body: JSON.stringify({ prefixes: names }) });
     } catch (_) { return json(request, 502, { error: "media_delete_failed" }); }
     if (!res.ok) return json(request, 502, { error: "media_delete_failed" });
   }

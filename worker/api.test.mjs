@@ -131,10 +131,10 @@ globalThis.fetch = async (url, init) => {
     if (auth === "Bearer " + STRANGER_TOKEN) return respond(200, { id: STRANGER_ID, email: "s@example.com" });
     return respond(401, { message: "invalid JWT" });
   }
-  if (u.endsWith("/rest/v1/rpc/twingrid_account_footprint") || u.endsWith("/rest/v1/rpc/twingrid_delete_account") || u.includes("/storage/v1/object/twingrid-media")) {
+  if (u.endsWith("/rest/v1/rpc/twingrid_account_footprint") || u.endsWith("/rest/v1/rpc/twingrid_delete_account") || u.includes("/storage/v1/object/")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("account deletion is service role only");
     if (headers.Authorization) throw new Error("the secret key goes on apikey, never Bearer");
-    if (u.includes("/storage/")) { acctLog.push(["storage", method, body]); return storageFail ? respond(500, { message: "down" }) : respond(200, []); }
+    if (u.includes("/storage/")) { acctLog.push(["storage", method, body, decodeURIComponent(u.split("/storage/v1/object/")[1])]); return storageFail ? respond(500, { message: "down" }) : respond(200, []); }
     if (u.endsWith("twingrid_account_footprint")) { acctLog.push(["footprint", body.p_uid]); return respond(200, footprints[body.p_uid] || null); }
     acctLog.push(["delete", body.p_uid]); return respond(200, {});
   }
@@ -1785,12 +1785,16 @@ await check("ogSummary truncates a long unpunctuated context with an ellipsis", 
 // ---- delete my account (2026-09-14) -------------------------------------
 // The attack that ends the company is a caller deleting someone else's account. The Worker reads the account off the JWT only,
 // so these name other accounts in every body field a careless handler might read, and assert no other id reaches the database.
-const fpOf = (uid, extra) => Object.assign({ exists: true, personas: 2, published: 1, guestbook: 3, sparks_given: 1, kindred: 0, places: 0,
-  media: [uid + "/g1/a.webp", "77777777-7777-4777-8777-777777777777/g9/theirs.webp", uid + "/../77777777-7777-4777-8777-777777777777/x.webp"],
+// Ruling of 2026-09-14: everything personal goes, in all three file buckets; only an official account goes to support.
+const OTHER_UID = "77777777-7777-4777-8777-777777777777";
+const fpOf = (uid, extra) => Object.assign({ exists: true, personas: 2, published: 1, guestbook: 3, sparks_given: 1, kindred: 0, places: 0, designs: 1, orders: 1, charges: 2,
+  files: [["customer-uploads", uid + "/logo.png"], ["generated-pdfs", uid + "/o7.pdf"], ["twingrid-media", uid + "/g1/a.webp"],
+    ["twingrid-media", OTHER_UID + "/g9/theirs.webp"], ["twingrid-media", uid + "/../" + OTHER_UID + "/x.webp"], ["some-other-bucket", uid + "/x.png"]],
   plan_active: false, other_app: false, operates: 0, moderator: false, official: false }, extra || {});
 function resetAcct() { acctLog = []; storageFail = false; footprints = { [USER_ID]: fpOf(USER_ID), [STRANGER_ID]: fpOf(STRANGER_ID) }; }
 const delReq = (tok, body) => req("/api/account/delete", { method: "POST", headers: H(tok ? { Authorization: "Bearer " + tok } : {}), body: JSON.stringify(body) });
 const onlyRead = () => acctLog.every((c) => c[0] === "footprint");
+const storageCalls = () => acctLog.filter((c) => c[0] === "storage");
 
 await check("account delete: anon -> 401, no backend touched", async () => {
   resetAcct(); const r = await handleApi(delReq(null, { confirm: "DELETE", p_uid: USER_ID }), ENV); eq(r.status, 401, "status"); eq(acctLog.length, 0, "backend calls"); });
@@ -1802,29 +1806,35 @@ await check("account delete: a signed-in stranger naming another account in the 
   eq(r.status, 200, "status");
   const uids = acctLog.filter((c) => c[0] !== "storage").map((c) => c[1]);
   if (!uids.length || uids.some((x) => x !== STRANGER_ID)) throw new Error("an id other than the caller reached the database: " + JSON.stringify(uids));
-  const names = acctLog.filter((c) => c[0] === "storage").flatMap((c) => c[2].prefixes);
+  const names = storageCalls().flatMap((c) => c[2].prefixes);
   if (!names.length || names.some((n) => !n.startsWith(STRANGER_ID + "/") || n.includes(".."))) throw new Error("a file outside the caller's folder was sent: " + JSON.stringify(names));
 });
 await check("account delete: no typed DELETE -> 400, nothing deleted", async () => {
   resetAcct(); const r = await handleApi(delReq(GOOD_TOKEN, { confirm: "delete" }), ENV); eq(r.status, 400, "status"); eq(onlyRead(), true, "only the footprint was read"); });
 await check("account delete: dry_run returns the counts and deletes nothing", async () => {
   resetAcct(); const r = await handleApi(delReq(GOOD_TOKEN, { dry_run: true, confirm: "DELETE" }), ENV); eq(r.status, 200, "status");
-  const j = await r.json(); eq(j.summary.personas, 2, "personas"); eq(j.summary.images, 1, "images counted from the caller's own folder only"); eq(onlyRead(), true, "nothing deleted"); });
-await check("account delete: a print-portal, operator, moderator or official account -> 409 contact_support, nothing deleted", async () => {
-  for (const extra of [{ other_app: true }, { operates: 1 }, { moderator: true }, { official: true }]) {
+  const j = await r.json(); eq(j.summary.personas, 2, "personas"); eq(j.summary.images, 1, "images counted from the caller's own folder only");
+  eq(j.summary.designs, 1, "print designs"); eq(j.summary.charges_kept, 3, "charges kept: ledger money rows plus orders"); eq(onlyRead(), true, "nothing deleted"); });
+await check("account delete: only an official account -> 409 contact_support, nothing deleted", async () => {
+  resetAcct(); footprints[USER_ID] = fpOf(USER_ID, { official: true });
+  const r = await handleApi(delReq(GOOD_TOKEN, { confirm: "DELETE", ack_plan: true }), ENV);
+  eq(r.status, 409, "status"); eq((await r.json()).error, "contact_support", "code"); eq(onlyRead(), true, "nothing deleted"); });
+await check("account delete: a print-portal customer, an operator and a moderator are deleted like anyone else (ruling 2026-09-14)", async () => {
+  for (const extra of [{ other_app: true }, { operates: 1 }, { moderator: true }]) {
     resetAcct(); footprints[USER_ID] = fpOf(USER_ID, extra);
-    const r = await handleApi(delReq(GOOD_TOKEN, { confirm: "DELETE", ack_plan: true }), ENV);
-    eq(r.status, 409, JSON.stringify(extra)); eq((await r.json()).error, "contact_support", "code"); eq(onlyRead(), true, "nothing deleted " + JSON.stringify(extra)); }
+    const r = await handleApi(delReq(GOOD_TOKEN, { confirm: "DELETE" }), ENV);
+    eq(r.status, 200, JSON.stringify(extra)); eq(acctLog.some((c) => c[0] === "delete"), true, "deleted " + JSON.stringify(extra)); }
 });
 await check("account delete: an active plan needs ack_plan", async () => {
   resetAcct(); footprints[USER_ID] = fpOf(USER_ID, { plan_active: true });
   const r = await handleApi(delReq(GOOD_TOKEN, { confirm: "DELETE" }), ENV); eq(r.status, 409, "status"); eq((await r.json()).error, "plan_active", "code"); eq(onlyRead(), true, "nothing deleted"); });
-await check("account delete: the happy path removes the caller's files first, then the rows and the login", async () => {
+await check("account delete: the happy path empties the caller's folder in all three buckets first, then the rows and the login", async () => {
   resetAcct(); const r = await handleApi(delReq(GOOD_TOKEN, { confirm: "DELETE" }), ENV); eq(r.status, 200, "status");
-  eq(acctLog.map((c) => c[0]).join(","), "footprint,storage,delete", "order");
-  eq(acctLog[1][1], "DELETE", "storage method");
-  eq(JSON.stringify(acctLog[1][2].prefixes), JSON.stringify([USER_ID + "/g1/a.webp"]), "only the caller's own file");
-  eq(acctLog[2][1], USER_ID, "the delete names the caller"); });
+  eq(acctLog.map((c) => c[0]).join(","), "footprint,storage,storage,storage,delete", "order");
+  const got = Object.fromEntries(storageCalls().map((c) => [c[3], c[2].prefixes]));
+  eq(JSON.stringify(got), JSON.stringify({ "twingrid-media": [USER_ID + "/g1/a.webp"], "customer-uploads": [USER_ID + "/logo.png"], "generated-pdfs": [USER_ID + "/o7.pdf"] }), "each bucket, the caller's own files only");
+  eq(storageCalls().every((c) => c[1] === "DELETE"), true, "storage method");
+  eq(acctLog[acctLog.length - 1][1], USER_ID, "the delete names the caller"); });
 await check("account delete: a failed file delete stops before any row is touched", async () => {
   resetAcct(); storageFail = true; const r = await handleApi(delReq(GOOD_TOKEN, { confirm: "DELETE" }), ENV); eq(r.status, 502, "status"); eq(acctLog.some((c) => c[0] === "delete"), false, "the delete RPC never ran"); });
 await check("account delete: GET -> 405", async () => {

@@ -9,15 +9,20 @@
 -- on other pages, its credit ledger, agent keys and receipts, its daily media counters) and the auth user itself go in ONE
 -- transaction. A refusal or a failure mutates nothing.
 --
--- The shared project. jpepcqazscmhakxvutpg also serves the print portal (profiles, saved_designs, orders, admin_users), and
--- all of those hang off the same auth.users. handle_new_user() gives EVERY login a profiles row, so a profile alone is not a
--- print-portal customer; saved designs, orders or admin rights are. Such an account is REFUSED (shared_account) and routed
--- to support, because deleting the login would erase a customer's designs in another product. Founder ruling owed.
--- Also refused: an account that operates another account (the official account's operator), a moderator, and an
--- official account (the showcase personas live there; deleting it takes a founder, not a tap).
+-- Dylan's ruling, 2026-09-14, verbatim: "delete everything. If someone wants their account deleted we need to delete their
+-- personal information as well. only keep charges on record for the account for the required time for tax purposes".
+-- This project also serves the print portal on the same auth.users, so a full delete covers it: profiles, saved designs
+-- and their sides, admin rights (cascades), and the caller's folders in customer-uploads and generated-pdfs. Charges stay:
+-- ledger rows of kind purchase, renewal and refund, and every print order with its name, email, phone, notes and
+-- artwork path blanked (user_id is set null by its foreign key). No purge of kept charges exists yet; the retention
+-- period is a founder and CPA decision. Only an official account is refused (the showcase personas live there).
+-- Caveat: the orders update fires enforce_order_minimum; an old order below a since-raised minimum aborts the whole
+-- transaction, and nothing moves.
 --
 -- Media: storage.protect_delete() blocks deleting storage.objects in SQL, so the Worker deletes the files through the
--- Storage API FIRST, using the names the footprint returns (always under the caller's own uuid folder), then calls delete.
+-- Storage API FIRST, using the [bucket, name] pairs the footprint returns (always under the caller's own uuid folder), then
+-- calls delete. The migrations applied, in order: twingrid_account_delete, twingrid_account_delete_official,
+-- twingrid_account_delete_everything. This file is the last one.
 
 create or replace function public.twingrid_account_footprint(p_uid uuid)
 returns jsonb language sql stable security definer set search_path = public, pg_temp as $$
@@ -29,8 +34,14 @@ returns jsonb language sql stable security definer set search_path = public, pg_
     'sparks_given', (select count(*) from twingrid_sparks where from_account = p_uid),
     'kindred',      (select count(*) from twingrid_kindred where owner_a = p_uid or owner_b = p_uid),
     'places',       (select count(*) from twingrid_places where owner = p_uid),
+    'designs',      (select count(*) from saved_designs where user_id = p_uid),
+    'orders',       (select count(*) from orders where user_id = p_uid),
+    'charges',      (select count(*) from twingrid_credit_events where user_id = p_uid and kind in ('purchase','renewal','refund')),
     'media',        coalesce((select jsonb_agg(o.name order by o.name) from storage.objects o
                               where o.bucket_id = 'twingrid-media' and (storage.foldername(o.name))[1] = p_uid::text), '[]'::jsonb),
+    'files',        coalesce((select jsonb_agg(jsonb_build_array(o.bucket_id, o.name) order by o.bucket_id, o.name) from storage.objects o
+                              where o.bucket_id in ('twingrid-media','customer-uploads','generated-pdfs')
+                                and (storage.foldername(o.name))[1] = p_uid::text), '[]'::jsonb),
     'plan_active',  exists(select 1 from twingrid_credits where user_id = p_uid and period_end > now()),
     'other_app',    exists(select 1 from saved_designs where user_id = p_uid)
                     or exists(select 1 from orders where user_id = p_uid)
@@ -47,22 +58,23 @@ declare fp jsonb;
 begin
   fp := twingrid_account_footprint(p_uid);
   if p_uid is null or not (fp->>'exists')::boolean then raise exception 'no_such_account'; end if;
-  if (fp->>'other_app')::boolean then raise exception 'shared_account'; end if;
-  if (fp->>'operates')::int > 0 then raise exception 'operates_accounts'; end if;
-  if (fp->>'moderator')::boolean then raise exception 'moderator_account'; end if;
   if (fp->>'official')::boolean then raise exception 'official_account'; end if;
   -- what does not cascade from auth.users: set null or no foreign key at all
   delete from twingrid_sparks where from_account = p_uid;
   delete from twingrid_sparks where from_grid in (select id from twingrid_grids where owner = p_uid);
-  delete from twingrid_credit_events where user_id = p_uid;
+  -- charges stay for tax (Dylan, 2026-09-14): the ledger's money rows, and every print order stripped of the person
+  delete from twingrid_credit_events where user_id = p_uid and kind not in ('purchase','renewal','refund');
+  update orders set contact_name = 'deleted', contact_email = 'deleted@deleted.invalid', contact_phone = null, notes = null, pdf_path = ''
+   where user_id = p_uid;
   delete from twingrid_agent_writes where owner = p_uid;
   delete from twingrid_agent_tokens where owner = p_uid;
   delete from twingrid_media_daily where user_id = p_uid;
-  -- the login and everything that cascades from it: accounts, grids, sparks received, kindred, circle, follows, blocks,
-  -- likes, rules, actions, proposals, places, house guests, credits, profiles, identities, sessions.
-  -- Reports this account filed keep the report with the reporter set null; reports ABOUT it keep their snapshot for moderation.
+  -- the login and everything that cascades from it: accounts, grids, sparks received, kindred, circle, follows, blocks, likes,
+  -- rules, actions, proposals, places, house guests, credits, moderator and admin rights, profiles, saved designs and their
+  -- sides, identities, sessions. Reports this account filed keep the report with the reporter set null; reports ABOUT it keep
+  -- their snapshot for moderation. orders.user_id and orders.design_id are set null by their foreign keys.
   delete from auth.users where id = p_uid;
-  return fp - 'media';
+  return fp - 'media' - 'files';
 end $$;
 
 revoke all on function public.twingrid_account_footprint(uuid) from public, anon, authenticated;

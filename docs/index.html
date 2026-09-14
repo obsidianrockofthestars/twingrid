@@ -4061,9 +4061,9 @@ function pkAccountDelete(){
   btn.onclick=async()=>{ box.hidden=!box.hidden; btn.setAttribute('aria-expanded',String(!box.hidden)); if(box.hidden) return;
     inp.value=''; inp.disabled=false; plan.checked=false; planRow.hidden=true; msg.textContent=''; ready(); text.textContent='Checking what your account holds...';
     const res=await call({dry_run:true}); if(!res) return; const s=res.j.summary||{};
-    if(res.j.error==='contact_support'){ text.textContent='Support deletes this account for you, because it is shared with another Potions and Familiars service, runs another account, or is a moderator or official account. Email support@personakind.com from this address.'; inp.disabled=true; ready(); return; }
+    if(res.j.error==='contact_support'){ text.textContent='This is an official Personakind account, so support deletes it. Email support@personakind.com from this address.'; inp.disabled=true; ready(); return; }
     if(res.status!==200){ text.textContent='Could not check your account right now. Try again in a moment.'; return; }
-    text.textContent='This permanently deletes your account, '+many(s.personas,'persona')+' ('+(Number(s.published)||0)+' published), your guestbook of '+many(s.guestbook,'spark')+', '+many(s.images,'image')+', '+many(s.kindred,'Kindred connection')+' and '+many(s.sparks_given,'spark')+' you left for others. It cannot be undone.';
+    text.textContent='This permanently deletes your account, '+many(s.personas,'persona')+' ('+(Number(s.published)||0)+' published), your guestbook of '+many(s.guestbook,'spark')+', '+many(s.images,'image')+', '+many(s.kindred,'Kindred connection')+' and '+many(s.sparks_given,'spark')+' you left for others'+((Number(s.designs)||0)?', and '+many(s.designs,'print design'):'')+'. Payment records stay for tax purposes, without your name or contact details. It cannot be undone.';
     if(s.plan_active){ planRow.hidden=false; text.textContent+=' You have an active hosted plan: cancel it first under Manage subscription, or it may still renew.'; }
     ready(); inp.focus(); };
   go.onclick=async()=>{ if(go.disabled) return; go.disabled=true; msg.textContent='Deleting...';
