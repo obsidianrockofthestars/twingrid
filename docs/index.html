@@ -2482,7 +2482,9 @@ async function handleFor(uid){ if(!uid) return null; if(uid in __handleCache) re
   const {data}=await SB.from('twingrid_accounts').select('handle').eq('id',uid).maybeSingle(); __handleCache[uid]=data?data.handle:null; return __handleCache[uid]; }
 // Share link for a grid: the handle form when the owner has one, the uuid form otherwise. The uuid form stays valid forever.
 function shareUrlFor(id,name,handle){ const base=location.origin+location.pathname;
-  if(handle&&name) return base+'?u='+encodeURIComponent(handle)+'&p='+encodeURIComponent(name);
+  // v22: share the pretty /@handle/Persona path, which reaches the Worker and gets a per-persona share card;
+  // the ?t= uuid form (no handle) is served asset-first and keeps the generic card, but stays valid forever.
+  if(handle&&name) return location.origin+'/@'+encodeURIComponent(handle)+'/'+encodeURIComponent(name);
   return base+'?t='+encodeURIComponent(id); }
 async function resolveHandlePersona(h,name){ const a=await accountByHandle(h); if(!a) return {acc:null,id:null};
   const {data}=await SB.from('twingrid_grids_public').select('id,name').eq('owner',a.id).eq('is_public',true).ilike('name',ilikeEscape(name)).limit(1);
