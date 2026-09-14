@@ -449,4 +449,20 @@ ok(/newshow'\)\.onclick=async\(\)=>\{ const t=await fetch\('\/templates\/founder
 ok(!/^\s*import [^\n]*revenuecat/m.test(h)&&/const rcSdk=\(\)=>import\('https:\/\/esm\.sh\/@revenuecat\/purchases-js@1\.55\.0'\)/.test(h),'the RevenueCat SDK is a dynamic import (review item 24)');
 ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesError\}=await rcSdk\(\)/.test(h),'the buy path loads the SDK and its error types on demand');
 
+// Room reply thread (v22): pkChatMsgEl gives a persona reply in the Room a face row; the visitor and non-room stay plain bubbles.
+{
+  const src=cut("const MEDIA_BASE='",'else { el.textContent=initial; } }')+' '+cut('function pkChatMsgEl(m,inRoom,faceUrl,faceInit)','d.textContent=m.content; return d;')+'}';
+  const mk=()=>{ const o={className:'',textContent:'',kids:[]}; o.append=(...n)=>o.kids.push(...n); o.appendChild=n=>o.kids.push(n); return o; };
+  const doc={createElement:()=>mk()};
+  const {avatarInto,pkChatMsgEl}=new Function('document',src+' return {avatarInto,pkChatMsgEl};')(doc);
+  const rowEl=pkChatMsgEl({role:'assistant',content:'Hello.'},true,'','C');
+  ok(rowEl.className==='msgrow','a room reply is a face row: '+rowEl.className);
+  ok(rowEl.kids.length===2&&rowEl.kids[0].className==='msgav'&&rowEl.kids[1].className==='msg a','the row is avatar then assistant bubble: '+JSON.stringify(rowEl.kids.map(k=>k.className)));
+  ok(rowEl.kids[1].textContent==='Hello.','the bubble carries the reply text');
+  const uEl=pkChatMsgEl({role:'user',content:'Hi.'},true,'','C');
+  ok(uEl.className==='msg u'&&uEl.textContent==='Hi.','the visitor message stays a plain right bubble, no face row');
+  const eEl=pkChatMsgEl({role:'assistant',content:'x'},false,'','C');
+  ok(eEl.className==='msg a','outside the Room an assistant message is a plain bubble, no face row');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);

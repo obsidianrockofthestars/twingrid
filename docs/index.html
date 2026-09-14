@@ -714,6 +714,10 @@ body.route-room #pkroom{display:flex}
 #pkroom .pkrmchatempty .pkrmchatav{width:76px;height:76px;border-radius:18px;overflow:hidden;display:grid;place-items:center;background:var(--surface2);color:var(--accent-ink,#fff);font-weight:700;font-size:28px}
 #pkroom .pkrmchatempty .pkrmchatav .pkimg{width:100%;height:100%;object-fit:cover}
 #pkroom .pkrmchatempty .pkrmchatline{align-self:center}
+#pkroom .msgrow{display:flex;gap:8px;align-items:flex-end;align-self:flex-start;max-width:90%}
+#pkroom .msgrow .msgav{width:28px;height:28px;flex:0 0 28px;border-radius:8px;overflow:hidden;display:grid;place-items:center;background:var(--surface2);color:var(--accent-ink,#fff);font-weight:700;font-size:13px}
+#pkroom .msgrow .msgav .pkimg{width:100%;height:100%;object-fit:cover}
+#pkroom .msgrow .msg.a{max-width:none}
 #pkroom .pkrmplate{width:100%;height:100%;display:grid;place-items:center;font-family:Archivo,Arial,sans-serif;font-weight:800;
   font-size:clamp(90px,22vh,220px);color:var(--accent-ink);background:var(--pacc,var(--grad))}
 /* the mouth: a soft darkening that deepens with --mouth, placed from data.face. A hard black bar reads
@@ -3451,6 +3455,18 @@ document.querySelectorAll('#settings .tabs button').forEach(b=>b.onclick=()=>{do
 document.getElementById('apikey').value=localStorage.getItem('tg_key')||''; document.getElementById('model').value=localStorage.getItem('tg_model')||'claude-sonnet-4-5';
 document.getElementById('savekey').onclick=()=>{localStorage.setItem('tg_key',document.getElementById('apikey').value.trim());localStorage.setItem('tg_model',document.getElementById('model').value.trim());settings.classList.remove('open');chat.classList.add('open');renderChat();};
 document.getElementById('exportgrid').onclick=()=>{const blob=new Blob([JSON.stringify(GRID,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(document.getElementById('gridname').value||'my-grid')+'.json';a.click();};
+// v22 room thread: build the DOM node for one chat message. In the Room a persona reply (not the visitor)
+// gets a row with the persona's face beside the bubble; everywhere else a plain bubble. Pure but for avatarInto,
+// so tools/inplace_check.mjs can lift and test it with a stub document.
+function pkChatMsgEl(m,inRoom,faceUrl,faceInit){
+  if(inRoom && m.role!=='user'){
+    const row=document.createElement('div'); row.className='msgrow';
+    const av=document.createElement('span'); av.className='msgav'; avatarInto(av,faceUrl,faceInit||'P');
+    const d=document.createElement('div'); d.className='msg a'; d.textContent=m.content;
+    row.append(av,d); return row;
+  }
+  const d=document.createElement('div'); d.className='msg '+(m.role==='user'?'u':'a'); d.textContent=m.content; return d;
+}
 function renderChat(){try{ pkChatSparkSync(); pkLearnSync(); }catch(_){} const b=document.getElementById('chatbody');b.innerHTML='';
   // the composition readout is for the workbench; a visitor in the Room or on a persona page never sees a console line
   if(!/route-(room|profile)/.test(document.body.className)){ const sys=document.createElement('div');sys.className='msg sys';const fc=activeFacets().length;sys.textContent=`system prompt = current composition (${fc} facets, ${activeFacets().reduce((a,n)=>a+ncells(n),0)} cells)`;b.appendChild(sys); }
@@ -3461,7 +3477,9 @@ function renderChat(){try{ pkChatSparkSync(); pkLearnSync(); }catch(_){} const b
     const t=document.createElement('div'); t.className='msg a pkrmchatline'; t.textContent=chatPeerName?('Say hi to '+chatPeerName+'.'):'Say something to start.';
     inv.append(av,t); b.appendChild(inv); return;
   }
-  history.forEach(m=>{const d=document.createElement('div');d.className='msg '+(m.role==='user'?'u':'a');d.textContent=m.content;b.appendChild(d);});
+  // v22 room thread: a reply in the Room carries the persona's face beside the bubble (pkChatMsgEl, lifted and tested).
+  const inRoom=/route-room/.test(document.body.className);
+  history.forEach(m=>{ b.appendChild(pkChatMsgEl(m,inRoom,chatFaceUrl,chatFaceInit)); });
   b.scrollTop=b.scrollHeight;}
 // ---------- hosted chat (2026-09-01) ----------
 // Two ways to power a chat. BYOK: the key in this browser goes straight to Anthropic, as before.
