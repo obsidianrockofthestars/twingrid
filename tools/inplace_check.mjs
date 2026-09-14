@@ -473,4 +473,31 @@ ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesE
   ok(shareUrlFor("gid","Nameless","")==="https://personakind.com/?t=gid","no handle falls back to the uuid form: "+shareUrlFor("gid","Nameless",""));
 }
 
+// Account settings (2026-09-14, Dylan: "Let's not hide it"). The rows exist in words; plain Sign out is this device only because
+// supabase-js defaults signOut() to the GLOBAL scope (the 2026-09-13 scar); global lives only behind Sign out everywhere; a bad or
+// stale password change never reaches updateUser. Lifted with a stubbed document and a recording SB.
+{
+  const box=cut('<section class="acplan" id="acplan"','</section>');
+  ['Change password','Change email','Manage subscription','Sign out everywhere','Download my data'].forEach(t=>ok(box.includes('<b>'+t+'</b>'),'settings row labelled in words: '+t));
+  ok(!/SB\.auth\.signOut\(\)/.test(h),'no bare signOut(): its default scope is global and would end every device');
+  ok((h.match(/scope:'global'/g)||[]).length===1,'the global sign out appears exactly once');
+  ok(/\.pkacform\[hidden\]\{display:none\}/.test(h),'a hidden settings form stays hidden under its display:flex rule');
+  ok(h.includes(":'?account'"),'Account with no handle opens ?account, not Home');
+  const fsrc=cut('function pkAccountSettings(session)','onclick=pkDownloadData;\n}');
+  const els={}; const mk=(id)=>els[id]||(els[id]={id,hidden:true,value:'',textContent:'',dataset:{},setAttribute(){},focus(){},reset(){},querySelector(sel){ return sel==='.acmsg'?mk(id+':msg'):null; }});
+  const calls=[]; let on=true, opened=0;
+  const SB={auth:{getSession:async()=>({data:{session:on?{user:{email:'a@b.co'}}:null}}),updateUser:async(x)=>{ calls.push(['update',x]); return {error:null}; },signOut:async(x)=>{ calls.push(['signOut',x]); return {error:null}; }}};
+  const doc={getElementById:mk,querySelectorAll:()=>[]};
+  const pkAccountSettings=new Function('document','SB','openAuth','pkAuthSet','pkEmailOk','authReturn','location','pkDownloadData',fsrc+'\nreturn pkAccountSettings;')(doc,SB,()=>{ opened++; },()=>{},v=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v),()=>'/',{origin:'',pathname:'/',href:''},()=>{});
+  pkAccountSettings({user:{email:'a@b.co'}});
+  const ev={preventDefault(){}};
+  mk('pkacpw1').value='short'; mk('pkacpw2').value='short'; await els.pkacpw.onsubmit(ev); ok(calls.length===0,'a password under 8 characters never reaches updateUser');
+  mk('pkacpw1').value='longenough1'; mk('pkacpw2').value='longenough2'; await els.pkacpw.onsubmit(ev); ok(calls.length===0,'mismatched passwords never reach updateUser');
+  on=false; mk('pkacpw2').value='longenough1'; await els.pkacpw.onsubmit(ev); ok(calls.length===0&&opened===1,'a stale session is sent to sign in first');
+  on=true; await els.pkacpw.onsubmit(ev); ok(calls.length===1&&calls[0][1].password==='longenough1','a good password is saved');
+  mk('pkacem1').value='A@b.co'; await els.pkacem.onsubmit(ev); ok(calls.length===1,'the current email is not re-sent');
+  mk('pkacem1').value='new@b.co'; await els.pkacem.onsubmit(ev); ok(calls.length===2&&calls[1][1].email==='new@b.co','a new email goes to updateUser');
+  await els.pkacallyes.onclick(); ok(calls.length===3&&calls[2][0]==='signOut'&&calls[2][1].scope==='global','Sign out everywhere uses the global scope');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
