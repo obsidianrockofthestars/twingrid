@@ -450,6 +450,55 @@ function fullComposeText(byName, st) {
   }).join("\n\n");
 }
 
+// Per-persona share card (v22, review 20). The head's og:* tags are static, so every shared persona
+// showed the same generic Personakind card. This reads the PUBLIC row only (twingrid_grids_public, so a
+// private persona can never leak), and returns a title, a one-line description and a portrait for the
+// Worker to inject. Any miss or error returns null and the caller serves the plain shell unchanged.
+function ogCellBody(v) {
+  const t = String(v == null ? "" : v);
+  const out = t.replace(/^[ \t]*#[ \t]*[A-Za-z0-9 _.\-]+\/[ \t]*[A-Z]+[ \t]*(\r?\n)+/, "").trim();
+  return out;
+}
+export function ogSummary(data) {
+  try {
+    const fs = (data && data.facets) || [];
+    const core = fs.find((f) => f && f.name === "core") || fs[0];
+    let t = core && core.cells ? ogCellBody(core.cells.CONTEXT || "") : "";
+    t = String(t || "").replace(/\s+/g, " ").trim();
+    if (!t) return null;
+    t = t.replace(/^you(?:'re| are)\s+/i, "").replace(/^your job is to\s+/i, "Here to ");
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+    const m = t.match(/^.{20,180}?[.!?](\s|$)/);
+    if (m) return m[0].trim();
+    return t.length <= 180 ? t : t.slice(0, 180).replace(/\s+\S*$/, "") + "…";
+  } catch (_) {
+    return null;
+  }
+}
+export async function personaOgCard(env, sel) {
+  try {
+    let row = null;
+    if (sel && sel.gridId) {
+      const r = await fetchPublicGrid(env, sel.gridId, "id,name,data,image_url");
+      row = r && r.grid ? r.grid : null;
+    } else if (sel && sel.handle && sel.name) {
+      const accs = await anonRows(env, "/rest/v1/twingrid_accounts?select=id&is_suspended=eq.false&handle=eq." + encodeURIComponent(sel.handle));
+      const owner = Array.isArray(accs) && accs[0] && accs[0].id;
+      if (owner) {
+        const rows = await anonRows(env, "/rest/v1/twingrid_grids_public?select=id,name,data,image_url&is_public=eq.true&owner=eq." + encodeURIComponent(owner) + "&name=eq." + encodeURIComponent(sel.name) + "&limit=1");
+        row = Array.isArray(rows) ? rows[0] || null : null;
+      }
+    }
+    if (!row) return null;
+    const name = (String(row.name || "Persona").replace(/\s+/g, " ").trim().slice(0, 80)) || "Persona";
+    const desc = ogSummary(row.data) || (name + " on Personakind, an AI persona you can read and talk to.");
+    const img = typeof row.image_url === "string" && /^https:\/\//.test(row.image_url) ? row.image_url : null;
+    return { title: name + " · Personakind", description: desc.slice(0, 300), image: img };
+  } catch (_) {
+    return null;
+  }
+}
+
 export function guardedPrompt(gridData, compose) {
   const byName = indexGrid(gridData);
   const st = normalizeCompose(compose, byName);

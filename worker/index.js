@@ -9,7 +9,7 @@
 // falls through to env.ASSETS.fetch here when no asset matched (same 404 as before).
 
 import { handleMcp } from "./mcp.js";
-import { handleApi, handleSitemap, runAutopilotTick } from "./api.js";
+import { handleApi, handleSitemap, runAutopilotTick, personaOgCard } from "./api.js";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -40,6 +40,47 @@ function isApiPath(pathname) {
 
 export function isHandlePath(pathname) {
   return pathname.startsWith("/@") || pathname.toLowerCase().startsWith("/%40");
+}
+
+// Which persona/room a URL points at, for the share card. Query forms (?t=, ?room=, ?u=&p=) and the
+// pretty path /@handle/Persona. Returns null for everything else (including a bare /@handle account page).
+function personaSel(url) {
+  const p = url.pathname;
+  const sp = url.searchParams;
+  if (p === "/" || p === "") {
+    if (sp.get("t")) return { gridId: sp.get("t") };
+    if (sp.get("room")) return { gridId: sp.get("room") };
+    if (sp.get("u") && sp.get("p")) return { handle: sp.get("u"), name: sp.get("p") };
+    return null;
+  }
+  if (isHandlePath(p)) {
+    let raw;
+    try { raw = decodeURIComponent(p.replace(/^\/(@|%40)/i, "")); } catch (_) { raw = p.replace(/^\/(@|%40)/i, ""); }
+    const parts = raw.split("/").filter(Boolean);
+    if (parts.length >= 2) return { handle: parts[0], name: parts.slice(1).join("/") };
+  }
+  return null;
+}
+
+// Inject the persona's title, description and portrait into the shell's head with HTMLRewriter, so a
+// shared link shows the persona instead of the generic Personakind card. The body is untouched.
+function withPersonaCard(shell, card, href) {
+  const setContent = (val) => ({ element(e) { e.setAttribute("content", val); } });
+  let rw = new HTMLRewriter()
+    .on("title", { element(e) { e.setInnerContent(card.title); } })
+    .on('meta[property="og:title"]', setContent(card.title))
+    .on('meta[name="twitter:title"]', setContent(card.title))
+    .on('meta[property="og:description"]', setContent(card.description))
+    .on('meta[name="twitter:description"]', setContent(card.description))
+    .on('meta[property="og:url"]', setContent(href))
+    .on('link[rel="canonical"]', { element(e) { e.setAttribute("href", href); } });
+  if (card.image) {
+    rw = rw
+      .on('meta[property="og:image"]', setContent(card.image))
+      .on('meta[name="twitter:image"]', setContent(card.image));
+  }
+  const out = rw.transform(shell);
+  return new Response(out.body, { status: 200, statusText: "OK", headers: out.headers });
 }
 
 export default {
@@ -74,6 +115,21 @@ export default {
     if (path === "/sitemap.xml") {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { allow: "GET, HEAD" } });
       return handleSitemap(env);
+    }
+
+    // Per-persona share card (v22, review 20): a shared persona/room link gets the persona's own head tags.
+    // Public rows only (personaOgCard reads the Lobby view), and any miss or error falls through to plain serving.
+    if (request.method === "GET" || request.method === "HEAD") {
+      const sel = personaSel(url);
+      if (sel) {
+        try {
+          const card = await personaOgCard(env, sel);
+          if (card) {
+            const shell = await env.ASSETS.fetch(new Request(url.origin + "/", { method: "GET", headers: request.headers }));
+            return withPersonaCard(shell, card, url.href);
+          }
+        } catch (_) { /* fall through to plain serving below */ }
+      }
     }
 
     // /@handle and /@handle/persona are page routes: serve the shell with a 200 and let the page fold the

@@ -2,7 +2,7 @@
 // with a fake that answers the Supabase and Anthropic shapes the handler uses.
 // Run: node worker/api.test.mjs
 
-import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap, runAutopilotTick, autopilotRefusal } from "./api.js";
+import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap, runAutopilotTick, autopilotRefusal, ogSummary } from "./api.js";
 import { isHandlePath } from "./index.js";
 import { createHash } from "node:crypto";
 
@@ -1758,6 +1758,20 @@ await check("autopilot tick: a second tick in the same hour proposes no second i
   const spent = 3 - balance;
   await runAutopilotTick(ENV, new Date("2026-09-07T15:40:00Z"));
   eq(actionsRows.filter((a) => a.kind === "visit").length, 1, "one visit"); eq(3 - balance, spent, "no second credit");
+});
+
+await check("ogSummary strips 'You are' and takes the first sentence (review 20)", () => {
+  const out = ogSummary({ facets: [{ name: "core", cells: { CONTEXT: "# core / CONTEXT\n\nYou are a calm coach who helps people get unstuck. More text here." } }] });
+  eq(out, "A calm coach who helps people get unstuck.", "summary");
+});
+await check("ogSummary returns null when there is no context", () => {
+  eq(ogSummary({ facets: [{ name: "core", cells: { CONTEXT: "# core / CONTEXT\n\n" } }] }), null, "empty context");
+  eq(ogSummary(null), null, "null data");
+});
+await check("ogSummary truncates a long unpunctuated context with an ellipsis", () => {
+  const out = ogSummary({ facets: [{ name: "core", cells: { CONTEXT: "# core / CONTEXT\n\n" + "x".repeat(400) } }] });
+  if (!out || !out.endsWith("…")) throw new Error("expected an ellipsis, got " + JSON.stringify(out && out.slice(-6)));
+  if (out.length > 181) throw new Error("too long: " + out.length);
 });
 
 console.log("\n" + pass + " passed, " + fail + " failed");
