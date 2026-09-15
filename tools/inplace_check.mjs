@@ -687,7 +687,11 @@ ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth ca
   ok(scS>0&&scE>scS,'pkSpotCard(r,trialOk) found');
   ok(/if\(trialOk&&!pktrialUsed\(r\.id\)\) body\.appendChild\(pktrialBlock\(r\.id\)\);/.test(h.slice(scS,scE)),'the control is appended only when status said available and this browser has not used it, never unconditionally');
   const pfwS=h.indexOf('async function pkFacesWall(){'), pfwE=h.indexOf('card.appendChild(grid); }',pfwS);
-  ok(pfwS>0&&pfwE>pfwS&&/pkSpotCard\(spot,await pktrialStatus\(\)\)/.test(h.slice(pfwS,pfwE)),'the spotlight card is built from a live status check, not a hardcoded true');
+  // Prime review 2026-09-15: the first screen never waits on the trial status call. The card renders at once
+  // with no control, and the control is appended only after a live status check says available.
+  const pfw=h.slice(pfwS,pfwE);
+  ok(pfwS>0&&pfwE>pfwS&&!/await pktrialStatus\(\)/.test(pfw),'the spotlight card never awaits the trial status before it renders');
+  ok(/pkSpotCard\(spot,false\)/.test(pfw)&&/pktrialStatus\(\)\.then\(/.test(pfw)&&/pktrialUsed\(spot\.id\)/.test(pfw),'the control is added after a live status check, not a hardcoded true, and not for a browser that used it');
 }
 
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);

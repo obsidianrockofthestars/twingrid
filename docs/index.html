@@ -3950,7 +3950,8 @@ async function pkFacesWall(){ const card=document.querySelector('.pk-hero .pk-gr
   if(rows.length<3) return; card.dataset.wall='1'; card.textContent=''; card.removeAttribute('aria-hidden');
   const spot=pkSpotPick(rows,Math.floor(Date.now()/86400000));
   const head=document.createElement('div'); head.className='pk-gc-head'; const dot=document.createElement('span'); dot.className='pk-gc-dot'; const t=document.createElement('span'); t.className='pk-gc-title'; t.textContent=spot?'Persona of the day':'Talk to one of them'; head.append(dot,t); card.appendChild(head);
-  if(spot) card.appendChild(pkSpotCard(spot,await pktrialStatus()));
+  if(spot){ const sc=pkSpotCard(spot,false); card.appendChild(sc); // render now; the trial control joins only if the lane answers available
+    pktrialStatus().then(ok=>{ const b=sc.querySelector('.pkspot-body'); if(ok&&b&&!pktrialUsed(spot.id)) b.appendChild(pktrialBlock(spot.id)); }); }
   const grid=document.createElement('div'); grid.className='pkwall-grid pkwall-strip';
   rows.filter(r=>r!==spot).slice(0,5).forEach(r=>{ const a=document.createElement('a'); a.className='pkwall-face'; a.href='?room='+encodeURIComponent(r.id); const hv=document.createElement('div'); hv.className='hav'; const nm=String(r.name||'Untitled persona'); avatarInto(hv,r.image_url,(nm.trim()[0]||'P').toUpperCase(),true); const sp=document.createElement('span'); sp.textContent=nm; a.append(hv,sp); grid.appendChild(a); });
   card.appendChild(grid); }
