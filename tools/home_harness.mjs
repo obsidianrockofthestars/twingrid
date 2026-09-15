@@ -14,6 +14,10 @@ const nm1=(process.argv.find(a=>a.startsWith('--name='))||'--name=Me').slice(7).
 const noHandle=process.argv.includes('--nohandle'); // 2026-09-14: frame ?account as a member who has not claimed a handle
 const noRating=process.argv.includes('--norating'); // Explore search+sort (v23): frame the directory with zero ratings, so Top rated's hidden state can be measured
 const visitor=process.argv.includes('--visitor'); // 2026-09-15: signed in, but every sample grid belongs to u2, so the Room and persona page render for a signed-in stranger
+// --trial (2026-09-15): stubs GET /api/trial/status as available and POST /api/trial/reply with a sample reply, so
+// the landing's "Ask it one question" control can be framed both ways: with the flag it renders and answers; without
+// it, the real fetch 404s against the static server and the control stays absent (Rendered-Control Gate, both states).
+const trialFlag=process.argv.includes('--trial');
 const grids=[mk('11111111-1111-4111-8111-111111111111',nm1,'coach','nebula',Object.assign({avatar:{body:'standing'},house:{room,mood:'calm',zones:{thinking:[{obj:'desk-lamp',x:3,y:1,facet:'manager'}],resting:[],memory:[]}}},twinFlag,depthFlag)),mk('22222222-2222-4222-8222-222222222222','My Shop','support','light:#2F7D6E'),mk('33333333-3333-4333-8333-333333333333','Alrat','character','coral')];
 if(process.argv.includes('--empty')) grids.length=0;
 // --portrait=<bucket url> gives g1 a real portrait so the room's image path can be measured locally (2026-09-13); the URL must sit under MEDIA_BASE or the page ignores it.
@@ -38,6 +42,8 @@ const __S=${process.argv.includes('--signedout')?'null':"{user:{id:'u1',email:'t
 const SB={from:__q, rpc:(fn,a)=>Promise.resolve({data:__rpc(fn,a),error:null}), storage:{from:()=>({upload:()=>Promise.resolve({error:{message:'harness'}}),remove:()=>Promise.resolve({})})}, auth:{getSession:()=>Promise.resolve({data:{session:__S}}), getUser:()=>Promise.resolve({data:{user:__S.user}}), onAuthStateChange:(cb)=>{ setTimeout(()=>{ try{ cb('INITIAL_SESSION',__S); }catch(_){} },0); return {data:{subscription:{unsubscribe(){}}}}; }, signOut:()=>Promise.resolve({}), updateUser:()=>Promise.resolve({}), signInWithOtp:()=>Promise.resolve({}), signInWithPassword:({email,password})=>Promise.resolve(password==='correct-horse'?{data:{session:{user:{id:'u1'}}},error:null}:{data:{},error:{message:'Invalid login credentials'}}), signUp:({email})=>Promise.resolve(/@confirm\./.test(email)?{data:{user:{id:'u2'},session:null},error:null}:{data:{user:{id:'u2'},session:{user:{id:'u2'}}},error:null}), resetPasswordForEmail:()=>Promise.resolve({error:null}), signInWithOAuth:()=>Promise.resolve({error:null}) }};
 // The agent lane routes, stubbed: the harness never reaches a Worker, and the token it shows is a sample string.
 const __rf=window.fetch.bind(window); window.fetch=function(u,init){ const s=String(u&&u.url?u.url:u);
+  if(${trialFlag}&&s.indexOf('/api/trial/status')>=0){ return Promise.resolve(new Response(JSON.stringify({available:true}),{status:200,headers:{'content-type':'application/json'}})); }
+  if(${trialFlag}&&s.indexOf('/api/trial/reply')>=0){ return Promise.resolve(new Response(JSON.stringify({reply:'I keep the porch light on for anyone passing through, and there is always something warm on the stove if you want it.',label:'AI persona'}),{status:200,headers:{'content-type':'application/json'}})); }
   if(s.indexOf('/api/agent/')>=0){ const body=(init&&init.body)?JSON.parse(init.body):{};
     if(s.indexOf('/token/revoke')>=0){ const t=__H.tokens.find(x=>x.id===body.id); if(t) t.revoked_at=new Date().toISOString(); return Promise.resolve(new Response(JSON.stringify({ok:true,id:body.id}),{status:200,headers:{'content-type':'application/json'}})); }
     const label=String(body.label||'').trim().slice(0,60)||'agent'; const id='t'+(__H.tokens.length+1);

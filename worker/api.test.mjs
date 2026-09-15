@@ -2,7 +2,7 @@
 // with a fake that answers the Supabase and Anthropic shapes the handler uses.
 // Run: node worker/api.test.mjs
 
-import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap, runAutopilotTick, autopilotRefusal, ogSummary, handleEmbed } from "./api.js";
+import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap, runAutopilotTick, autopilotRefusal, ogSummary, handleEmbed, trialMonth } from "./api.js";
 import { isHandlePath } from "./index.js";
 import { createHash } from "node:crypto";
 
@@ -134,6 +134,21 @@ let runsRows = [];
 let acctLog = [], storageFail = false, footprints = {}; // delete my account (2026-09-14)
 let rateRows = {}; let rateFail = false; const rateDeletes = []; // twingrid_rate_hit and the tick's sweep (review finding 6)
 let autoHideRows = [], reportsRows = [], accountsRows = [], sentEmails = []; // name guard reports (2026-09-15)
+// Trial lane, DeepSeek direct (2026-09-15): trialBudgetRows mirrors twingrid_trial_budget, keyed by "YYYY-MM",
+// the same atomic-reserve shape as twingrid_capacity_spend. deepseekMode picks the vendor's canned response.
+let trialBudgetRows = {};
+let deepseekMode = "ok"; // "ok" | "fail" | "insufficient"
+let deepseekReply = "A short sample answer.";
+let deepseekUsage = { prompt_tokens: 500, completion_tokens: 80 };
+let lastDeepseekBody = null;
+const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+function resetTrial() {
+  trialBudgetRows = {}; deepseekMode = "ok"; deepseekReply = "A short sample answer.";
+  deepseekUsage = { prompt_tokens: 500, completion_tokens: 80 }; lastDeepseekBody = null; rateRows = {};
+}
+// RATE_KV just needs to be present with a .get: rateLimited() gates the whole feature on that, then
+// asks the atomic twingrid_rate_hit RPC first (stubbed above) and only falls back to get/put on an RPC failure.
+const TRIAL_ENV = Object.assign({}, ENV, { TRIAL_ENABLED: "1", DEEPSEEK_API_KEY: "ds-test-key", TRIAL_CEILING_MICRO: "10000", RATE_KV: { get: async () => null, put: async () => {} } });
 let anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house.";
 
 globalThis.fetch = async (url, init) => {
@@ -379,6 +394,38 @@ globalThis.fetch = async (url, init) => {
   if (u.endsWith("/rest/v1/rpc/twingrid_grant_credits")) {
     balance += body.p_delta;
     return respond(200, balance);
+  }
+  // Trial lane (2026-09-15): the budget table and its two service-role-only RPCs, same atomic shape as capacity.
+  if (u.includes("/rest/v1/twingrid_trial_budget")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("trial budget is service role only");
+    if (method !== "GET") throw new Error("the Worker only reads twingrid_trial_budget directly");
+    const mm = /month=eq\.([^&]+)/.exec(u); const month = mm ? decodeURIComponent(mm[1]) : null;
+    return respond(200, month && trialBudgetRows[month] ? [{ spent_micro: trialBudgetRows[month].spent }] : []);
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_trial_charge")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("trial charge is service role only");
+    if (typeof body.p_reserve_micro !== "number" || body.p_reserve_micro < 0) return respond(400, { message: "reserve out of range" });
+    const row = trialBudgetRows[body.p_month] || (trialBudgetRows[body.p_month] = { spent: 0, ceiling: body.p_ceiling_micro });
+    if (row.spent + body.p_reserve_micro > row.ceiling) return respond(200, false);
+    row.spent += body.p_reserve_micro;
+    return respond(200, true);
+  }
+  if (u.endsWith("/rest/v1/rpc/twingrid_trial_settle")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("trial settle is service role only");
+    const row = trialBudgetRows[body.p_month];
+    if (row) row.spent = Math.max(0, row.spent + body.p_delta_micro);
+    return respond(200, null);
+  }
+  if (u === DEEPSEEK_URL) {
+    lastDeepseekBody = body;
+    if (headers.Authorization !== "Bearer " + ENV.DEEPSEEK_API_KEY && headers.Authorization !== "Bearer ds-test-key") throw new Error("x-api-key/Authorization missing on the DeepSeek call");
+    if (body.model !== "deepseek-flash") throw new Error("wrong model id");
+    if (body.max_tokens !== 250) throw new Error("max_tokens should be 250");
+    if (!Array.isArray(body.messages) || body.messages[0].role !== "system" || body.messages[1].role !== "user") throw new Error("messages must be [system, user]");
+    if (!body.messages[0].content.startsWith("You are role-playing a published Personakind persona")) throw new Error("guard preamble missing");
+    if (deepseekMode === "fail") return respond(500, { error: { message: "Our server encounters an issue" } });
+    if (deepseekMode === "insufficient") return respond(402, { error: { message: "You have run out of balance" } });
+    return respond(200, { choices: [{ message: { role: "assistant", content: deepseekReply } }], usage: deepseekUsage });
   }
   if (u === "https://api.anthropic.com/v1/messages") {
     if (anthropicMode === "fail") return respond(529, { error: { type: "overloaded_error", message: "Overloaded" } });
@@ -1997,6 +2044,128 @@ await check("account delete: a failed file delete stops before any row is touche
   resetAcct(); storageFail = true; const r = await handleApi(delReq(GOOD_TOKEN, { confirm: "DELETE" }), ENV); eq(r.status, 502, "status"); eq(acctLog.some((c) => c[0] === "delete"), false, "the delete RPC never ran"); });
 await check("account delete: GET -> 405", async () => {
   const r = await handleApi(req("/api/account/delete", { method: "GET", headers: H() }), ENV); eq(r.status, 405, "status"); });
+
+// ---------------------------------------------------------------------------
+// Trial lane, DeepSeek direct (2026-09-15). No auth: the signed-out sample.
+// ---------------------------------------------------------------------------
+const trialReq = (body, env) => req("/api/trial/reply", { method: "POST", headers: H({ "CF-Connecting-IP": "9.9.9.9" }), body: JSON.stringify(body) });
+const statusReq = () => req("/api/trial/status", { method: "GET", headers: H() });
+
+await check("trial status: off (available:false) when TRIAL_ENABLED is missing", async () => {
+  resetTrial(); const r = await handleApi(statusReq(), ENV); eq(r.status, 200, "status");
+  eq((await r.json()).available, false, "available"); });
+
+await check("trial status: off when the key is missing, even with TRIAL_ENABLED=1", async () => {
+  resetTrial(); const r = await handleApi(statusReq(), Object.assign({}, ENV, { TRIAL_ENABLED: "1" }));
+  eq((await r.json()).available, false, "available"); });
+
+await check("trial status: never leaks a number, only {available}", async () => {
+  resetTrial(); trialBudgetRows[trialMonth()] = { spent: 4000, ceiling: 10000 };
+  const r = await handleApi(statusReq(), TRIAL_ENV);
+  const j = await r.json();
+  eq(Object.keys(j).join(","), "available", "response shape");
+  eq(j.available, true, "under ceiling is available");
+});
+
+await check("trial status: available flips false once this month's spend reaches the ceiling", async () => {
+  resetTrial(); trialBudgetRows[trialMonth()] = { spent: 10000, ceiling: 10000 };
+  const r = await handleApi(statusReq(), TRIAL_ENV); eq((await r.json()).available, false, "at the ceiling is not available");
+});
+
+await check("trial reply: 404 trial_off when TRIAL_ENABLED is missing, no fetch at all", async () => {
+  resetTrial(); const before = calls.length;
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "hi" }), ENV);
+  eq(r.status, 404, "status"); eq((await r.json()).error, "trial_off", "code"); eq(calls.length, before, "no backend call was made"); });
+
+await check("trial reply: 404 trial_off when the key is missing, even with TRIAL_ENABLED=1", async () => {
+  resetTrial(); const before = calls.length;
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "hi" }), Object.assign({}, ENV, { TRIAL_ENABLED: "1" }));
+  eq(r.status, 404, "status"); eq((await r.json()).error, "trial_off", "code"); eq(calls.length, before, "no backend call was made"); });
+
+await check("trial reply: a message over 400 characters is refused 400 before any fetch, never truncated", async () => {
+  resetTrial(); const before = calls.length;
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "x".repeat(401) }), TRIAL_ENV);
+  eq(r.status, 400, "status"); eq((await r.json()).error, "too_long", "code"); eq(calls.length, before, "no fetch of any kind happened"); });
+
+await check("trial reply: an empty message is refused 400", async () => {
+  resetTrial(); const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "   " }), TRIAL_ENV);
+  eq(r.status, 400, "status"); eq((await r.json()).error, "bad_message", "code"); });
+
+await check("trial reply: a private/missing persona is 404 before any vendor call", async () => {
+  resetTrial(); gridPublic = false; const before = calls.length;
+  try {
+    const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "Who are you?" }), TRIAL_ENV);
+    eq(r.status, 404, "status"); eq((await r.json()).error, "grid_not_found", "code");
+    if (calls.slice(before).some((c) => c.url === DEEPSEEK_URL)) throw new Error("a vendor call was made for a persona that does not exist");
+  } finally { gridPublic = true; }
+});
+
+await check("trial reply: the per-IP limit (3/day) refuses 429 before any vendor call", async () => {
+  resetTrial();
+  const bucket = Math.floor(Date.now() / (86400 * 1000));
+  rateRows["trial-ip:9.9.9.9"] = { bucket, n: 3 }; // already at the limit for today
+  const before = calls.length;
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "Who are you?" }), TRIAL_ENV);
+  eq(r.status, 429, "status"); eq((await r.json()).error, "rate_limited", "code");
+  if (calls.slice(before).some((c) => c.url === DEEPSEEK_URL)) throw new Error("a vendor call was made past the per-IP limit");
+  eq(calls.length > before, true, "the limiter itself was still consulted");
+});
+
+await check("trial reply: the global limit (30/min) refuses 429 before any vendor call", async () => {
+  resetTrial();
+  const bucket = Math.floor(Date.now() / (60 * 1000));
+  rateRows["trial-global"] = { bucket, n: 30 };
+  const before = calls.length;
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "Who are you?" }), TRIAL_ENV);
+  eq(r.status, 429, "status"); eq((await r.json()).error, "rate_limited", "code");
+  if (calls.slice(before).some((c) => c.url === DEEPSEEK_URL)) throw new Error("a vendor call was made past the global limit");
+});
+
+await check("trial reply: a spent-out monthly budget refuses 429 trial_spent, no vendor call", async () => {
+  resetTrial();
+  trialBudgetRows[trialMonth()] = { spent: 10000, ceiling: 10000 }; // already at the ceiling
+  const before = calls.length;
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "Who are you?" }), TRIAL_ENV);
+  eq(r.status, 429, "status"); eq((await r.json()).error, "trial_spent", "code");
+  if (calls.slice(before).some((c) => c.url === DEEPSEEK_URL)) throw new Error("a vendor call was made after the reservation was refused");
+});
+
+await check("trial reply: a vendor 5xx releases the reservation and answers 503 with no vendor text", async () => {
+  resetTrial(); deepseekMode = "fail";
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "Who are you?" }), TRIAL_ENV);
+  eq(r.status, 503, "status");
+  const j = await r.json();
+  eq(Object.keys(j).join(","), "error", "no vendor status/message leaks into the body");
+  eq(j.error, "trial_unavailable", "code");
+  eq(trialBudgetRows[trialMonth()].spent, 0, "the reservation was given back");
+});
+
+await check("trial reply: the insufficient-balance code (402) releases the reservation and answers 503", async () => {
+  resetTrial(); deepseekMode = "insufficient";
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "Who are you?" }), TRIAL_ENV);
+  eq(r.status, 503, "status"); eq((await r.json()).error, "trial_unavailable", "code");
+  eq(trialBudgetRows[trialMonth()].spent, 0, "the reservation was given back");
+});
+
+await check("trial reply: a success settles to the usage block and returns label \"AI persona\"", async () => {
+  resetTrial(); deepseekReply = "I keep the porch light on."; deepseekUsage = { prompt_tokens: 500, completion_tokens: 80 };
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "Who are you?" }), TRIAL_ENV);
+  eq(r.status, 200, "status");
+  const j = await r.json();
+  eq(j.reply, "I keep the porch light on.", "reply");
+  eq(j.label, "AI persona", "label");
+  // ceil(500*0.3 + 80*1.2) = ceil(150+96) = 246 micro, settled to the ACTUAL usage, not the worst-case reservation.
+  eq(trialBudgetRows[trialMonth()].spent, 246, "spend settled to the usage block");
+});
+
+await check("trial reply: the composed system prompt comes from the public projection, and body.compose is ignored", async () => {
+  resetTrial();
+  const r = await handleApi(trialReq({ grid_id: GRID_ID, message: "Who are you?", compose: { mode: "single", sel: { specialist: "coach" } } }), TRIAL_ENV);
+  eq(r.status, 200, "status");
+  const sys = lastDeepseekBody.messages[0].content;
+  if (sys.includes("Ask one question at a time.")) throw new Error("the coach specialist (house-only in the full grid) leaked into the trial prompt despite not being in the Lobby projection");
+  if (!sys.includes("I am a test persona.")) throw new Error("the core cell from the public projection is missing: " + JSON.stringify(sys.slice(0, 200)));
+});
 
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

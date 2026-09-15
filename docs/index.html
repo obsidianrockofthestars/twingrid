@@ -1180,6 +1180,21 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 .pkspot-line b{color:var(--ink);font-weight:600}
 .pkspot-cta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .pkspot-cta .pk-btn{padding:9px 14px;font-size:14px;min-height:40px}
+/* The trial lane's "Ask it one question" control (2026-09-15): only ever appended when the Worker says the
+   lane is on, so there is no separate hidden-by-default rule here (Rendered-Control Gate: absent, not disabled). */
+.pktrial{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-w)}
+.pktrial-ask{padding:9px 14px;font-size:14px;min-height:40px}
+.pktrial-ask:focus-visible,.pktrial-send:focus-visible{outline:2px solid var(--accent-w-deep);outline-offset:2px}
+.pktrial-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.pktrial-input{flex:1;min-width:160px;min-height:40px;padding:9px 12px;border-radius:10px;border:1px solid var(--ink-soft);background:var(--paper);color:var(--ink);font:inherit;font-size:14px}
+.pktrial-input:focus-visible{outline:2px solid var(--accent-w-deep);outline-offset:1px}
+.pktrial-send{padding:9px 16px;font-size:14px;min-height:40px}
+.pktrial-out{margin-top:10px}
+.pktrial-label{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent-w-deep);background:var(--accent-soft);border-radius:999px;padding:3px 9px;display:inline-block;margin-bottom:6px}
+.pktrial-reply{margin:0 0 6px;font-size:14px;line-height:1.5;color:var(--ink)}
+.pktrial-more{margin:0;font-size:12.5px;color:var(--ink-dim)}
+.pktrial-more a{color:var(--accent-w-deep)}
+.pktrial-more a:focus-visible{outline:2px solid var(--accent-w-deep);outline-offset:2px}
 .pkwall-strip{grid-template-columns:repeat(5,1fr);gap:8px}
 .pkwall-strip .pkwall-face span{font-size:11.5px;padding:6px 7px 7px}
 @media (max-width:560px){.pkspot{grid-template-columns:96px 1fr;gap:12px}.pkspot-face{width:96px}.pkwall-strip{grid-template-columns:repeat(3,1fr)}}
@@ -3876,7 +3891,46 @@ function pkSpotLines(g){ const fs=(g&&g.facets)||[]; const core=fs.find(f=>f&&f.
 function pkCanSpeak(){ try{ return !!window.speechSynthesis&&typeof window.SpeechSynthesisUtterance==='function'; }catch(_){ return false; } }
 function pkSpotSpeak(btn,text){ const ss=window.speechSynthesis; if(ss.speaking){ ss.cancel(); btn.textContent='Hear it'; return; }
   const u=new SpeechSynthesisUtterance(String(text||'').slice(0,400)); u.onend=u.onerror=()=>{ btn.textContent='Hear it'; }; btn.textContent='Stop'; ss.speak(u); }
-function pkSpotCard(r){ const nm=String(r.name||'Untitled persona'); const g=(r.data&&r.data.facets)?r.data:{facets:[]}; const L=pkSpotLines(g);
+// The trial lane, DeepSeek direct (2026-09-15, founder ruling). GET /api/trial/status decides whether the
+// control renders at all (Rendered-Control Gate: hidden or absent when off or on any fetch failure, never
+// shown and then refused). One exchange per browser is a CONVENIENCE only, remembered in localStorage; the
+// real wall is the Worker's per-IP and monthly-budget limits (worker/api.js handleTrialReply).
+const PKTRIAL_MAX=400;
+async function pktrialStatus(){ try{ const r=await fetch(HOSTED_API+'/trial/status'); if(!r.ok) return false; const j=await r.json(); return !!(j&&j.available===true); }catch(_){ return false; } }
+function pktrialKey(id){ return 'pktrial_used_'+id; }
+function pktrialUsed(id){ try{ return localStorage.getItem(pktrialKey(id))==='1'; }catch(_){ return false; } }
+function pktrialMarkUsed(id){ try{ localStorage.setItem(pktrialKey(id),'1'); }catch(_){} }
+function pktrialBlock(gridId){
+  const wrap=document.createElement('div'); wrap.className='pktrial';
+  const ask=document.createElement('button'); ask.type='button'; ask.className='pk-btn ghost pktrial-ask'; ask.textContent='Ask it one question';
+  const form=document.createElement('form'); form.className='pktrial-form'; form.hidden=true;
+  const inp=document.createElement('input'); inp.type='text'; inp.className='pktrial-input'; inp.maxLength=PKTRIAL_MAX; inp.placeholder='Ask one question'; inp.setAttribute('aria-label','Your question for this persona');
+  const send=document.createElement('button'); send.type='submit'; send.className='pk-btn solid pktrial-send'; send.textContent='Send';
+  form.append(inp,send);
+  const out=document.createElement('div'); out.className='pktrial-out'; out.hidden=true;
+  ask.onclick=()=>{ ask.hidden=true; form.hidden=false; inp.focus(); };
+  form.onsubmit=async(e)=>{ e.preventDefault(); const message=inp.value.trim(); if(!message) return;
+    send.disabled=true; inp.disabled=true; const was=send.textContent; send.textContent='Asking…';
+    let j=null, ok=false;
+    try{ const r=await fetch(HOSTED_API+'/trial/reply',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({grid_id:gridId,message})});
+      ok=r.ok; j=await r.json().catch(()=>null); }catch(_){ ok=false; }
+    form.hidden=true;
+    if(ok&&j&&typeof j.reply==='string'){
+      pktrialMarkUsed(gridId);
+      const lab=document.createElement('div'); lab.className='pktrial-label'; lab.textContent=String(j.label||'AI persona');
+      const p=document.createElement('p'); p.className='pktrial-reply'; p.textContent=j.reply;
+      const more=document.createElement('p'); more.className='pktrial-more';
+      const a=document.createElement('a'); a.href='?room='+encodeURIComponent(gridId); a.textContent='Talk more in its Room.';
+      more.append('A free sample. ',a);
+      out.append(lab,p,more);
+    } else {
+      const p=document.createElement('p'); p.className='pktrial-reply'; p.textContent='That question could not be answered right now.';
+      out.append(p);
+    }
+    send.disabled=false; inp.disabled=false; send.textContent=was; out.hidden=false;
+  };
+  wrap.append(ask,form,out); return wrap; }
+function pkSpotCard(r,trialOk){ const nm=String(r.name||'Untitled persona'); const g=(r.data&&r.data.facets)?r.data:{facets:[]}; const L=pkSpotLines(g);
   const box=document.createElement('div'); box.className='pkspot';
   const face=document.createElement('a'); face.className='pkspot-face'; face.href='?room='+encodeURIComponent(r.id); face.setAttribute('aria-label','Talk to '+nm); avatarInto(face,r.image_url,(nm.trim()[0]||'P').toUpperCase(),true);
   const body=document.createElement('div'); body.className='pkspot-body';
@@ -3888,13 +3942,15 @@ function pkSpotCard(r){ const nm=String(r.name||'Untitled persona'); const g=(r.
   const read=document.createElement('a'); read.className='pk-btn ghost'; read.href='?t='+encodeURIComponent(r.id); read.textContent='Read it';
   cta.append(talk,read);
   if(pkCanSpeak()){ const hear=document.createElement('button'); hear.type='button'; hear.className='pk-btn ghost'; hear.textContent='Hear it'; hear.onclick=()=>pkSpotSpeak(hear,nm+'. '+L.summary); cta.appendChild(hear); }
-  body.appendChild(cta); box.append(face,body); return box; }
+  body.appendChild(cta);
+  if(trialOk&&!pktrialUsed(r.id)) body.appendChild(pktrialBlock(r.id));
+  box.append(face,body); return box; }
 async function pkFacesWall(){ const card=document.querySelector('.pk-hero .pk-grid-card'); if(!card||card.dataset.wall) return;
   let rows=[]; try{ const {data}=await SB.from('twingrid_grids_public').select('id,name,image_url,data').eq('is_public',true).order('updated_at',{ascending:false}).limit(12); rows=(data||[]).filter(r=>r&&r.image_url&&r.image_url.indexOf(MEDIA_BASE)===0).slice(0,6); }catch(_){}
   if(rows.length<3) return; card.dataset.wall='1'; card.textContent=''; card.removeAttribute('aria-hidden');
   const spot=pkSpotPick(rows,Math.floor(Date.now()/86400000));
   const head=document.createElement('div'); head.className='pk-gc-head'; const dot=document.createElement('span'); dot.className='pk-gc-dot'; const t=document.createElement('span'); t.className='pk-gc-title'; t.textContent=spot?'Persona of the day':'Talk to one of them'; head.append(dot,t); card.appendChild(head);
-  if(spot) card.appendChild(pkSpotCard(spot));
+  if(spot) card.appendChild(pkSpotCard(spot,await pktrialStatus()));
   const grid=document.createElement('div'); grid.className='pkwall-grid pkwall-strip';
   rows.filter(r=>r!==spot).slice(0,5).forEach(r=>{ const a=document.createElement('a'); a.className='pkwall-face'; a.href='?room='+encodeURIComponent(r.id); const hv=document.createElement('div'); hv.className='hav'; const nm=String(r.name||'Untitled persona'); avatarInto(hv,r.image_url,(nm.trim()[0]||'P').toUpperCase(),true); const sp=document.createElement('span'); sp.textContent=nm; a.append(hv,sp); grid.appendChild(a); });
   card.appendChild(grid); }
