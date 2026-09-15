@@ -1341,6 +1341,21 @@ export async function runAutopilotTick(env, now) {
   if (!(await serviceDelete(env, "/rest/v1/twingrid_sparks?kind=eq.conversation&created_at=lt." + encodeURIComponent(cutoff)))) err("spark_sweep_failed");
   // Limiter rows (review finding 6): the longest window is a day, so a row untouched for two days is dead.
   if (!(await serviceDelete(env, "/rest/v1/twingrid_rate?updated_at=lt." + encodeURIComponent(new Date(t.getTime() - 2 * 86400000).toISOString())))) err("rate_sweep_failed");
+  // Name guard auto-hide email (2026-09-15 migration): twingrid_reports_autohide suspends a grid at 3 open
+  // reports and leaves a row in twingrid_auto_hides with notified_at null. Only when the send_email binding
+  // is configured (Cloudflare Email Routing must verify the destination before it can deploy, so a fresh
+  // deploy may have none yet): querying twingrid_auto_hides at all is skipped entirely without it, same as
+  // the spec asks, so a tick with no binding leaves every row untouched for the next tick that has one.
+  if (env.SUPPORT_MAIL) {
+    const hides = await serviceGet(env, "/rest/v1/twingrid_auto_hides?select=grid_id&notified_at=is.null&limit=50");
+    if (hides === null) err("auto_hide_unavailable");
+    else for (const h of hides) {
+      if (!h || !UUID_RE.test(String(h.grid_id))) continue;
+      const sent = await sendAutoHideEmail(env, h.grid_id, t);
+      if (!sent) { err("auto_hide_send_failed"); continue; }
+      if (!(await servicePatch(env, "/rest/v1/twingrid_auto_hides?grid_id=eq." + h.grid_id, { notified_at: t.toISOString() }))) err("auto_hide_mark_failed");
+    }
+  }
   await finish("finished");
   return receipt;
   } catch (e) {
@@ -1348,6 +1363,45 @@ export async function runAutopilotTick(env, now) {
     await finish("crashed");
     throw e;
   }
+}
+// The support email for an auto-hidden grid (2026-09-15). Built from the OPEN reports' own snapshot columns
+// (target_label, target_owner: copied from twingrid_grids at report time by twingrid_report_snapshot), never
+// a read of the base twingrid_grids table, which the tick is held to never touch (review 2026-09-07). Plain
+// text, a few lines of MIME by hand: no new dependency for one email a report threshold away. "cloudflare:email"
+// exists only inside a Worker; the dynamic import is wrapped so node worker/api.test.mjs, which has no such
+// module, still loads and runs this file, falling back to a plain object the fake SUPPORT_MAIL.send() in
+// tests can still inspect. Returns true once env.SUPPORT_MAIL.send() resolves without throwing.
+async function sendAutoHideEmail(env, gridId, t) {
+  const reports = await serviceGet(env, "/rest/v1/twingrid_reports?select=reason,target_label,target_owner&grid_id=eq." + encodeURIComponent(gridId) + "&status=eq.open");
+  if (!reports) return false;
+  const count = reports.length;
+  const name = (reports[0] && reports[0].target_label) || "Untitled persona";
+  const ownerId = reports[0] && reports[0].target_owner;
+  const reasons = [...new Set(reports.map((r) => r && r.reason).filter(Boolean))];
+  let handle = "unknown";
+  if (UUID_RE.test(String(ownerId))) {
+    const acct = await serviceGet(env, "/rest/v1/twingrid_accounts?select=handle&id=eq." + encodeURIComponent(ownerId) + "&limit=1");
+    if (acct && acct[0] && acct[0].handle) handle = acct[0].handle;
+  }
+  const from = "noreply@personakind.com", to = "dylanleeson@potionsandfamiliars.com";
+  const body = [
+    "Persona: " + name,
+    "Owner: @" + handle,
+    "Grid id: " + gridId,
+    "Reports: " + count,
+    "Reasons: " + (reasons.length ? reasons.join(", ") : "none listed"),
+    "Moderator view: https://personakind.com/?mod",
+  ].join("\n");
+  const raw = "From: Personakind <" + from + ">\r\nTo: " + to + "\r\nSubject: Personakind auto-hid a persona after 3 reports\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n" + body + "\r\n";
+  let msg;
+  try {
+    const mod = await import("cloudflare:email");
+    const EmailMessage = mod.default || mod.EmailMessage;
+    msg = new EmailMessage(from, to, raw);
+  } catch (_) {
+    msg = { from, to, raw };
+  }
+  try { await env.SUPPORT_MAIL.send(msg); return true; } catch (_) { return false; }
 }
 // Access layer branch 2 (2026-09-08): a persona invites a visitor up from the Lobby to the Sunroom. One a day, proposed only,
 // never sent by the tick even in autopilot mode: the owner approves it from the queue and the Kindred request goes out then.

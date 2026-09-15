@@ -133,6 +133,7 @@ let actionsRows = [];
 let runsRows = [];
 let acctLog = [], storageFail = false, footprints = {}; // delete my account (2026-09-14)
 let rateRows = {}; let rateFail = false; const rateDeletes = []; // twingrid_rate_hit and the tick's sweep (review finding 6)
+let autoHideRows = [], reportsRows = [], accountsRows = [], sentEmails = []; // name guard reports (2026-09-15)
 let anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house.";
 
 globalThis.fetch = async (url, init) => {
@@ -217,6 +218,28 @@ globalThis.fetch = async (url, init) => {
     const n = cur && cur.bucket === body.p_bucket ? cur.n + 1 : 1;
     rateRows[body.p_key] = { bucket: body.p_bucket, n };
     return respond(200, n > body.p_limit);
+  }
+  // Name guard reports (2026-09-15): the tick reads pending auto-hides, the reasons snapshot off twingrid_reports
+  // (never the base twingrid_grids table: target_label/target_owner are the report's own snapshot columns) and the
+  // owner's handle, then PATCHes notified_at. Service role throughout, no Authorization.
+  if (u.includes("/rest/v1/twingrid_auto_hides")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("auto_hides is service role only");
+    if (method === "PATCH") { const gm = /grid_id=eq\.([0-9a-f-]+)/.exec(u); const row = autoHideRows.find((r) => gm && r.grid_id === gm[1]); if (!row) return respond(200, []); Object.assign(row, body); return respond(200, [row]); }
+    if (method !== "GET") throw new Error("auto_hides: GET or PATCH only");
+    return respond(200, autoHideRows.filter((r) => !/notified_at=is\.null/.test(u) || r.notified_at == null));
+  }
+  if (u.includes("/rest/v1/twingrid_reports")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("reports read by the tick are service role");
+    if (method !== "GET") throw new Error("the tick only reads reports");
+    const gm = /grid_id=eq\.([0-9a-f-]+)/.exec(u), sm = /status=eq\.([a-z]+)/.exec(u);
+    return respond(200, reportsRows.filter((r) => (!gm || r.grid_id === gm[1]) && (!sm || r.status === sm[1])));
+  }
+  // Only the tick's own handle lookup: a bare /twingrid_accounts match swallowed the embed card's anon handle lookup below.
+  if (u.includes("/rest/v1/twingrid_accounts?select=handle&id=eq.")) {
+    if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("accounts read by the tick are service role");
+    if (method !== "GET") throw new Error("the tick only reads accounts");
+    const im = /id=eq\.([0-9a-f-]+)/.exec(u);
+    return respond(200, accountsRows.filter((r) => !im || r.id === im[1]));
   }
   if (u.includes("/rest/v1/twingrid_rate?")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY || method !== "DELETE") throw new Error("rate rows: service role DELETE only");
@@ -1026,7 +1049,8 @@ await check("csp-report: POST answers 204 with an empty body, GET is 405, a malf
 // ---------------------------------------------------------------------------
 const NOW = new Date("2026-09-07T15:20:00Z"); // hour 15 UTC
 const RULE = { grid_id: GRID_ID, owner: USER_ID, mode: "together", topics: ["porches", "houses"], avoid: ["politics"], max_per_day: 1, hour_utc: 15, audience: "public" };
-function resetAutopilot(rules) { rulesRows = rules; actionsRows = []; runsRows = []; sparksRows = []; balance = 3; gridPublic = true; anthropicMode = "ok"; capacityOk = true; calls.length = 0; lastSystem = ""; anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house."; }
+function resetAutopilot(rules) { rulesRows = rules; actionsRows = []; runsRows = []; sparksRows = []; balance = 3; gridPublic = true; anthropicMode = "ok"; capacityOk = true; calls.length = 0; lastSystem = ""; anthropicReply = "Spent the morning sketching a porch and thinking about how people actually arrive at a house."; autoHideRows = []; reportsRows = []; accountsRows = []; sentEmails = []; }
+const MAIL_ENV = Object.assign({}, ENV, { SUPPORT_MAIL: { send: async (msg) => { sentEmails.push(msg); } } });
 
 await check("autopilot tick: one grid at its hour -> exactly one proposed SCHEDULED post, one credit, composed from the Lobby view, one receipt", async () => {
   resetAutopilot([RULE]);
@@ -1111,6 +1135,56 @@ await check("autopilot receipt: written started then patched finished, so a drop
   const runPosts = calls.filter((c) => c.url.includes("/rest/v1/twingrid_action_runs") && c.method === "POST");
   const runPatches = calls.filter((c) => c.url.includes("/rest/v1/twingrid_action_runs") && c.method === "PATCH");
   eq(runPosts.length, 1, "one started insert"); eq(runPatches.length, 1, "one finish patch");
+});
+
+// Name guard auto-hide email (2026-09-15 migration's twingrid_reports_autohide trigger writes twingrid_auto_hides;
+// the tick sends the support email and marks it notified). The email is built from the report snapshot
+// (target_label, target_owner) and twingrid_accounts, never the base twingrid_grids table: the same invariant
+// the "the tick read the base table" assertion above already holds the tick to.
+await check("auto-hide email: sends once, names the persona/owner/count/reasons, marks notified_at", async () => {
+  resetAutopilot([]);
+  autoHideRows = [{ grid_id: GRID_ID, hidden_at: NOW.toISOString(), notified_at: null }];
+  reportsRows = [
+    { grid_id: GRID_ID, reporter: "aaaaaaaa-0000-4000-8000-000000000001", status: "open", reason: "harassment", target_label: "The Coach", target_owner: USER_ID },
+    { grid_id: GRID_ID, reporter: "aaaaaaaa-0000-4000-8000-000000000002", status: "open", reason: "spam", target_label: "The Coach", target_owner: USER_ID },
+    { grid_id: GRID_ID, reporter: "aaaaaaaa-0000-4000-8000-000000000003", status: "open", reason: "harassment", target_label: "The Coach", target_owner: USER_ID },
+    { grid_id: GRID_ID, reporter: "aaaaaaaa-0000-4000-8000-000000000004", status: "dismissed", reason: "spam", target_label: "The Coach", target_owner: USER_ID },
+  ];
+  accountsRows = [{ id: USER_ID, handle: "coachowner" }];
+  if (calls.some((c) => c.url.includes("/rest/v1/twingrid_grids?"))) throw new Error("setup leaked a call");
+  await runAutopilotTick(MAIL_ENV, NOW);
+  eq(sentEmails.length, 1, "one email sent");
+  const raw = String(sentEmails[0].raw || "");
+  eq(sentEmails[0].to || (/To: dylanleeson@potionsandfamiliars\.com/.test(raw) ? "dylanleeson@potionsandfamiliars.com" : ""), "dylanleeson@potionsandfamiliars.com", "addressed to Dylan");
+  if (!/The Coach/.test(raw)) throw new Error("body missing persona name: " + raw);
+  if (!/coachowner/.test(raw)) throw new Error("body missing owner handle: " + raw);
+  if (!/\b3\b/.test(raw)) throw new Error("body missing the open-report count (3, not the dismissed 4th): " + raw);
+  if (!/harassment/.test(raw) || !/spam/.test(raw)) throw new Error("body missing the reasons: " + raw);
+  if (!/personakind\.com\/\?mod/.test(raw)) throw new Error("body missing the moderator view URL: " + raw);
+  eq(autoHideRows[0].notified_at, NOW.toISOString(), "notified_at marked with the tick's own clock");
+  if (calls.some((c) => c.url.includes("/rest/v1/twingrid_grids?"))) throw new Error("the auto-hide email must never read the base twingrid_grids table");
+});
+
+await check("auto-hide email: idempotent, a second tick sends nothing once notified_at is set", async () => {
+  resetAutopilot([]);
+  autoHideRows = [{ grid_id: GRID_ID, hidden_at: NOW.toISOString(), notified_at: null }];
+  reportsRows = [{ grid_id: GRID_ID, reporter: "aaaaaaaa-0000-4000-8000-000000000001", status: "open", reason: "harassment", target_label: "The Coach", target_owner: USER_ID }];
+  accountsRows = [{ id: USER_ID, handle: "coachowner" }];
+  await runAutopilotTick(MAIL_ENV, NOW);
+  eq(sentEmails.length, 1, "first tick sends one");
+  const later = new Date(NOW.getTime() + 3600000);
+  await runAutopilotTick(MAIL_ENV, later);
+  eq(sentEmails.length, 1, "second tick sends nothing more");
+});
+
+await check("auto-hide email: with no SUPPORT_MAIL binding, nothing is queried or sent and notified_at stays null", async () => {
+  resetAutopilot([]);
+  autoHideRows = [{ grid_id: GRID_ID, hidden_at: NOW.toISOString(), notified_at: null }];
+  reportsRows = [{ grid_id: GRID_ID, reporter: "aaaaaaaa-0000-4000-8000-000000000001", status: "open", reason: "harassment", target_label: "The Coach", target_owner: USER_ID }];
+  await runAutopilotTick(ENV, NOW);
+  eq(sentEmails.length, 0, "nothing sent");
+  eq(autoHideRows[0].notified_at, null, "notified_at left null");
+  if (calls.some((c) => c.url.includes("/rest/v1/twingrid_auto_hides"))) throw new Error("must skip the auto_hides query entirely with no SUPPORT_MAIL binding");
 });
 
 await check("autopilot health: full window is ok, a missing hour is flagged dropped, a row stuck at started is flagged unfinished", async () => {
