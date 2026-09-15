@@ -608,4 +608,77 @@ ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth ca
   ok((h.match(/name_reserved.*?support@personakind\.com from an address that proves it is yours\./g)||[]).length>=2||(h.match(/name_reserved/g)||[]).length>=3,'name_reserved is handled at both write sites, not just one');
 }
 
+// The 18-plus signup box and blocking gate (founder ruling 2026-09-15, "18+ at signup (Recommended)"). Same
+// Rendered-Control shape as the termsAgreed test above: a guard that refuses on a control first checks that
+// control is on screen. pk18Agreed carries no "already agreed" bypass, so the sign-in card is checked with the
+// row hidden AND the box unchecked, the state a fresh browser is always in on sign in.
+{
+  const asrc=cut('function pk18Agreed()','return true; }');
+  const mk=(rowHidden,checked)=>{ const el={pk18row:{hidden:rowHidden},pk18ok:{checked:checked,focused:false,focus(){ this.focused=true; }},autherr:{textContent:''}};
+    const doc={getElementById:(id)=>el[id]||null};
+    const fn=new Function('document',asrc+'\nreturn pk18Agreed;')(doc);
+    return {el,run:fn}; };
+
+  // (b) sign in: pkAuthSet hides pk18row unconditionally off signup (no bypass to earn, unlike the terms row),
+  // so the box is never checked and never rendered. Must pass silently, not refuse at an invisible control.
+  const a=mk(true,false);
+  ok(a.run()===true,'(b) hidden 18-plus row means sign in is never refused by it');
+  ok(a.el.autherr.textContent==='','(b) no error is shown for a row that is not on screen');
+  ok(a.el.pk18ok.focused===false,'(b) nothing is focused into a hidden input');
+
+  // (a) create account, box unticked: refused, with a message next to the box.
+  const b=mk(false,false);
+  ok(b.run()===false,'(a) create account refuses without the 18-plus box ticked');
+  ok(/18 or older/.test(b.el.autherr.textContent),'(a) and says so: '+JSON.stringify(b.el.autherr.textContent));
+  ok(b.el.pk18ok.focused===true,'(a) and focuses the box the message names');
+
+  // create account, box ticked: passes.
+  const c=mk(false,true);
+  ok(c.run()===true,'create account passes once the box is ticked');
+  ok(c.el.autherr.textContent==='','with no error');
+}
+// (b), structural half: pkAuthSet ties pk18row to signup alone, never to the terms row's "already agreed in
+// this browser" bypass, so no return path to sign in can leave it checked-but-hidden or visible-but-skipped.
+{
+  const s=h.indexOf("function pkAuthSet(m){"), e=h.indexOf('\nfunction openAuth(',s);
+  ok(s>0&&e>s,'pkAuthSet found');
+  const body=h.slice(s,e);
+  ok(/document\.getElementById\('pk18row'\)\.hidden=!up;/.test(body),'pk18row hides on every mode except signup, unconditionally');
+  ok(!/pk18row[\s\S]{0,40}agreed/.test(body),'pk18row carries no "already agreed" bypass like pkauthterms does');
+}
+// (c) the blocking gate: an account with a row and adult_confirmed_at null is blocked; a confirmed one is not;
+// an account with no row yet (not created until handle claim, see homeHandleUi above) is not blocked either,
+// because there is nothing yet to have confirmed. Lifted with a stub SB standing in for the one real query.
+{
+  const gsrc=cut('let PK_ADULT_GATE=null;','return PK_ADULT_GATE; }');
+  const mkSB=(row)=>({from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:row,error:null})})})})});
+  const build=(row)=>new Function('SB',gsrc+'\nreturn pkAdultGateNeeded;')(mkSB(row));
+  ok(await build({adult_confirmed_at:null})({user:{id:'u1'}})===true,'(c) null adult_confirmed_at on an existing row gets the blocking card');
+  ok(await build({adult_confirmed_at:'2026-09-01T00:00:00Z'})({user:{id:'u1'}})===false,'(c) a confirmed row does not');
+  ok(await build(null)({user:{id:'u1'}})===false,'no account row yet is not blocked (nothing created until handle claim)');
+  ok(await build({adult_confirmed_at:null})(null)===false,'no session, nothing to gate');
+}
+// (d) the blocking card belongs to refreshAuth() alone (Home and the editor), never to a public route a
+// signed-out or Kindred visitor can reach: the Room, the persona page, Explore, an account page, settings,
+// moderation, the Life log or Places.
+{
+  const pub=['renderRoom','renderProfile','renderExplore','renderAccount','renderSettings','renderMod','renderLife','renderPlaces'];
+  pub.forEach(name=>{ const s=h.indexOf('async function '+name+'('); if(s<0) return; const e=h.indexOf('\nasync function ',s+10);
+    const body=h.slice(s,e>0?e:s+4000);
+    ok(!/pkAdultGate(Open|Needed)\(/.test(body),name+' never opens or checks the 18-plus gate (public route)'); });
+  const rs=h.indexOf('async function refreshAuth('), re=h.indexOf('\n// Every page that routes itself',rs);
+  ok(rs>0&&re>rs&&/pkAdultGateNeeded\(session\)/.test(h.slice(rs,re))&&/pkAdultGateOpen\(\)/.test(h.slice(rs,re)),'refreshAuth is the one place that opens the gate');
+}
+// (e) the Confirm write targets the signed-in session's own id, never ownerId() (which can be an ACT_AS
+// delegate account, see the operator comment above ownerId): confirming your own age must never stamp someone
+// else's account you happen to be operating.
+{
+  const s=h.indexOf("document.getElementById('pkadultconfirm').onclick="), e=h.indexOf('\ndocument.getElementById(\'pkadultsignout\')',s);
+  ok(s>0&&e>s,'the Confirm handler found');
+  const body=h.slice(s,e);
+  ok(/session\.user\.id/.test(body),'(e) the write reads the id off the session directly');
+  ok(!/ownerId\(\)/.test(body)&&!/ACT_AS/.test(body),'(e) never ownerId() or ACT_AS: always the signed-in account, never an operated one');
+  ok(/\.update\(\{adult_confirmed_at:new Date\(\)\.toISOString\(\)\}\)\.eq\('id',uid\)/.test(body),'(e) the same client update shape pkPublishGate already uses');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
