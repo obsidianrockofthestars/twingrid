@@ -9,7 +9,7 @@
 // falls through to env.ASSETS.fetch here when no asset matched (same 404 as before).
 
 import { handleMcp } from "./mcp.js";
-import { handleApi, handleSitemap, runAutopilotTick, personaOgCard } from "./api.js";
+import { handleApi, handleSitemap, runAutopilotTick, personaOgCard, handleEmbed } from "./api.js";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -42,6 +42,22 @@ export function isHandlePath(pathname) {
   return pathname.startsWith("/@") || pathname.toLowerCase().startsWith("/%40");
 }
 
+// Parses an "@handle/Name" (or "%40handle/Name") path tail into {handle, name}, URL-decoded. Shared by the
+// /@handle/Name page route (via personaSel below) and the /embed/@handle/Name embed route.
+function parseHandleName(pathTail) {
+  if (!isHandlePath(pathTail)) return null;
+  let raw;
+  try { raw = decodeURIComponent(pathTail.replace(/^\/(@|%40)/i, "")); } catch (_) { raw = pathTail.replace(/^\/(@|%40)/i, ""); }
+  const parts = raw.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  return { handle: parts[0], name: parts.slice(1).join("/") };
+}
+
+// /embed/@handle/PersonaName or /embed/%40handle/PersonaName (2026-09-15, founder ruling "let's do it").
+function isEmbedPath(pathname) {
+  return pathname.startsWith("/embed/@") || pathname.toLowerCase().startsWith("/embed/%40");
+}
+
 // Which persona/room a URL points at, for the share card. Query forms (?t=, ?room=, ?u=&p=) and the
 // pretty path /@handle/Persona. Returns null for everything else (including a bare /@handle account page).
 function personaSel(url) {
@@ -53,12 +69,8 @@ function personaSel(url) {
     if (sp.get("u") && sp.get("p")) return { handle: sp.get("u"), name: sp.get("p") };
     return null;
   }
-  if (isHandlePath(p)) {
-    let raw;
-    try { raw = decodeURIComponent(p.replace(/^\/(@|%40)/i, "")); } catch (_) { raw = p.replace(/^\/(@|%40)/i, ""); }
-    const parts = raw.split("/").filter(Boolean);
-    if (parts.length >= 2) return { handle: parts[0], name: parts.slice(1).join("/") };
-  }
+  const hn = parseHandleName(p);
+  if (hn) return hn;
   return null;
 }
 
@@ -96,6 +108,17 @@ export default {
         // Never leak a stack trace; a JSON-RPC client only needs to know the server failed.
         const body = JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "Internal error" } });
         return withCors(new Response(body, { status: 500, headers: { "content-type": "application/json; charset=utf-8" } }));
+      }
+    }
+
+    if (isEmbedPath(path)) {
+      if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { allow: "GET, HEAD" } });
+      const hn = parseHandleName(path.slice("/embed".length));
+      if (!hn) return new Response(null, { status: 404 });
+      try {
+        return await handleEmbed(env, hn.handle, hn.name);
+      } catch (_) {
+        return new Response(null, { status: 500 });
       }
     }
 

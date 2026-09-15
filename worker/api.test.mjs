@@ -2,7 +2,7 @@
 // with a fake that answers the Supabase and Anthropic shapes the handler uses.
 // Run: node worker/api.test.mjs
 
-import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap, runAutopilotTick, autopilotRefusal, ogSummary } from "./api.js";
+import { handleApi, handleSitemap, guardedPrompt, chatCost, voiceCost, pcmToWav, GOOGLE_VOICES, buildSitemap, runAutopilotTick, autopilotRefusal, ogSummary, handleEmbed } from "./api.js";
 import { isHandlePath } from "./index.js";
 import { createHash } from "node:crypto";
 
@@ -44,6 +44,25 @@ const OTHER = { id: OTHER_ID, owner: STRANGER_ID, name: "Other Persona", data: {
 const OTHER_LOBBY = { id: OTHER_ID, owner: STRANGER_ID, name: "Other Persona", data: { facets: OTHER.data.facets.filter((f) => f.name === "core") } };
 // The Lobby projection of GRID, what twingrid_grids_public serves (facets scoped lobby: core and vibe by default).
 const GRID_LOBBY = { id: GRID_ID, owner: USER_ID, data: { facets: GRID.data.facets.filter((f) => f.name === "core" || f.name === "vibe") } };
+
+// ---- the embed card (2026-09-15) ----------------------------------
+// A fresh handle/owner, distinct from USER_ID/STRANGER_ID so the twingrid_grids_public "owner=eq." stub below
+// can carry a real select=id,name,data,image_url row without disturbing the existing owner=eq.STRANGER_ID case.
+const EMBED_HANDLE = "dylan";
+const EMBED_OWNER = "d1d1d1d1-1111-4111-8111-111111111111";
+const EMBED_ID_NIGHTCAP = "d1d1d1d1-2222-4222-8222-222222222222";
+const EMBED_NIGHTCAP = { id: EMBED_ID_NIGHTCAP, name: "Nightcap",
+  image_url: "https://jpepcqazscmhakxvutpg.supabase.co/storage/v1/object/public/twingrid-media/nightcap.png",
+  data: { facets: [{ name: "core", kind: "core", cells: { CONTEXT: "# core / CONTEXT\n\nI keep the porch light on for anyone passing through." } }] } };
+const EMBED_HOSTILE_NAME = 'Trix & "Bold" <script>alert(1)</script>';
+const EMBED_HOSTILE = { id: "d1d1d1d1-3333-4333-8333-333333333333", name: EMBED_HOSTILE_NAME, image_url: null, data: { facets: [] } };
+const EMBED_PLAINFACE_NAME = "Plainface";
+const EMBED_PLAINFACE = { id: "d1d1d1d1-4444-4444-8444-444444444444", name: EMBED_PLAINFACE_NAME, image_url: "https://evil.example/portrait.png", data: { facets: [] } };
+const EMBED_ROWS = {
+  [EMBED_OWNER + "|Nightcap"]: EMBED_NIGHTCAP,
+  [EMBED_OWNER + "|" + EMBED_HOSTILE_NAME]: EMBED_HOSTILE,
+  [EMBED_OWNER + "|" + EMBED_PLAINFACE_NAME]: EMBED_PLAINFACE,
+};
 
 // ---- the agent write lane (2026-09-11) ----------------------------------
 // A token is only ever a sha256 hex in the database, so the fixtures hash their own raw tokens the way
@@ -235,11 +254,26 @@ globalThis.fetch = async (url, init) => {
     }
     return respond(200, g ? [g] : []);
   }
+  // Embed/og card handle lookup: a public, unsuspended-account handle resolves to its owner id; anything else
+  // (unknown handle) is a plain empty result, the same shape a real "no matching row" answer has.
+  if (u.includes("/rest/v1/twingrid_accounts?select=id&is_suspended=eq.false&handle=eq.")) {
+    const hm = /handle=eq\.([^&]+)/.exec(u); const h = hm ? decodeURIComponent(hm[1]) : "";
+    return respond(200, h === EMBED_HANDLE ? [{ id: EMBED_OWNER }] : []);
+  }
   if (u.includes("/rest/v1/twingrid_grids_public")) {
     // The Lobby view: anon key only, public rows only, data projected. Never the house.
     if (headers.Authorization) throw new Error("the public view must be read with the anon key, not a user token");
     if (u.includes("id=eq." + OTHER_ID)) return respond(200, [OTHER_LOBBY]);
-    { const om = /owner=eq\.([0-9a-f-]+)/.exec(u); if (om) return respond(200, om[1] === STRANGER_ID ? [{ id: OTHER_ID, name: OTHER_LOBBY.name }] : []); }
+    { const om = /owner=eq\.([0-9a-f-]+)/.exec(u);
+      if (om) {
+        // A name=eq. filter (the embed/og handle+name lookup) is answered from EMBED_ROWS: a real row for a
+        // known owner+name pair, [] for a mismatched name (stands in for unknown name, private and suspended
+        // alike, since the view filters all three identically before the Worker ever sees a row).
+        const nm = /name=eq\.([^&]+)/.exec(u);
+        if (nm) return respond(200, EMBED_ROWS[om[1] + "|" + decodeURIComponent(nm[1])] ? [EMBED_ROWS[om[1] + "|" + decodeURIComponent(nm[1])]] : []);
+        return respond(200, om[1] === STRANGER_ID ? [{ id: OTHER_ID, name: OTHER_LOBBY.name }] : []);
+      }
+    }
     if (!gridPublic) return respond(200, []);
     return respond(200, u.includes("id=eq." + GRID_ID) ? [GRID_LOBBY] : []);
   }
@@ -924,6 +958,51 @@ await check("sitemap handler reads public grids off the Lobby view, not the tabl
   eq(r.status, 200, "status");
   if (!calls.some((c) => c.url.includes("/rest/v1/twingrid_grids_public?select=id,updated_at&is_public=eq.true"))) throw new Error("sitemap did not read the view");
   if (calls.some((c) => c.url.includes("/rest/v1/twingrid_grids?"))) throw new Error("sitemap read the base table");
+});
+
+await check("embed: a public persona renders with the frame-ancestors CSP and no X-Frame-Options", async () => {
+  const r = await handleEmbed(ENV, EMBED_HANDLE, "Nightcap");
+  eq(r.status, 200, "status");
+  eq(r.headers.get("content-security-policy"), "frame-ancestors *; default-src 'none'; img-src https://jpepcqazscmhakxvutpg.supabase.co data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'", "csp");
+  if (r.headers.get("x-frame-options")) throw new Error("must not set x-frame-options: the whole point is to be framed");
+  const html = await r.text();
+  if (!html.includes("Nightcap")) throw new Error("name missing");
+  if (!html.includes(">AI persona<")) throw new Error("AI persona label missing");
+  if (!html.includes(">Talk to it<")) throw new Error("room link text missing");
+  if (!html.includes(">Read its handbook<")) throw new Error("handbook link text missing");
+  if (!html.includes("https://personakind.com/?room=" + EMBED_ID_NIGHTCAP)) throw new Error("room href wrong");
+  if (!html.includes("https://personakind.com/@dylan/Nightcap")) throw new Error("handbook href wrong");
+  if (!html.includes('<img class="p" src="https://jpepcqazscmhakxvutpg.supabase.co/storage/v1/object/public/twingrid-media/nightcap.png"')) throw new Error("portrait not rendered from our own bucket");
+});
+
+await check("embed: a hostile persona name is HTML-escaped", async () => {
+  const r = await handleEmbed(ENV, EMBED_HANDLE, EMBED_HOSTILE_NAME);
+  eq(r.status, 200, "status");
+  const html = await r.text();
+  if (html.includes("<script>")) throw new Error("a raw <script> tag leaked into the card");
+  if (!html.includes("&lt;script&gt;alert(1)&lt;/script&gt;")) throw new Error("angle brackets not escaped");
+  if (!html.includes("&quot;Bold&quot;")) throw new Error("quotes not escaped");
+  if (!html.includes("Trix &amp;")) throw new Error("ampersand not escaped");
+});
+
+await check("embed: unknown handle, unknown name (stands in for private and suspended, which the view filters identically) both 404 with the same not-available card, never a reason", async () => {
+  const r1 = await handleEmbed(ENV, "nosuchhandle", "Nightcap");
+  eq(r1.status, 404, "unknown handle");
+  const r2 = await handleEmbed(ENV, EMBED_HANDLE, "NoSuchPersona");
+  eq(r2.status, 404, "unknown name");
+  const html = await r2.text();
+  if (!html.includes("This persona is not available.")) throw new Error("missing not-available message");
+  if (/private|suspend/i.test(html)) throw new Error("the 404 card must not explain why");
+  eq(r1.headers.get("content-security-policy"), r2.headers.get("content-security-policy"), "both 404s still carry the embed CSP (frameable)");
+  if (r1.headers.get("x-frame-options") || r2.headers.get("x-frame-options")) throw new Error("404 must not set x-frame-options either");
+});
+
+await check("embed: a non-bucket image URL is never rendered as an <img>, only the letter plate", async () => {
+  const r = await handleEmbed(ENV, EMBED_HANDLE, EMBED_PLAINFACE_NAME);
+  eq(r.status, 200, "status");
+  const html = await r.text();
+  if (html.includes("<img")) throw new Error("rendered an <img> from a URL outside our bucket base");
+  if (!html.includes('class="p plate">P<')) throw new Error("letter plate missing or wrong initial");
 });
 
 await check("csp-report: POST answers 204 with an empty body, GET is 405, a malformed body is still 204", async () => {
