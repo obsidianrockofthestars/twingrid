@@ -350,6 +350,15 @@ h1.big .g{background:var(--grad);-webkit-background-clip:text;background-clip:te
 @keyframes sp{to{transform:rotate(360deg)}}
 .err{color:var(--dont);font-size:13px;min-height:16px;margin-top:2px}
 
+/* ---------------- 18-plus blocking gate (founder ruling 2026-09-15) ----------------
+   A separate top-level dialog, not a route: it overlays whatever refreshAuth() would otherwise
+   render (Home or the editor) and, unlike #auth, carries no close button, no backdrop-click-close
+   and no Escape handler, because it must not be dismissable without Confirm or Sign out. Reuses
+   .authcard/.primary/.err/.altlink so it inherits the same dark and public-palette theming as
+   #auth below, instead of a second copy of the same rules. */
+#pkadultgate{position:fixed;inset:0;z-index:170;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,9,12,.72);backdrop-filter:blur(6px)}
+#pkadultgate .altlink{min-height:28px;display:block;width:100%;margin-top:12px;background:none;border:0;color:var(--dim);font-family:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
+
 /* ---------------- public twinograph profile ---------------- */
 #profile{display:none}
 body.route-profile #profile{display:block}
@@ -1251,6 +1260,15 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 #auth .orline::before,#auth .orline::after{content:"";flex:1;height:1px;background:var(--line-w)}
 #auth .altlink{min-height:28px;display:block;width:100%;margin-top:12px;background:none;border:0;color:var(--ink-dim);font-family:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px}
 #auth .altlink:hover{color:var(--accent-w-deep)}
+#pkadultgate{background:rgba(33,28,23,.5)}
+#pkadultgate .authcard{background:var(--card-w);border:1px solid var(--line-w);border-radius:22px;box-shadow:0 40px 100px rgba(27,27,36,.35);color:var(--ink)}
+#pkadultgate .authcard h2{font-family:var(--serif);font-weight:600;color:var(--ink)}
+#pkadultgate .authcard p.lead{color:var(--ink-soft)}
+#pkadultgate .authcard .primary{background:var(--accent-w);border:1.5px solid var(--accent-w);color:#fff;border-radius:12px;font-weight:600}
+#pkadultgate .authcard .primary:hover{background:var(--accent-w-deep)}
+#pkadultgate .altlink{color:var(--ink-dim)}
+#pkadultgate .altlink:hover{color:var(--accent-w-deep)}
+#pkadultgate .err{color:var(--accent-w-deep)}
 
 .drawer:not(.open){box-shadow:none}
 @media(max-width:860px){
@@ -1569,7 +1587,12 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="k" id="pkauthk">Welcome back</div>
       <h2 id="authttl">Sign in</h2>
       <p class="lead" id="pkauthlead">Your email and password. Nothing to install.</p>
-      <label class="trust" id="pkauthterms" style="margin:0 0 14px;cursor:pointer;align-items:center"><input type="checkbox" id="termsok" style="margin:0 2px 0 0;width:16px;height:16px;flex:none"><span>I am 18 or older and I agree to the <a href="/terms" target="_blank" rel="noopener" style="color:var(--accent)">Terms and Privacy Notice</a>.</span></label>
+      <label class="trust" id="pkauthterms" style="margin:0 0 14px;cursor:pointer;align-items:center"><input type="checkbox" id="termsok" style="margin:0 2px 0 0;width:16px;height:16px;flex:none"><span>I agree to the <a href="/terms" target="_blank" rel="noopener" style="color:var(--accent)">Terms and Privacy Notice</a>.</span></label>
+      <!-- 18-plus signup box (founder ruling 2026-09-15, "18+ at signup (Recommended)"): a neutral, age-only
+           attestation, never bundled with the Terms tick above. Create account only: pkAuthSet hides it on
+           sign in and on password reset unconditionally, with no "already agreed" bypass, so a fresh browser
+           signing in never sees it (Rendered-Control Gate, the 2026-09-13 termsAgreed lockout is the precedent). -->
+      <label class="trust" id="pk18row" hidden style="margin:0 0 14px;cursor:pointer;align-items:center;min-height:24px"><input type="checkbox" id="pk18ok" style="margin:0 2px 0 0;width:16px;height:16px;flex:none"><span>I confirm I am 18 or older.</span></label>
       <button class="oauthbtn" id="googlebtn" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Continue with Google</span></button>
       <div class="orline"><span>or</span></div>
       <label for="email">Email address</label>
@@ -1591,6 +1614,20 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <p><span id="pkauthsentp">We sent a link to</span> <span class="em" id="sentto">your inbox</span>.</p>
       <p>Open it on this device to finish. No email in a minute? Check spam, or <button class="btn ghost" id="resend" style="padding:6px 12px;font-size:13px;margin-top:8px">go back</button></p>
     </div>
+  </div>
+</div>
+
+<!-- 18-plus blocking gate (founder ruling 2026-09-15). A top-level sibling like #rpt below, not nested in
+     #auth: it must not be closeable by the X, a backdrop click or Escape that #auth offers, only Confirm or
+     Sign out. refreshAuth() shows it (hidden=false) before Home or the editor render for a signed-in account
+     whose adult_confirmed_at is null; see pkAdultGateNeeded / pkAdultGateOpen near refreshAuth(). -->
+<div id="pkadultgate" hidden role="dialog" aria-modal="true" aria-labelledby="pkadultgatettl">
+  <div class="authcard">
+    <h2 id="pkadultgatettl">Confirm your age</h2>
+    <p class="lead">Confirm you are 18 or older to use Personakind.</p>
+    <div class="err" id="pkadultgateerr" role="alert"></div>
+    <button class="primary" id="pkadultconfirm" type="button">Confirm</button>
+    <button class="altlink" id="pkadultsignout" type="button">Sign out</button>
   </div>
 </div>
 
@@ -2471,7 +2508,13 @@ function homeHandleUi(owner,myHandle){
       if(data){ lastOk=h; msg.textContent='@'+h+' is free.'; } else { msg.textContent='@'+h+' is taken.'; } },350); });
   btn.onclick=async()=>{ const h=norm(); if(!HANDLE_RE.test(h)){ msg.textContent='3 to 30 characters: letters, numbers, underscores.'; return; }
     btn.disabled=true; msg.textContent='Claiming...';
-    const {error}=await SB.from('twingrid_accounts').insert({id:owner,handle:h});
+    // Consume the PK18_PENDING flag here, on the row's own insert, never through a blind update right after
+    // signUp (see pk18Pending above: this account may not have a row yet). Only when this is the signed-in
+    // user's own account, never an operated one, so an operator's own 18-plus tick never stamps a delegate.
+    const row={id:owner,handle:h};
+    try{ const {data:{session}}=await SB.auth.getSession(); let pend=false; try{ pend=localStorage.getItem(PK18_PENDING)==='1'; }catch(_){}
+      if(pend&&session&&session.user&&session.user.id===owner) row.adult_confirmed_at=new Date().toISOString(); }catch(_){}
+    const {error}=await SB.from('twingrid_accounts').insert(row);
     btn.disabled=false;
     if(error){ const m=String(error.message||''); const code=String(error.code||'');
       if(code==='23505'||/duplicate|unique/i.test(m)) msg.textContent='@'+h+' was just taken. Try another.';
@@ -2479,6 +2522,7 @@ function homeHandleUi(owner,myHandle){
       else if(/row-level security|permission/i.test(m)) msg.textContent='Sign in again, then try.';
       else msg.textContent='Could not claim it: '+m.slice(0,120);
       return; }
+    if(row.adult_confirmed_at){ try{ localStorage.removeItem(PK18_PENDING); }catch(_){} PK_ADULT_GATE=false; }
     __handleCache[owner]=h; msg.textContent='Done. @'+h+' is yours.'; syncAcctNav(); setTimeout(()=>renderHome(),600); };
 }
 document.getElementById('hsignout').onclick=async()=>{ await SB.auth.signOut({scope:'local'}); location.href=location.origin+location.pathname; };
@@ -2699,7 +2743,38 @@ function route(){ const rm=onRoomRoute();
   if(onExploreRoute()){ document.body.className='marketing route-explore'; app.style.display='none'; renderExplore(); return; }
   if(onModRoute()){ document.body.className='marketing route-mod'; app.style.display='none'; renderMod(); return; }
   pkFacesWall(); document.body.className='marketing route-landing'; refreshAuth(); }
+// ---------- 18-plus account gate (founder ruling 2026-09-15, "18+ at signup (Recommended)"). Supersedes
+// "Private building is not gated" for account CREATION only: pkPublishGate further below is unchanged and
+// still asks again at Publish. This blocks Home and the editor for a signed-in account whose twingrid_accounts
+// row already exists with adult_confirmed_at null, so an old account or a first Google sign-in is asked once
+// instead of only finding out when it tries to publish. A brand-new account has no row yet (see homeHandleUi
+// above: a row is created only at handle claim), so it is gated unless this browser already confirmed (PK18_PENDING, set by the signup box or by Confirm; Prime review: a first Google sign-in must not skip it), which is also why an
+// email signup that ticked the box stamps adult_confirmed_at onto that later insert (PK18_PENDING) instead of
+// trying to write it immediately after signUp. Not a new route: refreshAuth() is the one signed-in render path
+// for Home and the editor (route()'s other pages call their own render*() and never reach refreshAuth()), so
+// the gate lives here rather than behind a new on*Route() the INITIAL_SESSION exemption would need to know.
+let PK_ADULT_GATE=null; // null unknown, true blocked, false clear (cached: Confirm does not force a second read)
+async function pkAdultGateNeeded(session){ if(PK_ADULT_GATE!==null) return PK_ADULT_GATE;
+  const uid=session&&session.user?session.user.id:null; if(!uid){ PK_ADULT_GATE=false; return false; }
+  try{ const {data}=await SB.from('twingrid_accounts').select('adult_confirmed_at').eq('id',uid).maybeSingle();
+    let pend=false; try{ pend=localStorage.getItem(PK18_PENDING)==='1'; }catch(_){} PK_ADULT_GATE=data?!data.adult_confirmed_at:!pend; }catch(_){ PK_ADULT_GATE=false; }
+  return PK_ADULT_GATE; }
+function pkAdultGateOpen(){ document.getElementById('pkadultgateerr').textContent=''; document.getElementById('pkadultgate').hidden=false;
+  setTimeout(()=>document.getElementById('pkadultconfirm').focus(),40); }
+// The write targets the SESSION's own id, never ownerId()/ACT_AS: this confirms the signed-in person, not
+// whichever account an operator happens to be delegated into, and reuses the same client update pkPublishGate
+// already uses (below) so there is one proven write path for adult_confirmed_at, not two.
+document.getElementById('pkadultconfirm').onclick=async()=>{ const b=document.getElementById('pkadultconfirm'), err=document.getElementById('pkadultgateerr');
+  const {data:{session}}=await SB.auth.getSession(); const uid=session&&session.user?session.user.id:null;
+  if(!uid){ document.getElementById('pkadultgate').hidden=true; openAuth(); return; }
+  b.disabled=true; err.textContent=''; const {data:rowx}=await SB.from('twingrid_accounts').select('id').eq('id',uid).maybeSingle(); if(!rowx){ try{ localStorage.setItem(PK18_PENDING,'1'); }catch(_){} b.disabled=false; PK_ADULT_GATE=false; document.getElementById('pkadultgate').hidden=true; refreshAuth(); return; }
+  const {error}=await SB.from('twingrid_accounts').update({adult_confirmed_at:new Date().toISOString()}).eq('id',uid);
+  b.disabled=false;
+  if(error){ err.textContent='Could not save: '+String(error.message||'').slice(0,100); return; }
+  PK_ADULT_GATE=false; document.getElementById('pkadultgate').hidden=true; refreshAuth(); };
+document.getElementById('pkadultsignout').onclick=async()=>{ await SB.auth.signOut({scope:'local'}); location.href=location.origin+location.pathname; };
 async function refreshAuth(){ const {data:{session}}=await SB.auth.getSession();
+  if(session && await pkAdultGateNeeded(session)){ pkAdultGateOpen(); return; }
   if(session && !onEditorRoute()){ await renderHome(); initOperator(session); tutMaybe(700); return; }
   if(session){ document.body.className=''; app.style.display='grid'; closeAuth(); document.getElementById('who').textContent=session.user.email; await loadClones(); initOperator(session);
     if(window.__editorBooted) return; window.__editorBooted=true;
@@ -2720,7 +2795,7 @@ function pkAuthSet(m){ pkAuthMode=m; const up=m==='signup', np=m==='newpw'; cons
   T('pkauthlead',np?'Choose a new password for your account.':up?'An email and a password. Nothing to install.':'Your email and password. Nothing to install.');
   T('pkauthgo',np?'Set my password':up?'Create my account':'Sign in'); T('pkauthswap',up?'Already have an account? Sign in':'New here? Create an account');
   let agreed=false; try{ agreed=localStorage.getItem('pk_terms_ok')===TERMS_VERSION; }catch(_){}
-  document.getElementById('pkauthterms').hidden=np||(!up&&agreed); document.getElementById('pkauthforgot').hidden=up||np; document.getElementById('pkauthswap').hidden=np;
+  document.getElementById('pkauthterms').hidden=np||(!up&&agreed); document.getElementById('pk18row').hidden=!up; document.getElementById('pkauthforgot').hidden=up||np; document.getElementById('pkauthswap').hidden=np;
   const em=document.getElementById('email'); em.hidden=np; em.previousElementSibling.hidden=np; const g=document.getElementById('googlebtn'); g.hidden=np; g.nextElementSibling.hidden=np;
   const pw=document.getElementById('password'); pw.autocomplete=up||np?'new-password':'current-password'; pw.value=''; document.getElementById('autherr').textContent=''; }
 function openAuth(e){ const back = e&&e.currentTarget&&/sign in/i.test(e.currentTarget.textContent||'');
@@ -2750,6 +2825,17 @@ const TERMS_VERSION='2026-09-07';
 // that made Continue with Google dead for every returning visitor who had already agreed: the button
 // set the error and never reached signInWithOAuth. The rendered row is the gate, not the tick alone.
 function termsAgreed(){ const row=document.getElementById('pkauthterms'); const c=document.getElementById('termsok'); const err=document.getElementById('autherr'); if(row&&row.hidden) return true; if(c&&!c.checked){ err.textContent='Please tick the box to agree to the Terms and Privacy Notice first.'; c.focus(); return false; } try{ localStorage.setItem('pk_terms_ok',TERMS_VERSION); }catch(_){} return true; }
+// The 18-plus signup box (founder ruling 2026-09-15, "18+ at signup (Recommended)"). Same Rendered-Control shape
+// as termsAgreed() above: the guard checks the row is actually on screen before it checks the tick, so it can
+// never refuse at a box the sign-in card never rendered. Unlike termsAgreed(), pk18row carries no "already
+// agreed" bypass (pkAuthSet hides it unconditionally off signup), so a fresh browser signing in never sees it.
+function pk18Agreed(){ const row=document.getElementById('pk18row'); const c=document.getElementById('pk18ok'); const err=document.getElementById('autherr'); if(row&&row.hidden) return true; if(c&&!c.checked){ err.textContent='Please confirm you are 18 or older to create an account.'; c.focus(); return false; } return true; }
+// twingrid_accounts has no row for a brand-new account until a handle is claimed (the insert in homeHandleUi
+// below): handle is NOT NULL with no default, so there is nowhere yet to stamp adult_confirmed_at right after
+// signUp. This flag remembers a ticked box across that gap and is consumed the moment the row is created, so
+// an email signup that ticked it never sees the pkadultgate blocking card once it reaches Home.
+const PK18_PENDING='pk_18_pending';
+function pk18Pending(){ try{ localStorage.setItem(PK18_PENDING,'1'); }catch(_){} }
 const authReturn=()=>location.origin+location.pathname;
 const pkEmailOk=v=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
 function pkAuthSent(h,p,email){ document.getElementById('pkauthsenth').textContent=h; document.getElementById('pkauthsentp').textContent=p; document.getElementById('sentto').textContent=email; authCard.classList.add('done'); }
@@ -2763,7 +2849,8 @@ async function pkAuthGo(){ const err=document.getElementById('autherr'), btn=doc
   const was=btn.textContent; btn.disabled=true; btn.textContent='One moment...';
   try{
     if(pkAuthMode==='newpw'){ const {error}=await SB.auth.updateUser({password:pw}); if(error){ err.textContent=error.message||'Could not set the password. Try the reset link again.'; return; } closeAuth(); return; }
-    if(pkAuthMode==='signup'){ if(!termsAgreed()) return; const {data,error}=await SB.auth.signUp({email,password:pw,options:{emailRedirectTo:authReturn()}}); if(error){ err.textContent=error.message||'Could not create the account.'; return; }
+    if(pkAuthMode==='signup'){ if(!termsAgreed()) return; if(!pk18Agreed()) return; const {data,error}=await SB.auth.signUp({email,password:pw,options:{emailRedirectTo:authReturn()}}); if(error){ err.textContent=error.message||'Could not create the account.'; return; }
+      pk18Pending();
       if(data&&data.session){ closeAuth(); return; } pkAuthSent('Confirm your email','We sent a confirmation to',email); return; }
     const {error}=await SB.auth.signInWithPassword({email,password:pw}); if(error){ err.textContent='That email and password did not match.'; return; } closeAuth();
   } finally { btn.disabled=false; btn.textContent=was; } }

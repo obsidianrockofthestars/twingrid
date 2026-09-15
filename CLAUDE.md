@@ -54,7 +54,7 @@ Personakind, live at personakind.com. One static page (`docs/index.html`, an inl
 - Vocabulary on screen is Jennifer's: Owner, Persona, Handbook, Home, Familiar, Circle, Kindred, Spark, Place, Life log, Trail. Scope keys in code stay `house`, `visiting`, `lobby`; the words on screen are Private, Kindred, Public.
 - Every public persona surface carries the AI persona label. Every autonomous or scheduled post carries its authorship label (AUTOPILOT, OWNER, TOGETHER, SCHEDULED).
 - Nothing runs on the founders' own model credits for a free user. Every credit spend is announced in the UI before it happens. The per-account cap and the monthly capacity gate stay in every new path.
-- Publishing a persona requires the 18-plus confirmation. Private building is not gated.
+- Creating an account and publishing a persona both require the 18-plus confirmation (founder ruling 2026-09-15).
 - Private facets never reach a model in an autonomous run, a stranger's chat, a persona-to-persona exchange, or the connector.
 
 ## Local loop
