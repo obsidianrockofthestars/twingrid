@@ -889,6 +889,14 @@ body.route-account{overflow:auto;background:var(--paper)}
   text-underline-offset:3px;cursor:pointer;padding:6px 2px;min-height:44px}
 #account .exclear{background:none;border:0;font:inherit;font-size:13.5px;color:var(--accent-w-deep);text-decoration:underline;
   text-underline-offset:3px;cursor:pointer;padding:6px 2px;min-height:44px}
+#explore .pkxsearch{font:inherit;font-size:14px;padding:9px 14px;border:1px solid var(--ink-soft);border-radius:999px;
+  background:var(--card-w);color:var(--ink);min-height:36px;flex:1 1 200px;max-width:320px}
+#explore .pkxsearch::placeholder{color:var(--ink-dim)}
+#explore .pkxsort{display:inline-flex;gap:6px;flex-wrap:wrap}
+#explore .pkxsortbtn{font:inherit;font-size:13.5px;font-weight:600;padding:7px 14px;border-radius:999px;
+  border:1px solid var(--ink-soft);background:var(--card-w);color:var(--ink-soft);cursor:pointer;min-height:36px}
+#explore .pkxsortbtn:hover{border-color:var(--accent-w)}
+#explore .pkxsortbtn[aria-pressed="true"]{background:var(--accent-w);border-color:var(--accent-w);color:#fff}
 
 /* first-run tour: one spotlight, one card, no library */
 #tour{position:fixed;inset:0;z-index:140;display:none}
@@ -1663,6 +1671,12 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="exfilters">
         <label class="exchk"><input type="checkbox" id="exhideofficial"> Hide the example personas</label>
         <button class="exclear" id="exclearhidden" type="button" hidden></button>
+        <input type="search" id="pkxsearch" class="pkxsearch" aria-label="Search personas" placeholder="Search personas">
+        <div class="pkxsort" role="group" aria-label="Sort personas">
+          <button type="button" class="pkxsortbtn" id="pkxsortpop" aria-pressed="true">Popular</button>
+          <button type="button" class="pkxsortbtn" id="pkxsortnew" aria-pressed="false">Newest</button>
+          <button type="button" class="pkxsortbtn" id="pkxsorttop" aria-pressed="false" hidden>Top rated</button>
+        </div>
       </div>
     </div>
     <div class="exgrid" id="exgrid"></div>
@@ -3763,7 +3777,7 @@ function hexA(hex,a){ const h=hex.replace('#',''); const r=parseInt(h.slice(0,2)
 // A label is necessary and not sufficient. Meta shipped "AI managed by Meta" on their
 // seeded profiles and still deleted them in Jan 2025, because people could not get them
 // off their own screen. Hiding is per-viewer, per-browser, and never leaves the device.
-const PK_HIDDEN='pk_hidden_v1', PK_HIDEOFF='pk_hide_official_v1';
+const PK_HIDDEN='pk_hidden_v1', PK_HIDEOFF='pk_hide_official_v1', PK_EXSORT='pk_explore_sort_v1';
 function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(_){ return d; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(_){} }
 function hiddenIds(){ const a=lsGet(PK_HIDDEN,[]); return Array.isArray(a)?a:[]; }
@@ -3879,6 +3893,50 @@ function exSparkRow(el,score){
   else { lab.textContent='Be the first'; el.classList.add('exnone'); }
   el.appendChild(lab);
 }
+// search + sort (v23, Dylan's brief 2026-09-14). Pure and side-effect free so tools/explore_check.mjs
+// can lift them straight off the page, the way tools/inplace_check.mjs already lifts other functions.
+function pkxAvgRating(scores,id){
+  const sc=(scores&&scores[id])||[];
+  const lane=sc.find(x=>x&&x.lane==='human')||sc.find(x=>x&&x.lane==='persona');
+  return lane?{avg:Number(lane.avg_rating)||0,n:Number(lane.n)||0}:{avg:0,n:0};
+}
+// Top rated is hidden, never shown disabled, when nobody has rated anything yet (a control with nothing behind it).
+function pkxShowTopRated(scores,ids){ return (ids||[]).some(id=>pkxAvgRating(scores,id).n>0); }
+// Matches persona name and the one-line summary the card already shows (profileSummary, computed by the
+// caller), case-insensitive, trimmed. Pure and dependency-free on purpose, so it lifts and tests cleanly.
+function pkxMatch(name,summary,query){
+  const q=String(query||'').trim().toLowerCase();
+  if(!q) return true;
+  const n=String(name||'').toLowerCase(), s=String(summary||'').toLowerCase();
+  return n.indexOf(q)>=0 || s.indexOf(q)>=0;
+}
+// counts is a grid-id -> visit-count map, or null when the fetch failed (Popular then falls back to Newest, silently).
+function pkxSortRows(rows,mode,counts,scores){
+  const byNewest=(a,b)=>new Date(b.updated_at)-new Date(a.updated_at);
+  const out=rows.slice();
+  if(mode==='top'){
+    out.sort((a,b)=>{
+      const ra=pkxAvgRating(scores,a.id), rb=pkxAvgRating(scores,b.id);
+      if(rb.avg!==ra.avg) return rb.avg-ra.avg;
+      if(rb.n!==ra.n) return rb.n-ra.n;
+      return byNewest(a,b); });
+    return out;
+  }
+  if(mode==='popular' && counts){
+    out.sort((a,b)=>{ const ca=counts[a.id]||0, cb=counts[b.id]||0; if(cb!==ca) return cb-ca; return byNewest(a,b); });
+    return out;
+  }
+  out.sort(byNewest);
+  return out;
+}
+// ponytail: one twingrid_visit_count RPC per grid via Promise.all, fine at a few dozen personas; past a
+// few hundred the upgrade path is a single aggregate view Popular can order by on the server instead.
+async function pkxVisitCounts(ids){
+  try{
+    const pairs=await Promise.all(ids.map(id=>SB.rpc('twingrid_visit_count',{p_grid:id}).then(r=>[id,Number(r.data)||0])));
+    return Object.fromEntries(pairs);
+  }catch(_){ return null; }
+}
 async function renderExplore(){
   const grid=document.getElementById('exgrid'), foot=document.getElementById('exfoot');
   document.title='Explore \u00b7 Personakind';
@@ -3886,7 +3944,7 @@ async function renderExplore(){
   const empty=(title,msg)=>{ const d=document.createElement('div'); d.className='exempty';
     const h=document.createElement('h3'); h.textContent=title;
     const p=document.createElement('p'); p.textContent=msg; p.style.margin='0';
-    d.append(h,p); grid.appendChild(d); };
+    d.append(h,p); grid.appendChild(d); return d; };
 
   // the Lobby view (2026-09-07): public rows only, data projected to the facets each owner put in the lobby
   const {data,error}=await SB.from('twingrid_grids_public')
@@ -3906,81 +3964,113 @@ async function renderExplore(){
     byOwner=Object.fromEntries((accs||[]).map(a=>[a.id,a]));
   }catch(_){}
 
-  // the viewer's own filters, applied client side. Nothing here is sent anywhere.
-  const hideOff=!!lsGet(PK_HIDEOFF,false);
-  const hid=hiddenIds();
-  const rows=all.filter(r=>{
-    if(hid.indexOf(r.id)>=0) return false;
-    const a=byOwner[r.owner];
-    if(hideOff && a && a.is_official) return false;
-    return true; });
-  const nHidden=all.length-rows.length;
-  const clr=document.getElementById('exclearhidden');
-  if(clr){
-    const own=hid.length;
-    clr.hidden = own===0;
-    clr.textContent = own ? ('Unhide '+own+(own===1?' persona':' personas')+' you hid') : '';
-    clr.onclick=()=>{ lsSet(PK_HIDDEN,[]); renderExplore(); };
-  }
-  if(!rows.length){ empty('Everything is filtered out','You have hidden all of them, or the example personas are hidden. Clear a filter to see the directory again.'); return; }
-
   // Kindred band (2026-09-08, Dylan's ruling: the first cheap neighborhood). Signed in, the viewer's Kindred personas paint first
   // under their own heading; signed out, nothing changes. Kindred is read through twingrid_kindred_of, the same function the persona page uses.
   const kin=new Set();
   try{ const mine=await pkMyPublicGrids(); if(mine.length){ const lists=await Promise.all(mine.map(g=>SB.rpc('twingrid_kindred_of',{p_grid:g.id}))); lists.forEach(x=>(x&&x.data||[]).forEach(k=>kin.add(k.grid_id))); } }catch(_){}
-  const kinRows=rows.filter(r=>kin.has(r.id)), restRows=kinRows.length?rows.filter(r=>!kin.has(r.id)):rows;
-  const band=(title,sub)=>{ const h=document.createElement('h2'); h.className='pkxband'; h.textContent=title; if(sub){ const s=document.createElement('small'); s.textContent=sub; h.appendChild(s); } grid.appendChild(h); };
 
-  let officials=0;
-  const paint=r=>{
-    const g=(r.data&&r.data.facets)?r.data:{facets:[]};
-    const nm=String(r.name||'Untitled persona');
-    const th=pkThemeFor(g.theme); const acc=th.accent;
+  // Popular sort (v23): visit counts fetched once per render, never displayed. A failed fetch means
+  // pkxSortRows sees counts===null and falls back to Newest on its own.
+  const counts=await pkxVisitCounts(all.map(r=>r.id));
+  const showTop=pkxShowTopRated(scores,all.map(r=>r.id));
 
-    const card=document.createElement('a');
-    card.className='excard';
-    card.setAttribute('href','?t='+encodeURIComponent(r.id));
+  const search=document.getElementById('pkxsearch');
+  const sortBtns={popular:document.getElementById('pkxsortpop'),newest:document.getElementById('pkxsortnew'),top:document.getElementById('pkxsorttop')};
+  if(sortBtns.top) sortBtns.top.hidden=!showTop;
+  let mode=lsGet(PK_EXSORT,'popular'); if(mode==='top' && !showTop) mode='newest';
+  const syncSortBtns=()=>{ Object.keys(sortBtns).forEach(k=>{ if(sortBtns[k]) sortBtns[k].setAttribute('aria-pressed',String(mode===k)); }); };
 
-    const top=document.createElement('div'); top.className='extop';
-    const av=document.createElement('div'); av.className='exav';
-    // 'The Coach' and 'The Creator' both start with T, so skip a leading article
-    const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'') || nm.trim();
-    av.style.background=acc; av.style.color=th.accentText; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
-    const idb=document.createElement('div');
-    const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
-    const rt=document.createElement('div'); rt.className='exrate'; exSparkRow(rt,scores[r.id]);
-    idb.append(n,rt); top.append(av,idb); card.appendChild(top);
-
-    // one sentence, the same one the persona page leads with (v21); the cell count and the edit date meant nothing to a stranger
-    const snip=document.createElement('p'); snip.className='exsnip';
-    snip.textContent=profileSummary(g,true);
-    card.appendChild(snip);
-    // the Home's mood and status (M2): plain text from the Lobby projection
-    { const hs=(g.house&&typeof g.house==='object')?g.house:null; const line=hs?[pkMoodLabel(hs.mood),String(hs.status||'').slice(0,80)].filter(Boolean).join(' \u00b7 '):'';
-      if(line){ const mo=document.createElement('div'); mo.className='exmood'; mo.textContent=line; card.appendChild(mo); } }
-
-    const by=document.createElement('div'); by.className='exby';
-    const a=byOwner[r.owner];
-    if(a && a.is_official){
-      officials++;
-      const b=document.createElement('span'); b.className='exbadge'; b.textContent='Example persona';
-      by.appendChild(b);
-    } else if(a){
-      const t=document.createElement('a'); t.href='?u='+encodeURIComponent(a.handle); t.textContent='@'+a.handle; t.onclick=e=>{ e.stopPropagation(); }; by.appendChild(t);
-    } else {
-      const t=document.createElement('span'); t.textContent='A Personakind member'; by.appendChild(t);
+  // Repainted on every keystroke and every sort click, from the data already fetched above: no network
+  // round trip per keystroke, and neither the search text nor the chosen sort is ever sent anywhere.
+  const repaint=()=>{
+    grid.innerHTML=''; foot.textContent='';
+    const hideOff=!!lsGet(PK_HIDEOFF,false);
+    const hid=hiddenIds();
+    const visRows=all.filter(r=>{
+      if(hid.indexOf(r.id)>=0) return false;
+      const a=byOwner[r.owner];
+      if(hideOff && a && a.is_official) return false;
+      return true; });
+    const nHidden=all.length-visRows.length;
+    const clr=document.getElementById('exclearhidden');
+    if(clr){
+      const own=hid.length;
+      clr.hidden = own===0;
+      clr.textContent = own ? ('Unhide '+own+(own===1?' persona':' personas')+' you hid') : '';
+      clr.onclick=()=>{ lsSet(PK_HIDDEN,[]); renderExplore(); };
     }
-    card.appendChild(by);
-    grid.appendChild(card);
-  };
-  if(kinRows.length){ band('Your Kindred','Personas yours are Kindred with. Only you see this band.'); pkStreet(grid,kinRows); kinRows.forEach(paint); band('Everyone'); }
-  restRows.forEach(paint);
+    if(!visRows.length){ empty('Everything is filtered out','You have hidden all of them, or the example personas are hidden. Clear a filter to see the directory again.'); return; }
 
-  const n=rows.length;
-  foot.textContent = n+' public '+(n===1?'persona':'personas')+' shown'
-    + (nHidden? ', '+nHidden+' filtered out by you':'') + '. '
-    + (officials ? officials+' of these are example personas published by Personakind itself and marked as such. They are examples, not members, and a real person is accountable for them. ' : '')
-    + 'Everything here is public because its owner chose to publish it.';
+    const query=search?search.value:'';
+    const rows=query.trim()?visRows.filter(r=>{ const g=(r.data&&r.data.facets)?r.data:{facets:[]}; return pkxMatch(r.name,profileSummary(g,true),query); }):visRows;
+    if(!rows.length){
+      const d=empty('Nothing matches','No persona name or description matches your search.');
+      const clearBtn=document.createElement('button'); clearBtn.type='button'; clearBtn.className='exclear'; clearBtn.textContent='Clear search';
+      clearBtn.onclick=()=>{ if(search) search.value=''; repaint(); };
+      d.appendChild(clearBtn);
+      return;
+    }
+
+    const sorted=pkxSortRows(rows,mode,counts,scores);
+    const kinRows=sorted.filter(r=>kin.has(r.id)), restRows=kinRows.length?sorted.filter(r=>!kin.has(r.id)):sorted;
+    const band=(title,sub)=>{ const h=document.createElement('h2'); h.className='pkxband'; h.textContent=title; if(sub){ const s=document.createElement('small'); s.textContent=sub; h.appendChild(s); } grid.appendChild(h); };
+
+    let officials=0;
+    const paintCard=r=>{
+      const g=(r.data&&r.data.facets)?r.data:{facets:[]};
+      const nm=String(r.name||'Untitled persona');
+      const th=pkThemeFor(g.theme); const acc=th.accent;
+
+      const card=document.createElement('a');
+      card.className='excard';
+      card.setAttribute('href','?t='+encodeURIComponent(r.id));
+
+      const top=document.createElement('div'); top.className='extop';
+      const av=document.createElement('div'); av.className='exav';
+      // 'The Coach' and 'The Creator' both start with T, so skip a leading article
+      const initSrc=nm.trim().replace(/^(the|a|an|my)\s+/i,'') || nm.trim();
+      av.style.background=acc; av.style.color=th.accentText; avatarInto(av,r.image_url,(initSrc[0]||'P').toUpperCase());
+      const idb=document.createElement('div');
+      const n=document.createElement('div'); n.className='exname'; n.textContent=nm;
+      const rt=document.createElement('div'); rt.className='exrate'; exSparkRow(rt,scores[r.id]);
+      idb.append(n,rt); top.append(av,idb); card.appendChild(top);
+
+      // one sentence, the same one the persona page leads with (v21); the cell count and the edit date meant nothing to a stranger
+      const snip=document.createElement('p'); snip.className='exsnip';
+      snip.textContent=profileSummary(g,true);
+      card.appendChild(snip);
+      // the Home's mood and status (M2): plain text from the Lobby projection
+      { const hs=(g.house&&typeof g.house==='object')?g.house:null; const line=hs?[pkMoodLabel(hs.mood),String(hs.status||'').slice(0,80)].filter(Boolean).join(' \u00b7 '):'';
+        if(line){ const mo=document.createElement('div'); mo.className='exmood'; mo.textContent=line; card.appendChild(mo); } }
+
+      const by=document.createElement('div'); by.className='exby';
+      const a=byOwner[r.owner];
+      if(a && a.is_official){
+        officials++;
+        const b=document.createElement('span'); b.className='exbadge'; b.textContent='Example persona';
+        by.appendChild(b);
+      } else if(a){
+        const t=document.createElement('a'); t.href='?u='+encodeURIComponent(a.handle); t.textContent='@'+a.handle; t.onclick=e=>{ e.stopPropagation(); }; by.appendChild(t);
+      } else {
+        const t=document.createElement('span'); t.textContent='A Personakind member'; by.appendChild(t);
+      }
+      card.appendChild(by);
+      grid.appendChild(card);
+    };
+    if(kinRows.length){ band('Your Kindred','Personas yours are Kindred with. Only you see this band.'); pkStreet(grid,kinRows); kinRows.forEach(paintCard); band('Everyone'); }
+    restRows.forEach(paintCard);
+
+    const n=rows.length;
+    foot.textContent = n+' public '+(n===1?'persona':'personas')+' shown'
+      + (nHidden? ', '+nHidden+' filtered out by you':'') + '. '
+      + (officials ? officials+' of these are example personas published by Personakind itself and marked as such. They are examples, not members, and a real person is accountable for them. ' : '')
+      + 'Everything here is public because its owner chose to publish it.';
+  };
+
+  if(search) search.oninput=()=>repaint();
+  Object.keys(sortBtns).forEach(k=>{ const b=sortBtns[k]; if(b) b.onclick=()=>{ mode=k; lsSet(PK_EXSORT,k); syncSortBtns(); repaint(); }; });
+  syncSortBtns();
+  repaint();
 }
 
 const CELL_LABEL={CONTEXT:'Who it is',DO:'What it helps with',DONT:'What it will not do',GATES:'Its hard rules',VOICE:'How it sounds'};

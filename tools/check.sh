@@ -25,6 +25,9 @@ step "0e. control outlines clear 3 to 1"
 node tools/outline_check.mjs | tail -n 1 || fail=1
 node tools/outline_check.mjs >/dev/null 2>&1 || fail=1
 
+step "0f. explore: search + sort"
+node tools/explore_check.mjs || fail=1
+
 step "1. page module: node --check"
 node -e '
 const fs=require("fs"); const h=fs.readFileSync("docs/index.html","utf8");
