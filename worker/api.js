@@ -540,7 +540,7 @@ const EMBED_STYLE = "body{margin:0;font:14px/1.4 -apple-system,BlinkMacSystemFon
   ".badge{display:inline-block;margin-top:2px;font-size:11px;letter-spacing:.02em;color:#5B45E0;background:#efecfd;border-radius:999px;padding:2px 8px}" +
   ".sum{margin:0;flex:1;overflow:hidden;color:#44444f}" +
   ".lk{margin:0;display:flex;gap:14px}" +
-  ".lk a{color:#5B45E0;text-decoration:none;font-weight:600}" +
+  ".lk a{display:inline-flex;align-items:center;min-height:24px;color:#5B45E0;text-decoration:none;font-weight:600}" +
   ".lk a:hover,.lk a:focus{text-decoration:underline}" +
   ".na{margin:auto;text-align:center;color:#6b6b78}";
 function embedPortraitHtml(imageUrl, initial) {

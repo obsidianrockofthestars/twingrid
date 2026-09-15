@@ -1005,6 +1005,11 @@ await check("embed: a non-bucket image URL is never rendered as an <img>, only t
   if (!html.includes('class="p plate">P<')) throw new Error("letter plate missing or wrong initial");
 });
 
+await check("embed: the two links are at least 24 px tall targets (page rule 7; measured 19.6 px before)", async () => {
+  const html = await (await handleEmbed(ENV, EMBED_HANDLE, "Nightcap")).text();
+  if (!/\.lk a\{[^}]*display:inline-flex[^}]*min-height:24px/.test(html)) throw new Error("links are bare inline text under 24 px");
+});
+
 await check("csp-report: POST answers 204 with an empty body, GET is 405, a malformed body is still 204", async () => {
   const good = await handleApi(new Request("https://personakind.com/api/csp-report", { method: "POST", headers: H({ "content-type": "application/csp-report" }),
     body: JSON.stringify({ "csp-report": { "violated-directive": "script-src", "blocked-uri": "https://evil.example/x.js" } }) }), ENV);
