@@ -40,6 +40,6 @@
     "not_found_handling": "404-page",
     // Only these routes reach the Worker script first; everything else is asset-first, no Worker
     // invocation, same cost profile as the assets-only setup. Requires Wrangler 4.20 or newer.
-    "run_worker_first": ["/mcp", "/api/*", "/sitemap.xml", "/@*", "/%40*"]
+    "run_worker_first": ["/mcp", "/api/*", "/sitemap.xml", "/@*", "/%40*", "/embed/*"]
   }
 }

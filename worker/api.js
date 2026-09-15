@@ -475,6 +475,15 @@ export function ogSummary(data) {
     return null;
   }
 }
+// Handle -> unsuspended account -> its one public grid by name, from the Lobby view. Shared by personaOgCard
+// and personaEmbedCard so there is exactly one base-table-free lookup for "a public persona by @handle/Name".
+async function publicGridByHandleName(env, handle, name, select) {
+  const accs = await anonRows(env, "/rest/v1/twingrid_accounts?select=id&is_suspended=eq.false&handle=eq." + encodeURIComponent(handle));
+  const owner = Array.isArray(accs) && accs[0] && accs[0].id;
+  if (!owner) return null;
+  const rows = await anonRows(env, "/rest/v1/twingrid_grids_public?select=" + select + "&is_public=eq.true&owner=eq." + encodeURIComponent(owner) + "&name=eq." + encodeURIComponent(name) + "&limit=1");
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
 export async function personaOgCard(env, sel) {
   try {
     let row = null;
@@ -482,12 +491,7 @@ export async function personaOgCard(env, sel) {
       const r = await fetchPublicGrid(env, sel.gridId, "id,name,data,image_url");
       row = r && r.grid ? r.grid : null;
     } else if (sel && sel.handle && sel.name) {
-      const accs = await anonRows(env, "/rest/v1/twingrid_accounts?select=id&is_suspended=eq.false&handle=eq." + encodeURIComponent(sel.handle));
-      const owner = Array.isArray(accs) && accs[0] && accs[0].id;
-      if (owner) {
-        const rows = await anonRows(env, "/rest/v1/twingrid_grids_public?select=id,name,data,image_url&is_public=eq.true&owner=eq." + encodeURIComponent(owner) + "&name=eq." + encodeURIComponent(sel.name) + "&limit=1");
-        row = Array.isArray(rows) ? rows[0] || null : null;
-      }
+      row = await publicGridByHandleName(env, sel.handle, sel.name, "id,name,data,image_url");
     }
     if (!row) return null;
     const name = (String(row.name || "Persona").replace(/\s+/g, " ").trim().slice(0, 80)) || "Persona";
@@ -497,6 +501,74 @@ export async function personaOgCard(env, sel) {
   } catch (_) {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Embed card (founder ruling "let's do it", 2026-09-15). GET/HEAD /embed/@handle/PersonaName: a small, self-contained
+// HTML card the owner can frame on their own site. Same public projection personaOgCard reads (twingrid_grids_public,
+// the Lobby view already joined off is_public/is_suspended/owner-suspended), never the base table. A miss of any kind
+// (unknown handle, unknown name, private, suspended, owner suspended) all collapse to the same row-not-found 404,
+// because the view itself already filters every one of those states out.
+// ---------------------------------------------------------------------------
+const EMBED_MEDIA_BASE = "https://jpepcqazscmhakxvutpg.supabase.co/storage/v1/object/public/twingrid-media/";
+export async function personaEmbedCard(env, handle, name) {
+  try {
+    const row = await publicGridByHandleName(env, handle, name, "id,name,data,image_url");
+    if (!row) return null;
+    const nm = (String(row.name || "Persona").replace(/\s+/g, " ").trim().slice(0, 80)) || "Persona";
+    const summary = (ogSummary(row.data) || (nm + " on Personakind, an AI persona you can read and talk to.")).slice(0, 300);
+    const img = typeof row.image_url === "string" && row.image_url.indexOf(EMBED_MEDIA_BASE) === 0 ? row.image_url : null;
+    return { id: row.id, name: nm, summary, image: img, handle };
+  } catch (_) {
+    return null;
+  }
+}
+const EMBED_HEADERS = {
+  "content-type": "text/html; charset=utf-8",
+  "content-security-policy": "frame-ancestors *; default-src 'none'; img-src https://jpepcqazscmhakxvutpg.supabase.co data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-content-type-options": "nosniff",
+  "cache-control": "public, max-age=300",
+  // deliberately NO x-frame-options here: the whole point of this route is to be framed by someone else's site.
+};
+const EMBED_STYLE = "body{margin:0;font:14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#1b1b24}" +
+  ".card{box-sizing:border-box;height:100vh;padding:16px;display:flex;flex-direction:column;gap:10px}" +
+  ".top{display:flex;align-items:center;gap:10px}" +
+  ".p{width:48px;height:48px;border-radius:50%;object-fit:cover;flex:0 0 auto}" +
+  ".plate{width:48px;height:48px;border-radius:50%;background:#5B45E0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;flex:0 0 auto}" +
+  ".nm{font-weight:700;font-size:16px}" +
+  ".badge{display:inline-block;margin-top:2px;font-size:11px;letter-spacing:.02em;color:#5B45E0;background:#efecfd;border-radius:999px;padding:2px 8px}" +
+  ".sum{margin:0;flex:1;overflow:hidden;color:#44444f}" +
+  ".lk{margin:0;display:flex;gap:14px}" +
+  ".lk a{display:inline-flex;align-items:center;min-height:24px;color:#5B45E0;text-decoration:none;font-weight:600}" +
+  ".lk a:hover,.lk a:focus{text-decoration:underline}" +
+  ".na{margin:auto;text-align:center;color:#6b6b78}";
+function embedPortraitHtml(imageUrl, initial) {
+  if (imageUrl) return '<img class="p" src="' + xmlEscape(imageUrl) + '" alt="" width="48" height="48">';
+  return '<div class="p plate">' + xmlEscape(initial) + "</div>";
+}
+function embedCardHtml(card) {
+  const initial = (card.name.trim()[0] || "?").toUpperCase();
+  const roomHref = SITE + "/?room=" + encodeURIComponent(card.id);
+  const handbookHref = SITE + "/@" + encodeURIComponent(card.handle) + "/" + encodeURIComponent(card.name);
+  return "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+    "<title>" + xmlEscape(card.name) + "</title><style>" + EMBED_STYLE + "</style></head><body>" +
+    '<div class="card"><div class="top">' + embedPortraitHtml(card.image, initial) +
+    '<div><div class="nm">' + xmlEscape(card.name) + '</div><div class="badge">AI persona</div></div></div>' +
+    '<p class="sum">' + xmlEscape(card.summary) + "</p>" +
+    '<p class="lk"><a href="' + xmlEscape(roomHref) + '" target="_blank" rel="noopener">Talk to it</a>' +
+    '<a href="' + xmlEscape(handbookHref) + '" target="_blank" rel="noopener">Read its handbook</a></p>' +
+    "</div></body></html>";
+}
+function embedUnavailableHtml() {
+  return "<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+    "<title>Personakind</title><style>" + EMBED_STYLE + "</style></head><body>" +
+    '<div class="card"><p class="na">This persona is not available.</p></div></body></html>';
+}
+export async function handleEmbed(env, handle, name) {
+  const card = await personaEmbedCard(env, handle, name);
+  if (!card) return new Response(embedUnavailableHtml(), { status: 404, headers: EMBED_HEADERS });
+  return new Response(embedCardHtml(card), { status: 200, headers: EMBED_HEADERS });
 }
 
 export function guardedPrompt(gridData, compose) {

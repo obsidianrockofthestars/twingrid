@@ -1985,6 +1985,14 @@ body.route-profile #helpbtn{left:16px;right:auto}
           <textarea id="pcopytext" class="pcopytext" readonly hidden aria-label="The persona text, ready to select and copy"></textarea>
           <button class="linkbtn" id="pchat" type="button">Rather chat right here? Talk to it now</button>
         </div>
+        <div class="pcta" id="pctaembed" hidden>
+          <h3>Put it on your site</h3>
+          <p>Only you see this: a small card for your own website. Visitors there can read and talk to it.</p>
+          <details class="pfhb" id="pkembdet"><summary class="pfhbsum">Get embed code</summary>
+            <textarea id="pkembcode" class="pcopytext" readonly aria-label="Embed code, ready to copy"></textarea>
+            <button class="btn ghost" id="pkembcopy" type="button" style="width:100%;justify-content:center;margin-top:8px">Copy embed code</button>
+          </details>
+        </div>
         <div class="pcta">
           <h3>Make one like it</h3>
           <p>Build your own readable persona in minutes and give it a page like this.</p>
@@ -4235,7 +4243,7 @@ async function renderProfile(id,opts){ opts=opts||{};
       const cv=document.createElement('div'); cv.className='cv'; cv.textContent=cellBody(f.cells[c]); cell.append(cl,cv); card.appendChild(cell); });
     grid.appendChild(card); });
   PROFILE_GRID=g; PK_CUR_ID=id; PK_PLACE=null; syncHideBtn();
-  pkRenderHome(g,data.owner); pkRenderAvatar(g,!!data.image_url); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner); pkRenderHouse(g,data.owner); pkRenderKinFaces(id); pkKinButton(data.owner);
+  pkRenderHome(g,data.owner); pkRenderAvatar(g,!!data.image_url); pkRenderLately(id); pkRenderSparks(id,data.owner); pkCountVisit(id,data.owner); pkRenderKin(id,data.owner); pkRenderHouse(g,data.owner); pkRenderKinFaces(id); pkKinButton(data.owner); pkRenderEmbed(id,nm,data.owner,!!data.is_public);
   { const _lt=document.getElementById('pavatar'); if(_lt) _lt.style.display=((data.data&&data.data.avatar)&&!data.image_url)?'none':''; } // the drawn dweller stands in for the letter tile; show one, never both
   const __pm=document.getElementById('pctrlmsg'); if(__pm) __pm.textContent='';
   document.getElementById('pchat').onclick=()=>{ GRID=PROFILE_GRID; reindex(); rebuildKinds(); openChat(); };
@@ -4250,6 +4258,22 @@ async function renderProfile(id,opts){ opts=opts||{};
     navigator.clipboard.writeText(txt).then(()=>{ b.textContent='Copied. Now open Claude or ChatGPT and paste it.'; reset(); })
       .catch(()=>{ b.textContent='Could not copy. Select the text in the box below.'; ta.value=txt; ta.hidden=false; ta.focus(); ta.select(); reset(); }); };
 }
+
+// ---------- Embed card (founder ruling "lets do it", 2026-09-15): the owner of a published persona can lift an
+// <iframe> for their own site. The card itself is server-rendered by the Worker (personaEmbedCard in worker/api.js)
+// from the Lobby projection only, so a private or suspended persona 404s there even if this code sits on a page
+// forever. Shown only to the signed-in owner of a public persona that has a handle (the embed route needs one). ----------
+async function pkRenderEmbed(id,name,owner,isPublic){ const box=document.getElementById('pctaembed'); if(!box) return; box.hidden=true;
+  if(!isPublic) return;
+  let uid=null; try{ const {data:{session}}=await SB.auth.getSession(); uid=session&&session.user?session.user.id:null; }catch(_){}
+  if(!uid||uid!==owner) return;
+  const h=await handleFor(owner); if(!h||PK_CUR_ID!==id) return;
+  const src='https://personakind.com/embed/@'+encodeURIComponent(h)+'/'+encodeURIComponent(name);
+  const code='<iframe src="'+esc(src)+'" width="360" height="420" style="border:0" title="'+esc(name+', an AI persona on Personakind')+'" loading="lazy"></iframe>';
+  const ta=document.getElementById('pkembcode'); if(ta) ta.value=code;
+  const cp=document.getElementById('pkembcopy');
+  if(cp) cp.onclick=()=>tutCopy(code,cp); // same copy-with-confirmation idiom the tutorial's copy buttons use
+  box.hidden=false; }
 
 // ---------- the Home on the persona page (M2, 2026-09-07). Reads the Lobby projection only: a door to a facet that is not Public
 // never arrives here, because twingrid_house_public() already stripped it. Labels, status and starters are owner text: textContent. ----------
