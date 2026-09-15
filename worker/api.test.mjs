@@ -234,7 +234,8 @@ globalThis.fetch = async (url, init) => {
     const gm = /grid_id=eq\.([0-9a-f-]+)/.exec(u), sm = /status=eq\.([a-z]+)/.exec(u);
     return respond(200, reportsRows.filter((r) => (!gm || r.grid_id === gm[1]) && (!sm || r.status === sm[1])));
   }
-  if (u.includes("/rest/v1/twingrid_accounts")) {
+  // Only the tick's own handle lookup: a bare /twingrid_accounts match swallowed the embed card's anon handle lookup below.
+  if (u.includes("/rest/v1/twingrid_accounts?select=handle&id=eq.")) {
     if (headers.apikey !== ENV.SUPABASE_SERVICE_ROLE_KEY) throw new Error("accounts read by the tick are service role");
     if (method !== "GET") throw new Error("the tick only reads accounts");
     const im = /id=eq\.([0-9a-f-]+)/.exec(u);
