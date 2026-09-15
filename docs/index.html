@@ -2020,32 +2020,36 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <span class="pctrl-msg" id="pctrlmsg" role="status"></span>
     </div>
     <p class="pdisc">This is an AI persona built on Personakind, not a real person. It only knows what its owner wrote on this page. <a href="/terms" style="color:inherit">Terms and Privacy</a>.</p>
-    <div class="rpt" id="rpt" role="dialog" aria-modal="true" aria-labelledby="rpttitle">
-      <div class="rptcard">
-        <button class="rptx" id="rptx" type="button" aria-label="Close">&times;</button>
-        <h3 id="rpttitle">Report this persona</h3>
-        <p class="rptlede">Tell us what is wrong with it. Reports go to a person, not a bot, and we read every one.</p>
-        <label for="rptreason">What is the problem</label>
-        <select class="field" id="rptreason">
-          <option value="impersonation">It is pretending to be a real person</option>
-          <option value="sexual">Sexual content</option>
-          <option value="hate">Hate speech</option>
-          <option value="harassment">Harassment or bullying</option>
-          <option value="minor">It involves a minor</option>
-          <option value="spam">Spam or a scam</option>
-          <option value="manipulation">It tries to manipulate the AI reading it (hidden instructions, jailbreaks)</option>
-          <option value="illegal">Something illegal</option>
-          <option value="other">Something else</option>
-        </select>
-        <label for="rptnote">Anything else (optional)</label>
-        <textarea class="field" id="rptnote" rows="3" maxlength="600" placeholder="Up to 600 characters."></textarea>
-        <button class="primary" id="rptsend" type="button">Send report</button>
-        <div class="err" id="rpterr" role="alert"></div>
-      </div>
-    </div>
   </div>
 </div>
 
+<!-- Moved out of #profile (v22.5): #profile{display:none} outside route-profile beats .rpt.open{display:flex}
+     on ID specificity alone, so a dialog nested inside #profile cannot be opened from the Room (route-room).
+     .rpt is already position:fixed;inset:0, so it renders the same from any parent; openReportDialog() in the
+     module below is the one place that opens it, from either #preport (persona page) or #pkrrreport (Room). -->
+<div class="rpt" id="rpt" role="dialog" aria-modal="true" aria-labelledby="rpttitle">
+  <div class="rptcard">
+    <button class="rptx" id="rptx" type="button" aria-label="Close">&times;</button>
+    <h3 id="rpttitle">Report this persona</h3>
+    <p class="rptlede">Tell us what is wrong with it. Reports go to a person, not a bot, and we read every one.</p>
+    <label for="rptreason">What is the problem</label>
+    <select class="field" id="rptreason">
+      <option value="impersonation">It is pretending to be a real person</option>
+      <option value="sexual">Sexual content</option>
+      <option value="hate">Hate speech</option>
+      <option value="harassment">Harassment or bullying</option>
+      <option value="minor">It involves a minor</option>
+      <option value="spam">Spam or a scam</option>
+      <option value="manipulation">It tries to manipulate the AI reading it (hidden instructions, jailbreaks)</option>
+      <option value="illegal">Something illegal</option>
+      <option value="other">Something else</option>
+    </select>
+    <label for="rptnote">Anything else (optional)</label>
+    <textarea class="field" id="rptnote" rows="3" maxlength="600" placeholder="Up to 600 characters."></textarea>
+    <button class="primary" id="rptsend" type="button">Send report</button>
+    <div class="err" id="rpterr" role="alert"></div>
+  </div>
+</div>
 
 <!-- ============ New-persona flow ============ -->
 <div id="newflow" role="dialog" aria-modal="true">
@@ -2165,6 +2169,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
     <span class="pkrmname" id="pkrmname"></span>
     <span class="pkrmtag">AI persona</span>
     <span style="flex:1"></span>
+    <button class="btn" id="pkrrreport" type="button" hidden>Report</button>
     <a class="btn" id="pkrmpage" href="?">Read the persona</a>
   </div>
   <div class="pkrmraterow">
@@ -2600,6 +2605,8 @@ async function renderRoom(id){
   document.title=nm+' · Personakind';
   nameEl.textContent=nm;
   document.getElementById('pkrmpage').href='?t='+encodeURIComponent(id);
+  // Report (v22.5): a visitor, not the owner, sees it; opens the same dialog the persona page's Report uses.
+  { const rrep=document.getElementById('pkrrreport'); if(rrep) rrep.hidden=!!mine; }
   const d=(r.data&&typeof r.data==='object')?r.data:{};
   // NOT pkApplyTheme: that repaints the document for the persona page, and in here it turned the top
   // bar's text to near-black ink on the near-black stage. The room keeps its own palette and takes only
@@ -3035,7 +3042,9 @@ async function pkHomeScene(r){ const sec=document.getElementById('pkhomescene'),
             add.onchange=()=>{ if(!add.value) return; const zs=zones(); if(!Array.isArray(zs[zk])) zs[zk]=[]; if(zs[zk].length<cap) zs[zk].push({obj:add.value}); dirty(); redraw(); paintZones(); }; zw.appendChild(add); } }); };
         paintZones(); }); }
     else if(kind==='public'){ T('Open the door'); note(r.is_public?'This persona is public: anyone can visit its page and talk to it. Untick to take it private.':'Private until you open the door. Public means anyone can visit its page and talk to it, and it needs the 18 or older confirmation on your account.'); const l=document.createElement('label'); l.className='pkhshow'; const ck=document.createElement('input'); ck.type='checkbox'; ck.checked=!!r.is_public; l.append(ck,'Make it public'); pbody.appendChild(l);
-      foot('Save',()=>pkhpSave(r.id,()=>({is_public:ck.checked})).then(res=>{ if(res.error&&/adult_confirmation_required/.test(res.error)) res.error='Publishing needs the 18 or older confirmation. Tick it once in the Workshop, then open the door here.'; if(res.data) res.is_public=ck.checked; return res; })); }
+      foot('Save',()=>pkhpSave(r.id,()=>({is_public:ck.checked})).then(res=>{ if(res.error&&/adult_confirmation_required/.test(res.error)) res.error='Publishing needs the 18 or older confirmation. Tick it once in the Workshop, then open the door here.';
+        else if(res.error&&/name_reserved/.test(res.error)) res.error='That name belongs to a real person or brand. To publish it, write to support@personakind.com from an address that proves it is yours.';
+        if(res.data) res.is_public=ck.checked; return res; })); }
     const rmo=matchMedia('(prefers-reduced-motion: reduce)').matches; try{ panel.scrollIntoView({block:'nearest',behavior:rmo?'auto':'smooth'}); }catch(_){} try{ ptitle.focus({preventScroll:true}); }catch(_){} };
   sec.__open=(kind,arg,txt)=>{ open(kind,arg); if(txt&&panel.__msg) panel.__msg.textContent=txt; };
   const tt={workshop:pkDepthText(d.facets)+' Enter opens the depth.',core:pkCoreText(),obsidian:pkSnapText(),shelf:pkShelfText(undefined)}; pkShelfCounts(r.id).then(c=>{ tt.shelf=pkShelfText(c); }); if(depth.on===true) pkQuestions().then(b=>{ if(b) tt.workshop='The hatch: the depth. '+doneN+' of '+pkBankTotal(b,d.facets)+' answered. Enter opens it.'; });
@@ -3134,6 +3143,7 @@ document.getElementById('savebtn').onclick=async()=>{ if(!curId)return;
   const gate=await pkPublishGate(); if(gate){ b.textContent='Confirm 18+ first'; const fm=document.getElementById('facemsg'); if(fm) fm.textContent=gate; setTimeout(()=>b.textContent='Save',2200); return; }
   const {error}=await SB.from('twingrid_grids').update({name:document.getElementById('gridname').value,is_public:document.getElementById('ispublic').checked,data:GRID}).eq('id',curId);
   if(error&&/adult_confirmation_required/.test(String(error.message||''))){ PK_ADULT=false; await pkAdultRowSync(); const fm=document.getElementById('facemsg'); if(fm) fm.textContent='Publishing needs the 18 or older confirmation. Tick the box and save again.'; }
+  else if(error&&/name_reserved/.test(String(error.message||''))){ const fm=document.getElementById('facemsg'); if(fm) fm.textContent='That name belongs to a real person or brand. To publish it, write to support@personakind.com from an address that proves it is yours.'; }
   b.textContent=error?'Error':'Saved'; setTimeout(()=>b.textContent='Save',1400); updateShare(); loadClones(); };
 
 // ---------- the 18-plus publish gate (M5, Ruled 2026-09-07 C11). Private building is not gated. twingrid_publish_gate() in SQL refuses
@@ -3789,20 +3799,28 @@ function syncHideBtn(){
   const b=document.getElementById('phide'); if(!b||!PK_CUR_ID) return;
   b.textContent = isHidden(PK_CUR_ID) ? 'Show it again' : 'Hide from my list';
 }
+// Opens the one #rpt dialog, shared by the persona page's Report control (#preport, inside #profile) and the
+// Room's (#pkrrreport, inside #pkroom, v22.5): the dialog is a fixed overlay (position:fixed; inset:0), so it
+// works the same regardless of which route's DOM it is opened from. msgEl is the small status line beside
+// the button that opened it, or null when the caller (the Room) has none.
+async function openReportDialog(msgEl){
+  const dlg=document.getElementById('rpt'), err=document.getElementById('rpterr'); if(!dlg) return;
+  const {data:{session}}=await SB.auth.getSession();
+  if(!session){ if(msgEl) msgEl.textContent='Sign in first so we know the report is from a person.'; openAuth(); return; }
+  if(msgEl) msgEl.textContent=''; if(err) err.textContent=''; dlg.classList.add('open');
+}
 (function wireProfileControls(){
-  const hide=document.getElementById('phide'), rep=document.getElementById('preport'),
+  const hide=document.getElementById('phide'), rep=document.getElementById('preport'), rrep=document.getElementById('pkrrreport'),
         msg=document.getElementById('pctrlmsg'), dlg=document.getElementById('rpt'),
         x=document.getElementById('rptx'), send=document.getElementById('rptsend'),
         err=document.getElementById('rpterr');
+  if(rrep) rrep.onclick=()=>openReportDialog(null);
   if(!hide||!rep||!dlg) return;
   hide.onclick=()=>{ if(!PK_CUR_ID) return;
     const now=!isHidden(PK_CUR_ID); setHidden(PK_CUR_ID,now); syncHideBtn();
     msg.textContent = now ? 'Hidden. It will not show in your Explore on this device.' : 'Unhidden.'; };
   const close=()=>{ dlg.classList.remove('open'); err.textContent=''; };
-  rep.onclick=async()=>{
-    const {data:{session}}=await SB.auth.getSession();
-    if(!session){ msg.textContent='Sign in first so we know the report is from a person.'; openAuth(); return; }
-    msg.textContent=''; err.textContent=''; dlg.classList.add('open'); };
+  rep.onclick=()=>openReportDialog(msg);
   x.onclick=close;
   dlg.addEventListener('click',e=>{ if(e.target===dlg) close(); });
   window.addEventListener('keydown',e=>{ if(e.key==='Escape' && dlg.classList.contains('open')) close(); });

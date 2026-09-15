@@ -574,5 +574,35 @@ ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth ca
   ok(withSpeech.some(n=>n.tag==='a'&&n.textContent==='Talk to it'&&n.href==='?room=g1')&&withSpeech.some(n=>n.tag==='a'&&n.textContent==='Read it'&&n.href==='?t=g1'),'Talk to it opens the Room and Read it opens the page');
   ok(withSpeech.some(n=>n.className==='pkspot-line'),'the Does and Won\'t lines render');
 }
+// Name guard and Room reporting (2026-09-15). The #rpt dialog used to live inside #profile, which carries
+// #profile{display:none} outside route-profile; that ID selector beats .rpt.open{display:flex} on
+// specificity alone (100 vs 20), so a dialog nested there could never be opened from the Room. It is now a
+// top-level sibling, opened by one shared openReportDialog() from either control. Read from the source.
+{
+  const profS=h.indexOf('<div id="profile">'), profE=h.indexOf('\n<!-- Moved out of #profile',profS);
+  ok(profS>0&&profE>profS,'#profile found, closing before the moved dialog');
+  const rptS=h.indexOf('<div class="rpt" id="rpt"');
+  ok(rptS>profE,'#rpt now sits after #profile closes, not inside it');
+  ok(!/<div class="rpt" id="rpt"[\s\S]{0,4000}<\/section>\s*<div class="pctrl"/.test(h.slice(profS,profE+50)),'no stray copy of #rpt left inside #profile');
+  ok(/function openReportDialog\(msgEl\)/.test(h),'openReportDialog exists as the one place that opens #rpt');
+  ok(/rep\.onclick=\(\)=>openReportDialog\(msg\)/.test(h),"the persona page's Report opens it with its status line");
+  ok(/if\(rrep\) rrep\.onclick=\(\)=>openReportDialog\(null\)/.test(h),"the Room's Report opens it with no status line");
+  const top=h.indexOf('<div id="pkroom" hidden>'), wrap=h.indexOf('<div class="pkrmwrap">',top);
+  const btnI=h.indexOf('id="pkrrreport"',top);
+  ok(btnI>top&&btnI<wrap,'#pkrrreport sits in the Room top strip, above the stage');
+  ok(/<button class="btn" id="pkrrreport" type="button" hidden>Report<\/button>/.test(h),'the Room Report control is a real button, hidden by default (shown only for a visitor)');
+  const rm=h.indexOf('async function renderRoom('), rmE=h.indexOf('\nfunction route(){',rm);
+  ok(rm>0&&rmE>rm&&/rrep\.hidden=!!mine/.test(h.slice(rm,rmE)),'the Room hides Report from the owner, shows it to a visitor');
+  // the same dialog inserts the same row shape (grid_id, reporter, reason, note) whichever control opened it
+  const sendS=h.indexOf("send.onclick=async()=>{"), sendE=h.indexOf('\n})();',sendS);
+  ok(sendS>0&&sendE>sendS&&/from\('twingrid_reports'\)\.insert\(\{/.test(h.slice(sendS,sendE)),'the one send handler inserts into twingrid_reports for either caller');
+}
+// name_reserved (2026-09-15 migration): mapped to the SQL hint text at both places a grid's is_public is
+// written from the page, alongside the existing adult_confirmation_required mapping, textContent only.
+{
+  ok(/name_reserved.*belongs to a real person or brand.*support@personakind\.com/.test(h.replace(/\n/g,' ')),'the Home publish-toggle path maps name_reserved to the hint');
+  ok(/error&&\/name_reserved\/\.test\(String\(error\.message\|\|''\)\)/.test(h),'the editor save path checks name_reserved the same way it checks adult_confirmation_required');
+  ok((h.match(/name_reserved.*?support@personakind\.com from an address that proves it is yours\./g)||[]).length>=2||(h.match(/name_reserved/g)||[]).length>=3,'name_reserved is handled at both write sites, not just one');
+}
 
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
