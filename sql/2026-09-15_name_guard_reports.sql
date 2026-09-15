@@ -112,7 +112,11 @@ begin
     from public.twingrid_reports
     where grid_id = new.grid_id and status = 'open' and reporter is not null;
     if v_reporters >= 3 then
-      update public.twingrid_grids set is_suspended = true where id = new.grid_id and is_suspended = false;
+      -- Official showcase personas are exempt (Prime review): three throwaway accounts must not be able to blank the
+      -- showcase. Their reports still queue for a moderator. ponytail: Sybil accounts can still hide a member's
+      -- persona until a moderator unhides it; add account-age or verified-email weighting if that gets abused.
+      update public.twingrid_grids g set is_suspended = true where g.id = new.grid_id and g.is_suspended = false
+        and not exists (select 1 from public.twingrid_accounts a where a.id = g.owner and a.is_official);
       if found then
         insert into public.twingrid_auto_hides (grid_id, hidden_at, notified_at) values (new.grid_id, now(), null)
         on conflict (grid_id) do update set hidden_at = now(), notified_at = null;
@@ -247,6 +251,13 @@ insert into public.twingrid_name_blocklist (term, kind, whole_name) values
   -- Shell (ordinary-word energy brand, whole_name true per build spec)
   ('shell','brand',true), ('dove','brand',true)
 on conflict (term) do nothing;
+-- Prime review 2026-09-15: a first name or an ordinary word matching anywhere refuses honest names ("Anna the
+-- Language Tutor", "Meta Analyst", "Link Builder", "Woody the Carpenter"), so these match only as the whole name.
+update public.twingrid_name_blocklist set whole_name = true where term in
+  ('drake','usher','adele','neymar','zendaya','meta','intel','dell','sony','ford','jeep','kia','honda','audi',
+   'sonic','valve','peacock','sega','blizzard','southwest','nike','zara','anna','belle','ariel','jasmine','elsa',
+   'woody','goofy','stitch','link','toad','kirby','yoshi','tigger','simba','moana','aladdin','cinderella','mario',
+   'luigi','bowser','wario','zelda','rosalina','dunkin','panera','hulu','emirates','capcom','bungie');
 
 -- =====================================================================
 -- PHASE B (applied after the page's name_reserved -> hint mapping is live)
