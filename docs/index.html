@@ -1587,7 +1587,7 @@ body.route-profile #helpbtn{left:16px;right:auto}
       <div class="k" id="pkauthk">Welcome back</div>
       <h2 id="authttl">Sign in</h2>
       <p class="lead" id="pkauthlead">Your email and password. Nothing to install.</p>
-      <label class="trust" id="pkauthterms" style="margin:0 0 14px;cursor:pointer;align-items:center"><input type="checkbox" id="termsok" style="margin:0 2px 0 0;width:16px;height:16px;flex:none"><span>I am 18 or older and I agree to the <a href="/terms" target="_blank" rel="noopener" style="color:var(--accent)">Terms and Privacy Notice</a>.</span></label>
+      <label class="trust" id="pkauthterms" style="margin:0 0 14px;cursor:pointer;align-items:center"><input type="checkbox" id="termsok" style="margin:0 2px 0 0;width:16px;height:16px;flex:none"><span>I agree to the <a href="/terms" target="_blank" rel="noopener" style="color:var(--accent)">Terms and Privacy Notice</a>.</span></label>
       <!-- 18-plus signup box (founder ruling 2026-09-15, "18+ at signup (Recommended)"): a neutral, age-only
            attestation, never bundled with the Terms tick above. Create account only: pkAuthSet hides it on
            sign in and on password reset unconditionally, with no "already agreed" bypass, so a fresh browser
@@ -2748,7 +2748,7 @@ function route(){ const rm=onRoomRoute();
 // still asks again at Publish. This blocks Home and the editor for a signed-in account whose twingrid_accounts
 // row already exists with adult_confirmed_at null, so an old account or a first Google sign-in is asked once
 // instead of only finding out when it tries to publish. A brand-new account has no row yet (see homeHandleUi
-// above: a row is created only at handle claim), so there is nothing to gate until then, which is also why an
+// above: a row is created only at handle claim), so it is gated unless this browser already confirmed (PK18_PENDING, set by the signup box or by Confirm; Prime review: a first Google sign-in must not skip it), which is also why an
 // email signup that ticked the box stamps adult_confirmed_at onto that later insert (PK18_PENDING) instead of
 // trying to write it immediately after signUp. Not a new route: refreshAuth() is the one signed-in render path
 // for Home and the editor (route()'s other pages call their own render*() and never reach refreshAuth()), so
@@ -2757,7 +2757,7 @@ let PK_ADULT_GATE=null; // null unknown, true blocked, false clear (cached: Conf
 async function pkAdultGateNeeded(session){ if(PK_ADULT_GATE!==null) return PK_ADULT_GATE;
   const uid=session&&session.user?session.user.id:null; if(!uid){ PK_ADULT_GATE=false; return false; }
   try{ const {data}=await SB.from('twingrid_accounts').select('adult_confirmed_at').eq('id',uid).maybeSingle();
-    PK_ADULT_GATE=!!(data&&!data.adult_confirmed_at); }catch(_){ PK_ADULT_GATE=false; }
+    let pend=false; try{ pend=localStorage.getItem(PK18_PENDING)==='1'; }catch(_){} PK_ADULT_GATE=data?!data.adult_confirmed_at:!pend; }catch(_){ PK_ADULT_GATE=false; }
   return PK_ADULT_GATE; }
 function pkAdultGateOpen(){ document.getElementById('pkadultgateerr').textContent=''; document.getElementById('pkadultgate').hidden=false;
   setTimeout(()=>document.getElementById('pkadultconfirm').focus(),40); }
@@ -2767,7 +2767,7 @@ function pkAdultGateOpen(){ document.getElementById('pkadultgateerr').textConten
 document.getElementById('pkadultconfirm').onclick=async()=>{ const b=document.getElementById('pkadultconfirm'), err=document.getElementById('pkadultgateerr');
   const {data:{session}}=await SB.auth.getSession(); const uid=session&&session.user?session.user.id:null;
   if(!uid){ document.getElementById('pkadultgate').hidden=true; openAuth(); return; }
-  b.disabled=true; err.textContent='';
+  b.disabled=true; err.textContent=''; const {data:rowx}=await SB.from('twingrid_accounts').select('id').eq('id',uid).maybeSingle(); if(!rowx){ try{ localStorage.setItem(PK18_PENDING,'1'); }catch(_){} b.disabled=false; PK_ADULT_GATE=false; document.getElementById('pkadultgate').hidden=true; refreshAuth(); return; }
   const {error}=await SB.from('twingrid_accounts').update({adult_confirmed_at:new Date().toISOString()}).eq('id',uid);
   b.disabled=false;
   if(error){ err.textContent='Could not save: '+String(error.message||'').slice(0,100); return; }

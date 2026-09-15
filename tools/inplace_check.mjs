@@ -647,16 +647,24 @@ ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth ca
   ok(!/pk18row[\s\S]{0,40}agreed/.test(body),'pk18row carries no "already agreed" bypass like pkauthterms does');
 }
 // (c) the blocking gate: an account with a row and adult_confirmed_at null is blocked; a confirmed one is not;
-// an account with no row yet (not created until handle claim, see homeHandleUi above) is not blocked either,
-// because there is nothing yet to have confirmed. Lifted with a stub SB standing in for the one real query.
+// an account with no row yet (not created until handle claim, see homeHandleUi above) is blocked UNLESS it
+// already confirmed on this browser (the PK18_PENDING flag, set by the signup box or by Confirm): a first
+// Google sign-in has no row and never saw the signup box, and it must not skip the confirmation (Prime review
+// 2026-09-15). Lifted with a stub SB standing in for the one real query and a stub localStorage.
 {
   const gsrc=cut('let PK_ADULT_GATE=null;','return PK_ADULT_GATE; }');
   const mkSB=(row)=>({from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:row,error:null})})})})});
-  const build=(row)=>new Function('SB',gsrc+'\nreturn pkAdultGateNeeded;')(mkSB(row));
+  const mkLS=(flag)=>({getItem:k=>(flag&&k==='pk_18_pending')?'1':null,setItem(){},removeItem(){}});
+  const build=(row,flag)=>new Function('SB','localStorage','PK18_PENDING',gsrc+'\nreturn pkAdultGateNeeded;')(mkSB(row),mkLS(flag),'pk_18_pending');
   ok(await build({adult_confirmed_at:null})({user:{id:'u1'}})===true,'(c) null adult_confirmed_at on an existing row gets the blocking card');
   ok(await build({adult_confirmed_at:'2026-09-01T00:00:00Z'})({user:{id:'u1'}})===false,'(c) a confirmed row does not');
-  ok(await build(null)({user:{id:'u1'}})===false,'no account row yet is not blocked (nothing created until handle claim)');
+  ok(await build(null,false)({user:{id:'u1'}})===true,'(c) no account row and no confirmation on this browser (a first Google sign-in) IS blocked');
+  ok(await build(null,true)({user:{id:'u1'}})===false,'(c) no account row but confirmed on this browser (signup box or Confirm) is not');
+  ok(await build({adult_confirmed_at:null},true)({user:{id:'u1'}})===true,'(c) a pending flag never clears an existing unconfirmed row: the row is the authority');
   ok(await build({adult_confirmed_at:null})(null)===false,'no session, nothing to gate');
+  // Confirm on an account with no row cannot update zero rows and call that done: it must set the pending flag
+  const conf=cut("document.getElementById('pkadultconfirm').onclick=async()=>{","refreshAuth(); };");
+  ok(/maybeSingle\(\)[\s\S]*if\(!\w+\)\{[^}]*localStorage\.setItem\(PK18_PENDING,'1'\)/.test(conf),'(c) Confirm with no account row sets PK18_PENDING instead of a zero-row update');
 }
 // (d) the blocking card belongs to refreshAuth() alone (Home and the editor), never to a public route a
 // signed-out or Kindred visitor can reach: the Room, the persona page, Explore, an account page, settings,
