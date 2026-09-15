@@ -1156,6 +1156,20 @@ h1.pk-h1 .u{color:var(--accent-w);font-style:italic}
 .pkwall-face span{display:block;padding:8px 10px 9px;font-size:13px;font-weight:600;line-height:1.2}
 .pkwall-face:hover{border-color:var(--accent-w)}
 .pkwall-face:focus-visible{outline:3px solid var(--accent-w);outline-offset:2px}
+/* Persona of the day (2026-09-14): one published persona leads the wall, the rest become a strip */
+.pkspot{display:grid;grid-template-columns:132px 1fr;gap:16px;align-items:start;margin:0 0 14px;padding:0 0 14px;border-bottom:1px solid var(--line-w)}
+.pkspot-face{width:132px;aspect-ratio:1/1;border-radius:14px;overflow:hidden;border:1px solid var(--line-w);background:var(--card-w);display:grid;place-items:center;font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:34px;color:var(--ink);text-decoration:none}
+.pkspot-face img{width:100%;height:100%;object-fit:cover;display:block}
+.pkspot-face:focus-visible{outline:3px solid var(--accent-w);outline-offset:2px}
+.pkspot-name{font-family:var(--serif);font-weight:600;font-size:22px;letter-spacing:-.01em;margin:0 0 6px;color:var(--ink)}
+.pkspot-sum{margin:0 0 8px;font-size:14px;line-height:1.5;color:var(--ink-soft)}
+.pkspot-line{margin:0 0 4px;font-size:13px;line-height:1.45;color:var(--ink-soft)}
+.pkspot-line b{color:var(--ink);font-weight:600}
+.pkspot-cta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pkspot-cta .pk-btn{padding:9px 14px;font-size:14px;min-height:40px}
+.pkwall-strip{grid-template-columns:repeat(5,1fr);gap:8px}
+.pkwall-strip .pkwall-face span{font-size:11.5px;padding:6px 7px 7px}
+@media (max-width:560px){.pkspot{grid-template-columns:96px 1fr;gap:12px}.pkspot-face{width:96px}.pkwall-strip{grid-template-columns:repeat(3,1fr)}}
 .pk-gc-title{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-dim)}
 .pk-cells{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
 .pk-cell{border:1px solid var(--line-w);border-radius:11px;padding:11px 12px;background:var(--paper)}
@@ -3808,12 +3822,36 @@ async function pkStreet(grid,rows){ if(!window.pkScene||!rows.length) return; co
 // Dylan: "an actual cool looking website"). Fewer than three and the static cells stay, so the hero never renders half
 // empty. Names through textContent, faces through avatarInto, every face a link into its room. The face filter runs
 // client side so the harness stub (no not()) can serve it the same way production does.
+// Persona of the day (2026-09-14, the splash plan S1). The wall of faces leads with one published persona a visitor can read, hear and
+// step into, the same one for everyone that day. No model call and no hosted credit is spent for a signed-out visitor here.
+function pkSpotPick(rows,day){ const ok=(rows||[]).filter(r=>r&&r.image_url&&String(r.image_url).indexOf(MEDIA_BASE)===0); if(!ok.length) return null; const n=Math.floor(Number(day)||0); const i=((n%ok.length)+ok.length)%ok.length; return ok[i]; }
+function pkSpotLines(g){ const fs=(g&&g.facets)||[]; const core=fs.find(f=>f&&f.name==='core'); const cells=(core&&core.cells)||{};
+  const first=v=>{ let x=cellBody(v||'').replace(/\s+/g,' ').trim(); if(!x||/^\(add your own here\)/.test(x)) return ''; const m=x.match(/^(.+?[.!?])(\s|$)/); x=m?m[1]:x; return x.length>120?x.slice(0,120).replace(/\s+\S*$/,'')+'\u2026':x; };
+  return {summary:profileSummary(g,true), does:first(cells.DO), wont:first(cells.DONT)}; }
+function pkCanSpeak(){ try{ return !!window.speechSynthesis&&typeof window.SpeechSynthesisUtterance==='function'; }catch(_){ return false; } }
+function pkSpotSpeak(btn,text){ const ss=window.speechSynthesis; if(ss.speaking){ ss.cancel(); btn.textContent='Hear it'; return; }
+  const u=new SpeechSynthesisUtterance(String(text||'').slice(0,400)); u.onend=u.onerror=()=>{ btn.textContent='Hear it'; }; btn.textContent='Stop'; ss.speak(u); }
+function pkSpotCard(r){ const nm=String(r.name||'Untitled persona'); const g=(r.data&&r.data.facets)?r.data:{facets:[]}; const L=pkSpotLines(g);
+  const box=document.createElement('div'); box.className='pkspot';
+  const face=document.createElement('a'); face.className='pkspot-face'; face.href='?room='+encodeURIComponent(r.id); face.setAttribute('aria-label','Talk to '+nm); avatarInto(face,r.image_url,(nm.trim()[0]||'P').toUpperCase(),true);
+  const body=document.createElement('div'); body.className='pkspot-body';
+  const h=document.createElement('h3'); h.className='pkspot-name'; h.textContent=nm;
+  const p=document.createElement('p'); p.className='pkspot-sum'; p.textContent=L.summary; body.append(h,p);
+  [['Does',L.does],["Won't",L.wont]].forEach(([k,v])=>{ if(!v) return; const q=document.createElement('p'); q.className='pkspot-line'; const b=document.createElement('b'); b.textContent=k+' '; const sp=document.createElement('span'); sp.textContent=v; q.append(b,sp); body.appendChild(q); });
+  const cta=document.createElement('div'); cta.className='pkspot-cta';
+  const talk=document.createElement('a'); talk.className='pk-btn solid'; talk.href='?room='+encodeURIComponent(r.id); talk.textContent='Talk to it';
+  const read=document.createElement('a'); read.className='pk-btn ghost'; read.href='?t='+encodeURIComponent(r.id); read.textContent='Read it';
+  cta.append(talk,read);
+  if(pkCanSpeak()){ const hear=document.createElement('button'); hear.type='button'; hear.className='pk-btn ghost'; hear.textContent='Hear it'; hear.onclick=()=>pkSpotSpeak(hear,nm+'. '+L.summary); cta.appendChild(hear); }
+  body.appendChild(cta); box.append(face,body); return box; }
 async function pkFacesWall(){ const card=document.querySelector('.pk-hero .pk-grid-card'); if(!card||card.dataset.wall) return;
-  let rows=[]; try{ const {data}=await SB.from('twingrid_grids_public').select('id,name,image_url').eq('is_public',true).order('updated_at',{ascending:false}).limit(12); rows=(data||[]).filter(r=>r&&r.image_url&&r.image_url.indexOf(MEDIA_BASE)===0).slice(0,6); }catch(_){}
+  let rows=[]; try{ const {data}=await SB.from('twingrid_grids_public').select('id,name,image_url,data').eq('is_public',true).order('updated_at',{ascending:false}).limit(12); rows=(data||[]).filter(r=>r&&r.image_url&&r.image_url.indexOf(MEDIA_BASE)===0).slice(0,6); }catch(_){}
   if(rows.length<3) return; card.dataset.wall='1'; card.textContent=''; card.removeAttribute('aria-hidden');
-  const head=document.createElement('div'); head.className='pk-gc-head'; const dot=document.createElement('span'); dot.className='pk-gc-dot'; const t=document.createElement('span'); t.className='pk-gc-title'; t.textContent='Talk to one of them'; head.append(dot,t); card.appendChild(head);
-  const grid=document.createElement('div'); grid.className='pkwall-grid';
-  rows.forEach(r=>{ const a=document.createElement('a'); a.className='pkwall-face'; a.href='?room='+encodeURIComponent(r.id); const hv=document.createElement('div'); hv.className='hav'; const nm=String(r.name||'Untitled persona'); avatarInto(hv,r.image_url,(nm.trim()[0]||'P').toUpperCase(),true); const sp=document.createElement('span'); sp.textContent=nm; a.append(hv,sp); grid.appendChild(a); });
+  const spot=pkSpotPick(rows,Math.floor(Date.now()/86400000));
+  const head=document.createElement('div'); head.className='pk-gc-head'; const dot=document.createElement('span'); dot.className='pk-gc-dot'; const t=document.createElement('span'); t.className='pk-gc-title'; t.textContent=spot?'Persona of the day':'Talk to one of them'; head.append(dot,t); card.appendChild(head);
+  if(spot) card.appendChild(pkSpotCard(spot));
+  const grid=document.createElement('div'); grid.className='pkwall-grid pkwall-strip';
+  rows.filter(r=>r!==spot).slice(0,5).forEach(r=>{ const a=document.createElement('a'); a.className='pkwall-face'; a.href='?room='+encodeURIComponent(r.id); const hv=document.createElement('div'); hv.className='hav'; const nm=String(r.name||'Untitled persona'); avatarInto(hv,r.image_url,(nm.trim()[0]||'P').toUpperCase(),true); const sp=document.createElement('span'); sp.textContent=nm; a.append(hv,sp); grid.appendChild(a); });
   card.appendChild(grid); }
 // v22.4: the rating as five sparks at a glance. Filled to the human average (persona lane if no human),
 // dim to five; at zero, five dim sparks and "Be the first", never a flat "No sparks yet" that reads as dead.
