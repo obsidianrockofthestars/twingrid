@@ -2516,6 +2516,7 @@ function shareUrlFor(id,name,handle){ const base=location.origin+location.pathna
 async function resolveHandlePersona(h,name){ const a=await accountByHandle(h); if(!a) return {acc:null,id:null};
   const {data}=await SB.from('twingrid_grids_public').select('id,name').eq('owner',a.id).eq('is_public',true).ilike('name',ilikeEscape(name)).limit(1);
   return {acc:a,id:(data&&data[0])?data[0].id:null}; }
+function onSettingsRoute(){ return new URLSearchParams(location.search).has('account'); } // ?account: settings for a member with no handle yet (2026-09-14)
 function onExploreRoute(){ return new URLSearchParams(location.search).has('explore'); }
 function onLifeRoute(){ const q=new URLSearchParams(location.search); return q.has('life')||q.has('kindred')||q.has('learned'); }
 function onPlacesRoute(){ const q=new URLSearchParams(location.search); return q.has('places')||!!q.get('place'); }
@@ -2644,7 +2645,7 @@ function route(){ const rm=onRoomRoute();
   if(acct){ const pn=accountPersonaParam(); app.style.display='none';
     if(pn){ document.body.className='marketing route-profile'; resolveHandlePersona(acct,pn).then(r=>{ if(r.id) renderProfile(r.id,{handle:acct}); else renderProfile('00000000-0000-0000-0000-000000000000',{handle:acct,missingName:pn}); }); return; }
     document.body.className='marketing route-account'; renderAccount(acct); return; }
-  if(new URLSearchParams(location.search).has('account')){ document.body.className='marketing route-account'; app.style.display='none'; renderSettings(); return; }
+  if(onSettingsRoute()){ document.body.className='marketing route-account'; app.style.display='none'; renderSettings(); return; }
   if(onLifeRoute()){ document.body.className='marketing route-life'; app.style.display='none'; renderLife(); return; }
   if(onPlacesRoute()){ document.body.className='marketing route-places'; app.style.display='none'; renderPlaces(); return; }
   if(onExploreRoute()){ document.body.className='marketing route-explore'; app.style.display='none'; renderExplore(); return; }
@@ -2735,7 +2736,7 @@ SB.auth.getSession().then(({data})=>termsBar(data&&data.session)).catch(()=>{});
 // Every page that routes itself must be on the exemption list below, or refreshAuth() re-routes it to
 // the landing (signed out) or Home (signed in) the moment Supabase fires INITIAL_SESSION. The Room
 // shipped without it on 2026-09-12 and was reverted (#50); the harness never fired this callback.
-SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(_ev==='PASSWORD_RECOVERY'){ pkAuthSet('newpw'); authCard.classList.remove('done'); authEl.classList.add('open'); setTimeout(()=>document.getElementById('password').focus(),40); return; } if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(onPlacesRoute()){ renderPlaces(); } else if(!onRoomRoute() && !onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onModRoute()) refreshAuth();
+SB.auth.onAuthStateChange((_ev,session)=>{ syncAcctNav(); termsBar(session); if(_ev==='PASSWORD_RECOVERY'){ pkAuthSet('newpw'); authCard.classList.remove('done'); authEl.classList.add('open'); setTimeout(()=>document.getElementById('password').focus(),40); return; } if(onLifeRoute()){ if(session){ closeAuth(); renderLife(); } } else if(onPlacesRoute()){ renderPlaces(); } else if(!onRoomRoute() && !onProfileRoute() && !onExploreRoute() && !onAccountRoute() && !onSettingsRoute() && !onModRoute()) refreshAuth();
   // Terms acceptance record (2026-09-02): the box was ticked in this browser before sign-in, so stamp the version on the user once.
   try{ const u=session&&session.user; const md=(u&&u.user_metadata)||{}; if(u && md.terms_version!==TERMS_VERSION && localStorage.getItem('pk_terms_ok')===TERMS_VERSION){ SB.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}}).catch(()=>{}); } }catch(_){} });
 // Cells are stored with a leading '# facet / CELL' line because the composed prompt
