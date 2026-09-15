@@ -11,7 +11,7 @@ const BOUNDARY=['#home .pkstep','#life .btn','.lfsel','.lfin','.lfta','#places .
   '#account .acedit input','#account .acedit textarea','#account .pkacform input','#home .hclaimrow input','#home .hrenrow input','#explore .excard','#account .excard',
   '#tourcard button','#home select','#home .hbtn','#home .hdoor','#mod .mtab','#mod .mbtn','.pctrl-b','.rptcard .field','.pk-btn.ghost','.pkwall-face',
   '#auth .authcard .field','#auth .oauthbtn','.nf-card','.nf-q textarea','.nf-q input','.nf-choice','.nf-tpl button','.pcopytext','#helpbtn','#tutbtn',
-  '#helppanel .hpshow','#helppanel .hpq button.q','#tutfoot button','#tutnav button[aria-current="true"]'];
+  '#helppanel .hpshow','#helppanel .hpq button.q','#tutfoot button','#tutnav button[aria-current="true"]','.pktrial-input'];
 const DARK=['.chatin textarea','#pkroom .btn','#pkroom .pkrmratebox .phrbtn','#pkroom .pkrmratebox .phnote','#termsbar .pk-btn.solid'];
 const THEMED=['#profile .btn.ghost','#profile .pctrl-b','body.route-profile #chat textarea','#profile .phobj','#profile .phrbtn','#profile .phnote','#profile .pkin select','#profile .pcopytext'];
 // none today: the one candidate, the tutorial's current chapter, was measured at 1.34 with a fill of 1.2, so its border is the marker

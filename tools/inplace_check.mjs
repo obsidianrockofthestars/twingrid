@@ -559,7 +559,7 @@ ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth ca
   ok(L.wont==='','a placeholder cell gives no Won\'t line');
   const long=pkSpotLines({facets:[{name:'core',cells:{DO:'# core / DO\n\n'+'word '.repeat(60)}}]}).does;
   ok(long.length<=121&&long.endsWith('\u2026'),'a long line is cut at a word with an ellipsis: '+long.length);
-  const card=cut('function pkSpotCard(r){','return box; }'), wall=cut('async function pkFacesWall(){','card.appendChild(grid); }');
+  const card=cut('function pkSpotCard(r,trialOk){','return box; }'), wall=cut('async function pkFacesWall(){','card.appendChild(grid); }');
   ok(!/innerHTML/.test(card+wall+cut('function pkSpotLines(g){','wont:first(cells.DONT)}; }')),'the hero spotlight writes text with textContent only');
   ok(/if\(rows\.length<3\) return;/.test(wall)&&/pkSpotPick\(rows,Math\.floor\(Date\.now\(\)\/86400000\)\)/.test(wall)&&wall.includes("'Persona of the day'"),'the wall still needs three portraits, then leads with the persona of the day');
   ok(!/\/api\/chat|twingrid_use_credit|openChat\(/.test(card+wall),'the hero spends no hosted credit: no chat call from the spotlight');
@@ -606,6 +606,92 @@ ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth ca
   ok(/name_reserved.*belongs to a real person or brand.*support@personakind\.com/.test(h.replace(/\n/g,' ')),'the Home publish-toggle path maps name_reserved to the hint');
   ok(/error&&\/name_reserved\/\.test\(String\(error\.message\|\|''\)\)/.test(h),'the editor save path checks name_reserved the same way it checks adult_confirmation_required');
   ok((h.match(/name_reserved.*?support@personakind\.com from an address that proves it is yours\./g)||[]).length>=2||(h.match(/name_reserved/g)||[]).length>=3,'name_reserved is handled at both write sites, not just one');
+}
+
+// The trial lane, "Ask it one question" (2026-09-15, founder ruling). Rendered-Control Gate: the control is
+// appended only when the status fetch said available and only when this browser has not used its one exchange
+// yet; lifted with a stubbed document and fetch so the click-then-submit flow and the textContent-only render
+// can be proven without a live Worker.
+{
+  const statusSrc=cut('async function pktrialStatus(){','return false; } }');
+  const usedSrc=cut('function pktrialKey(id){',"localStorage.setItem(pktrialKey(id),'1'); }catch(_){} }");
+  const blockSrc=cut('function pktrialBlock(gridId){','wrap.append(ask,form,out); return wrap; }');
+
+  // status: true only on a real 200 with available:true; false on a non-ok response, a malformed body, or a thrown fetch
+  const mkFetch=(mode)=>async()=>{
+    if(mode==='ok') return {ok:true,json:async()=>({available:true})};
+    if(mode==='notok') return {ok:false,json:async()=>({available:true})};
+    if(mode==='badjson') return {ok:true,json:async()=>{ throw new Error('bad json'); }};
+    throw new Error('network down');
+  };
+  for(const [mode,want] of [['ok',true],['notok',false],['badjson',false],['throws',false]]){
+    const run=new Function('fetch','HOSTED_API', statusSrc+'\nreturn pktrialStatus;')(mkFetch(mode),'/api');
+    const got=await run();
+    ok(got===want,'pktrialStatus('+mode+') -> '+want+', got '+got);
+  }
+
+  // the click-then-submit flow: the same minimal element factory the "Hear it" lift above uses, a fetch spy,
+  // and a localStorage stub.
+  const mkEl=()=>{ const e={tag:'',kids:[],attrs:{},textContent:'',className:'',hidden:false,disabled:false,value:'',type:'',
+    append(...k){ this.kids.push(...k); },setAttribute(a,v){ this.attrs[a]=v; },focus(){ this.focused=true; }}; return e; };
+  const doc={createElement:t=>Object.assign(mkEl(),{tag:t})};
+  const allN=n=>[n].concat(...(n.kids||[]).map(allN));
+  const ls={store:{},getItem(k){ return Object.prototype.hasOwnProperty.call(this.store,k)?this.store[k]:null; },setItem(k,v){ this.store[k]=v; }};
+  const build=(fetchImpl)=>new Function('document','localStorage','fetch','HOSTED_API','PKTRIAL_MAX',
+    usedSrc+'\n'+blockSrc+'\nreturn pktrialBlock;')(doc,ls,fetchImpl,'/api',400);
+
+  const calls=[];
+  const okFetch=async(u,init)=>{ calls.push([u,init&&init.body?JSON.parse(init.body):null]); return {ok:true,json:async()=>({reply:'I keep the porch light on.',label:'AI persona'})}; };
+  const wrap=build(okFetch)('g1');
+  const [ask,form,out]=wrap.kids;
+  ok(ask.hidden===false&&form.hidden===true&&out.hidden===true,'the ask button shows first; the form and the reply stay hidden');
+  ok(calls.length===0,'no call to /api/trial/reply happens just from building the control');
+
+  ask.onclick();
+  ok(ask.hidden===true&&form.hidden===false,'clicking Ask reveals the form and hides the button');
+  ok(calls.length===0,'still no fetch: opening the form is not a submission');
+
+  const [inp]=form.kids;
+  inp.value='  '; await form.onsubmit({preventDefault(){}});
+  ok(calls.length===0,'a blank question never reaches the network');
+
+  inp.value='What do you love about your porch?';
+  await form.onsubmit({preventDefault(){}});
+  ok(calls.length===1,'exactly one call, only after a real user submission: '+calls.length);
+  ok(calls[0][0]==='/api/trial/reply'&&calls[0][1].grid_id==='g1'&&calls[0][1].message==='What do you love about your porch?','the request carries the grid id and the trimmed question');
+  ok(form.hidden===true&&out.hidden===false,'the form hides and the reply shows');
+  const outKids=allN(out);
+  ok(outKids.some(n=>n.className==='pktrial-label'&&n.textContent==='AI persona'),'the reply is labelled AI persona');
+  ok(outKids.some(n=>n.className==='pktrial-reply'&&n.textContent==='I keep the porch light on.'),'the reply text lands through textContent');
+  ok(!/innerHTML/.test(blockSrc),'the control never writes with innerHTML');
+  ok(ls.getItem('pktrial_used_g1')==='1','one exchange per browser is remembered in localStorage');
+
+  const usedRun=new Function('localStorage', usedSrc+'\nreturn pktrialUsed;')(ls);
+  ok(usedRun('g1')===true,'pktrialUsed reads back the mark this browser already made');
+  ok(usedRun('g2')===false,'a different persona is unaffected');
+
+  // the failure path: no reply, no throw, the control still resolves to a plain message, never a stuck spinner,
+  // and a refused attempt does not spend the one-exchange mark
+  const failFetch=async()=>({ ok:false, json:async()=>({error:'trial_unavailable'}) });
+  const wrap2=build(failFetch)('g3');
+  wrap2.kids[0].onclick();
+  wrap2.kids[1].kids[0].value='Anything in there?';
+  await wrap2.kids[1].onsubmit({preventDefault(){}});
+  ok(wrap2.kids[2].hidden===false&&allN(wrap2.kids[2]).some(n=>n.className==='pktrial-reply'&&/could not be answered/.test(n.textContent)),'a refused reply still resolves to a plain message');
+  ok(ls.getItem('pktrial_used_g3')===null,'a failed attempt does not spend the one-exchange mark');
+
+  // Rendered-Control Gate at the call site, from source: executing the whole spotlight card needs
+  // avatarInto/profileSummary/pkCanSpeak stubs unrelated to this gate, so this checks the two conditions
+  // (status said available, and this browser has not used it) are both required, never appended unconditionally.
+  const scS=h.indexOf('function pkSpotCard(r,trialOk){'), scE=h.indexOf('box.append(face,body); return box; }',scS);
+  ok(scS>0&&scE>scS,'pkSpotCard(r,trialOk) found');
+  ok(/if\(trialOk&&!pktrialUsed\(r\.id\)\) body\.appendChild\(pktrialBlock\(r\.id\)\);/.test(h.slice(scS,scE)),'the control is appended only when status said available and this browser has not used it, never unconditionally');
+  const pfwS=h.indexOf('async function pkFacesWall(){'), pfwE=h.indexOf('card.appendChild(grid); }',pfwS);
+  // Prime review 2026-09-15: the first screen never waits on the trial status call. The card renders at once
+  // with no control, and the control is appended only after a live status check says available.
+  const pfw=h.slice(pfwS,pfwE);
+  ok(pfwS>0&&pfwE>pfwS&&!/await pktrialStatus\(\)/.test(pfw),'the spotlight card never awaits the trial status before it renders');
+  ok(/pkSpotCard\(spot,false\)/.test(pfw)&&/pktrialStatus\(\)\.then\(/.test(pfw)&&/pktrialUsed\(spot\.id\)/.test(pfw),'the control is added after a live status check, not a hardcoded true, and not for a browser that used it');
 }
 
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);

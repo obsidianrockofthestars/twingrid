@@ -12,10 +12,15 @@
 //     calls Gemini TTS with the persona's voice_id, answers audio/wav (X-Cost, X-Remaining), stores nothing.
 //   POST /api/media/image same auth as chat, body { grid_id, style }: spends IMAGE_CREDITS, ticks the daily
 //                         cap, asks Google for one square persona image, returns it base64 (the page stores it)
+//   GET  /api/trial/status   no auth, {available:boolean} only: the signed-out sample lane (DeepSeek direct)
+//   POST /api/trial/reply    no auth, body { grid_id, message }: one bounded sample reply from a public persona,
+//                             gated by TRIAL_ENABLED/DEEPSEEK_API_KEY and a monthly budget (twingrid_trial_budget)
 //   anything else         404 JSON
 //
-// Secrets (wrangler secret put): ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH, GOOGLE_API_KEY
-// Vars (wrangler.jsonc "vars"):  SUPABASE_URL, SUPABASE_ANON_KEY, HOSTED_MODEL, CREDIT_PACKS, IMAGE_MODEL
+// Secrets (wrangler secret put): ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH, GOOGLE_API_KEY,
+//                                 DEEPSEEK_API_KEY (optional: absent means the trial lane stays off)
+// Vars (wrangler.jsonc "vars"):  SUPABASE_URL, SUPABASE_ANON_KEY, HOSTED_MODEL, CREDIT_PACKS, IMAGE_MODEL,
+//                                 TRIAL_ENABLED, TRIAL_CEILING_MICRO
 // Optional binding:              RATE_KV (KV namespace). Skipped entirely when absent.
 //
 // Privacy rule: message content, system prompts and grid cells are never logged.
@@ -99,6 +104,166 @@ export function voiceCost(chars) {
   const n = Math.ceil(Number(chars) / VOICE_CHARS_PER_CREDIT);
   if (!Number.isFinite(n)) return VOICE_MIN_CREDITS;
   return Math.max(VOICE_MIN_CREDITS, Math.min(VOICE_MAX_CREDITS, n));
+}
+
+// ---------------------------------------------------------------------------
+// Trial lane, DeepSeek direct (founder rulings 2026-09-15, verbatim picker answers): trial lane
+// "DeepSeek direct (Recommended)", ceiling "$10 a month (Recommended)", build "Build it now, off
+// until key (Recommended)" ("Budget counter, per-visitor limit and kill switch all built and tested
+// now. The trial button stays hidden until you set the DeepSeek key and flip it on."). This is a
+// RULING-OF-RECORD EXCEPTION to the product rule that nothing runs on the founders' own credits for
+// a free user: a signed-out visitor gets one bounded sample reply, paid from Dylan's own DeepSeek
+// balance, capped by TRIAL_CEILING_MICRO a month and gated dark until DEEPSEEK_API_KEY is set and
+// TRIAL_ENABLED="1".
+//
+// Vendor facts, read 2026-09-15 from https://api-docs.deepseek.com/quick_start/pricing and
+// https://api-docs.deepseek.com/quick_start/error_codes: base https://api.deepseek.com,
+// OpenAI-compatible POST /chat/completions, header Authorization: Bearer <key>, model id
+// "deepseek-flash", prepaid balance deducted per use. Prices per million tokens: input (cache miss)
+// $0.15 off-peak / $0.30 peak, output $0.60 off-peak / $1.20 peak; peak is 01:00-04:00 and
+// 06:00-10:00 UTC Monday to Friday. Error codes: 400 bad body, 401 bad key, 402 "You have run out of
+// balance" (insufficient balance), 422 bad params, 429 rate limited, 500 server error, 503 overloaded.
+// The docs say nothing about timeouts; TRIAL_TIMEOUT_MS below is ours, not the vendor's.
+//
+// The twingrid_capacity table (twingrid_capacity_spend/_unspend) does not apply here: its provider
+// column is a check constraint of ('anthropic','google') only, and this lane is a separate, smaller,
+// pre-funded budget by design (twingrid_trial_budget, sql/2026-09-15_trial_budget.sql). That table IS
+// this lane's capacity gate.
+const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+const DEEPSEEK_MODEL = "deepseek-flash";
+const TRIAL_MAX_TOKENS = 250;
+const TRIAL_MSG_MAX_CHARS = 400;
+const TRIAL_TIMEOUT_MS = 20000;
+const TRIAL_CHARS_PER_TOKEN = 3.5; // same estimate chatMicro() uses
+const TRIAL_MICRO_IN_PEAK = 0.3;   // micro-dollars per input token, cache miss, peak ($0.30/MTok)
+const TRIAL_MICRO_OUT_PEAK = 1.2;  // micro-dollars per output token, peak ($1.20/MTok)
+const DEFAULT_TRIAL_CEILING_MICRO = 10000000; // $10/month, Dylan's ruling 2026-09-15
+
+// Worst case for one reply: the whole composed system prompt at peak input price, plus the full
+// TRIAL_MAX_TOKENS at peak output price, reserved BEFORE the vendor call so a call that lands inside
+// a peak window is always covered by what was already set aside.
+export function trialMicro(systemChars) {
+  const inTok = Math.ceil(Number(systemChars) / TRIAL_CHARS_PER_TOKEN);
+  const m = Math.ceil(inTok * TRIAL_MICRO_IN_PEAK + TRIAL_MAX_TOKENS * TRIAL_MICRO_OUT_PEAK);
+  return Number.isFinite(m) && m > 0 ? m : 1;
+}
+export function trialMonth(d) {
+  const dt = d instanceof Date ? d : new Date();
+  return dt.getUTCFullYear() + "-" + String(dt.getUTCMonth() + 1).padStart(2, "0");
+}
+function trialCeiling(env) {
+  const n = Number(env.TRIAL_CEILING_MICRO);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_TRIAL_CEILING_MICRO;
+}
+function trialConfigured(env) {
+  return env.TRIAL_ENABLED === "1" && typeof env.DEEPSEEK_API_KEY === "string" && env.DEEPSEEK_API_KEY.length > 0;
+}
+async function trialReserve(env, reserveMicro) {
+  const r = await rpcService(env, "twingrid_trial_charge", { p_month: trialMonth(), p_ceiling_micro: trialCeiling(env), p_reserve_micro: reserveMicro });
+  return r.ok && r.value === true;
+}
+// Best effort, like releaseCapacity: a failed settle is logged as a code only, never blocks the reply.
+async function trialSettle(env, deltaMicro) {
+  const r = await rpcService(env, "twingrid_trial_settle", { p_month: trialMonth(), p_delta_micro: deltaMicro });
+  if (!r.ok) console.log("trial_settle_failed");
+  return r.ok;
+}
+
+// GET /api/trial/status: {available:boolean} only, never a number or a reason (Rendered-Control Gate:
+// the page must be able to tell "on" from "off" without learning anything about spend). Off when the
+// lane is not configured; off when the fetch to read this month's spend fails, never a throw.
+async function handleTrialStatus(request, env) {
+  if (!trialConfigured(env)) return json(request, 200, { available: false });
+  const q = "/rest/v1/twingrid_trial_budget?select=spent_micro&month=eq." + encodeURIComponent(trialMonth());
+  let res;
+  try {
+    res = await fetch(sbUrl(env, q), { headers: serviceHeaders(env, { Accept: "application/json" }) });
+  } catch (_) {
+    return json(request, 200, { available: false });
+  }
+  if (!res.ok) return json(request, 200, { available: false });
+  let rows;
+  try { rows = await res.json(); } catch (_) { return json(request, 200, { available: false }); }
+  const spent = Array.isArray(rows) && rows[0] ? Number(rows[0].spent_micro) || 0 : 0;
+  return json(request, 200, { available: spent < trialCeiling(env) });
+}
+
+// POST /api/trial/reply, body {grid_id, message}. No auth: this is the signed-out sample. The persona
+// is composed ONLY from the Lobby projection (fetchPublicGrid -> twingrid_grids_public), so a private,
+// suspended or owner-suspended persona is 404 before any vendor call, the same as every other lane
+// that talks to a stranger. One receipt line per attempt (month, micro spend, status), never the
+// message text or the reply.
+async function handleTrialReply(request, env) {
+  if (!trialConfigured(env)) return json(request, 404, { error: "trial_off" });
+
+  const parsed = await readJson(request);
+  if (parsed.error) return json(request, parsed.error === "body_too_large" ? 413 : 400, { error: parsed.error });
+  const body = parsed.value;
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json(request, 400, { error: "bad_body" });
+  if (typeof body.grid_id !== "string" || !UUID_RE.test(body.grid_id)) return json(request, 400, { error: "bad_grid_id" });
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+  if (!message) return json(request, 400, { error: "bad_message" });
+  if (message.length > TRIAL_MSG_MAX_CHARS) return json(request, 400, { error: "too_long" });
+
+  const g = await fetchPublicGrid(env, body.grid_id, "id,data");
+  if (g.error) return json(request, 404, { error: "grid_not_found" });
+  const system = guardedPrompt(g.grid.data, null);
+  if (system === GUARD) return json(request, 404, { error: "grid_not_found" });
+  if (system.length > MAX_SYSTEM_CHARS) return json(request, 413, { error: "persona_too_large" });
+
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  if (await rateLimited(env, "trial-ip:" + ip, 3, 86400)) return json(request, 429, { error: "rate_limited" });
+  if (await rateLimited(env, "trial-global", 30, 60)) return json(request, 429, { error: "rate_limited" });
+
+  const reserveMicro = trialMicro(system.length);
+  if (!(await trialReserve(env, reserveMicro))) {
+    console.log("trial_reply", trialMonth(), reserveMicro, "trial_spent");
+    return json(request, 429, { error: "trial_spent" });
+  }
+
+  let text = null;
+  let usage = null;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TRIAL_TIMEOUT_MS);
+    try {
+      const res = await fetch(DEEPSEEK_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: "Bearer " + env.DEEPSEEK_API_KEY },
+        body: JSON.stringify({
+          model: DEEPSEEK_MODEL,
+          max_tokens: TRIAL_MAX_TOKENS,
+          messages: [{ role: "system", content: system }, { role: "user", content: message }],
+        }),
+        signal: ctrl.signal,
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const choice = j && Array.isArray(j.choices) ? j.choices[0] : null;
+        const t = choice && choice.message && typeof choice.message.content === "string" ? choice.message.content : "";
+        text = t;
+        usage = j && j.usage && typeof j.usage === "object" ? j.usage : null;
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (_) {
+    text = null;
+  }
+
+  if (text === null) {
+    await trialSettle(env, -reserveMicro);
+    console.log("trial_reply", trialMonth(), reserveMicro, "upstream_failed");
+    return json(request, 503, { error: "trial_unavailable" });
+  }
+
+  const actualMicro = usage
+    ? Math.max(0, Math.ceil((Number(usage.prompt_tokens) || 0) * TRIAL_MICRO_IN_PEAK + (Number(usage.completion_tokens) || 0) * TRIAL_MICRO_OUT_PEAK))
+    : reserveMicro;
+  await trialSettle(env, actualMicro - reserveMicro);
+  console.log("trial_reply", trialMonth(), actualMicro, "ok");
+
+  return json(request, 200, { reply: text, label: "AI persona" });
 }
 
 // 16-bit mono PCM at 24 kHz to a WAV container. Pure byte work, no library.
@@ -2363,7 +2528,9 @@ export async function handleApi(request, env) {
     if (path === "/api/agent/answers" && method === "POST") return await handleAgentAnswers(request, env);
     if (path === "/api/agent/cells" && method === "POST") return await handleAgentCells(request, env);
     if (path === "/api/account/delete" && method === "POST") return await handleAccountDelete(request, env);
-    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/autopilot/health" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn" || path === "/api/agent/token" || path === "/api/agent/token/revoke" || path === "/api/agent/answers" || path === "/api/agent/cells" || path === "/api/account/delete") {
+    if (path === "/api/trial/status" && method === "GET") return await handleTrialStatus(request, env);
+    if (path === "/api/trial/reply" && method === "POST") return await handleTrialReply(request, env);
+    if (path === "/api/credits" || path === "/api/chat" || path === "/api/rc-webhook" || path === "/api/media/image" || path === "/api/media/voice" || path === "/api/csp-report" || path === "/api/autopilot/tick" || path === "/api/autopilot/health" || path === "/api/actions" || path === "/api/spark" || path === "/api/kindred" || path === "/api/p2p" || path === "/api/place/verify" || path === "/api/place/hit" || path === "/api/learn" || path === "/api/agent/token" || path === "/api/agent/token/revoke" || path === "/api/agent/answers" || path === "/api/agent/cells" || path === "/api/account/delete" || path === "/api/trial/status" || path === "/api/trial/reply") {
       return json(request, 405, { error: "method_not_allowed" });
     }
     return json(request, 404, { error: "not_found" });
