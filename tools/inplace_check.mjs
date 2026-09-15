@@ -541,4 +541,38 @@ ok(/const \{Purchases\}=await rcSdk\(\);/.test(h)&&/const \{ErrorCode,PurchasesE
 ok(/#auth \.authcard \.btn\.ghost\{[^}]*border-color:var\(--ink-soft\)/.test(h),'the go back outline clears 3 to 1 on the white card (--line-w measured 1.34 to 1)');
 ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth card ghost button (go back) uses the public ink, not the editor ink');
 
+// Persona of the day (2026-09-14, the splash plan S1). The hero leads with one published persona a visitor can read, hear and step
+// into, rotating daily and identical for everyone that day. Lifted with stubs: the pick only takes bucket portraits, the lines come
+// from the persona's own public core cells, and Hear it renders only where the browser can speak (Rendered-Control, both directions).
+{
+  const src=cut('function cellBody(v){','return out || t.trim(); }')+'\n'+cut('function profileSummary(g,short){',"+'\\u2026';\n}")+'\n'+cut('function pkSpotPick(rows,day){','return ok[i]; }')+'\n'+cut('function pkSpotLines(g){','wont:first(cells.DONT)}; }');
+  const MB='https://bucket.example/';
+  const {pkSpotPick,pkSpotLines}=new Function('MEDIA_BASE',src+'\nreturn {pkSpotPick,pkSpotLines};')(MB);
+  const rows=[{id:'a',image_url:MB+'a.webp'},{id:'x',image_url:'https://elsewhere.example/x.png'},{id:'b',image_url:MB+'b.webp'},{id:'c',image_url:null},{id:'d',image_url:MB+'d.webp'}];
+  ok(pkSpotPick(rows,0).id==='a'&&pkSpotPick(rows,1).id==='b'&&pkSpotPick(rows,2).id==='d'&&pkSpotPick(rows,3).id==='a','the pick rotates by day over bucket portraits only');
+  ok(pkSpotPick(rows,20000).id===pkSpotPick(rows,20000).id,'the same day picks the same persona for everyone');
+  ok(pkSpotPick([{id:'x',image_url:'https://elsewhere.example/x.png'}],5)===null&&pkSpotPick([],1)===null,'no bucket portrait, no pick');
+  const g={facets:[{name:'core',cells:{CONTEXT:'# core / CONTEXT\n\nYou are an early-stage startup founder running lean with limited runway. Everything else follows.',DO:'# core / DO\n\nBias hard to action: ship the smallest thing that tests the real question, then let evidence steer. Protect the team.',DONT:'# core / DONT\n\n(add your own here)'}},{name:'vibe',cells:{DO:'Keep it loose.'}}]};
+  const L=pkSpotLines(g);
+  ok(L.summary==='An early-stage startup founder running lean with limited runway.','the summary is the persona\'s own first sentence: '+JSON.stringify(L.summary));
+  ok(L.does==='Bias hard to action: ship the smallest thing that tests the real question, then let evidence steer.','Does is the first sentence of its DO: '+JSON.stringify(L.does));
+  ok(L.wont==='','a placeholder cell gives no Won\'t line');
+  const long=pkSpotLines({facets:[{name:'core',cells:{DO:'# core / DO\n\n'+'word '.repeat(60)}}]}).does;
+  ok(long.length<=121&&long.endsWith('\u2026'),'a long line is cut at a word with an ellipsis: '+long.length);
+  const card=cut('function pkSpotCard(r){','return box; }'), wall=cut('async function pkFacesWall(){','card.appendChild(grid); }');
+  ok(!/innerHTML/.test(card+wall+cut('function pkSpotLines(g){','wont:first(cells.DONT)}; }')),'the hero spotlight writes text with textContent only');
+  ok(/if\(rows\.length<3\) return;/.test(wall)&&/pkSpotPick\(rows,Math\.floor\(Date\.now\(\)\/86400000\)\)/.test(wall)&&wall.includes("'Persona of the day'"),'the wall still needs three portraits, then leads with the persona of the day');
+  ok(!/\/api\/chat|twingrid_use_credit|openChat\(/.test(card+wall),'the hero spends no hosted credit: no chat call from the spotlight');
+  // Hear it: rendered only where speech exists, and present where it does
+  const mk=()=>{ const e={tag:'',kids:[],attrs:{},textContent:'',className:'',href:'',type:'',append(...k){ this.kids.push(...k); },appendChild(k){ this.kids.push(k); return k; },setAttribute(a,v){ this.attrs[a]=v; }}; return e; };
+  const doc={createElement:t=>Object.assign(mk(),{tag:t})};
+  const all=n=>[n].concat(...(n.kids||[]).map(all));
+  const build=speak=>new Function('document','avatarInto','pkSpotLines','pkCanSpeak','pkSpotSpeak',card+'\nreturn pkSpotCard;')(doc,()=>{},()=>({summary:'A founder.',does:'Ship.',wont:'Stall.'}),()=>speak,()=>{})({id:'g1',name:'The Founder',image_url:MB+'a.webp',data:{facets:[]}});
+  const withSpeech=all(build(true)), without=all(build(false));
+  ok(withSpeech.some(n=>n.tag==='button'&&n.textContent==='Hear it'),'Hear it renders where the browser can speak');
+  ok(!without.some(n=>n.textContent==='Hear it'),'Hear it is absent, not dead, where it cannot');
+  ok(withSpeech.some(n=>n.tag==='a'&&n.textContent==='Talk to it'&&n.href==='?room=g1')&&withSpeech.some(n=>n.tag==='a'&&n.textContent==='Read it'&&n.href==='?t=g1'),'Talk to it opens the Room and Read it opens the page');
+  ok(withSpeech.some(n=>n.className==='pkspot-line'),'the Does and Won\'t lines render');
+}
+
 console.log(fails?('inplace_check: '+fails+' failed'):'inplace_check OK'); process.exit(fails?1:0);
