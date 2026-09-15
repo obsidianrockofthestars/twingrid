@@ -589,7 +589,10 @@ ok(/#auth \.authcard \.btn\.ghost\{[^}]*color:var\(--ink\)/.test(h),'the auth ca
   ok(/if\(rrep\) rrep\.onclick=\(\)=>openReportDialog\(null\)/.test(h),"the Room's Report opens it with no status line");
   const top=h.indexOf('<div id="pkroom" hidden>'), wrap=h.indexOf('<div class="pkrmwrap">',top);
   const btnI=h.indexOf('id="pkrrreport"',top);
-  ok(btnI>top&&btnI<wrap,'#pkrrreport sits in the Room top strip, above the stage');
+  ok(btnI>top&&btnI<wrap,'#pkrrreport sits above the stage');
+  // measured 2026-09-15: in the top strip it pushed .pkrmtop to 433 px at 390 and clipped "Read the persona"; the rate row wraps
+  const tStrip=h.indexOf('<div class="pkrmtop">',top), tStripE=h.indexOf('</div>',tStrip), rRow=h.indexOf('<div class="pkrmraterow">',top), rRowE=h.indexOf('</div>',rRow);
+  ok(!(btnI>tStrip&&btnI<tStripE)&&btnI>rRow&&btnI<rRowE,'#pkrrreport lives in the wrapping rate row, never the nowrap top strip');
   ok(/<button class="btn" id="pkrrreport" type="button" hidden>Report<\/button>/.test(h),'the Room Report control is a real button, hidden by default (shown only for a visitor)');
   const rm=h.indexOf('async function renderRoom('), rmE=h.indexOf('\nfunction route(){',rm);
   ok(rm>0&&rmE>rm&&/rrep\.hidden=!!mine/.test(h.slice(rm,rmE)),'the Room hides Report from the owner, shows it to a visitor');
