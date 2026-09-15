@@ -26,6 +26,11 @@
   "triggers": { "crons": ["0 * * * *"] },
   // Rate limits (2026-09-08): the KV the Worker counts against. worker/api.js rateLimited() skips every cap when this is absent.
   "kv_namespaces": [{ "binding": "RATE_KV", "id": "fdac8e1e96d0438f96df589106cdecf2" }],
+  // Name guard auto-hide support email (2026-09-15): runAutopilotTick sends through this binding when a grid
+  // crosses 3 open reports (sql/2026-09-15_name_guard_reports.sql). destination_address must be verified in
+  // the Cloudflare dashboard's Email Routing before this config can deploy, so this entry ships in its own
+  // commit; until Dylan verifies the address, env.SUPPORT_MAIL is absent and the tick skips the send entirely.
+  "send_email": [{ "name": "SUPPORT_MAIL", "destination_address": "dylanleeson@potionsandfamiliars.com" }],
   // Secrets, set once with `wrangler secret put`: ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY, RC_WEBHOOK_AUTH,
   // and (optional) AUTOPILOT_AUTH, the bearer for POST /api/autopilot/tick, a manual trigger; absent means the route is 404.
   "assets": {
