@@ -21,6 +21,10 @@ node tools/questions_check.mjs || fail=1
 step "0d. the landing stays short"
 node tools/landing_words.mjs || fail=1
 
+step "0e. control outlines clear 3 to 1"
+node tools/outline_check.mjs | tail -n 1 || fail=1
+node tools/outline_check.mjs >/dev/null 2>&1 || fail=1
+
 step "1. page module: node --check"
 node -e '
 const fs=require("fs"); const h=fs.readFileSync("docs/index.html","utf8");
