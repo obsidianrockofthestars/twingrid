@@ -59,5 +59,14 @@ const before=rows.map(r=>r.id).join(',');
 pkxSortRows(rows,'popular',counts,{});
 ok(rows.map(r=>r.id).join(',')===before,'pkxSortRows returns a new array, does not sort in place');
 
+// Prime review (2026-09-14). A control's outline is non-text contrast and needs 3 to 1 on the card: --line-w measures 1.34 to 1,
+// --ink-soft 8.49 to 1 (the same fix as the go back button, #79). And the Top rated control is proven hidden where it has nothing
+// behind it by the render line itself, not only by the helper that decides it (Rendered-Control, both directions).
+ok(/#explore \.pkxsearch\{[^}]*border:1px solid var\(--ink-soft\)/.test(h),'the search box outline clears 3 to 1 on the card');
+ok(/#explore \.pkxsortbtn\{[^}]*border:1px solid var\(--ink-soft\)/.test(h),'the sort button outline clears 3 to 1 on the card');
+ok(/id="pkxsorttop" aria-pressed="false" hidden>Top rated</.test(h),'Top rated ships hidden in the markup, so a slow or failed load never shows it empty');
+ok(h.includes('if(sortBtns.top) sortBtns.top.hidden=!showTop;'),'the render hides Top rated exactly when no persona has a rating');
+ok(h.includes("if(mode==='top' && !showTop) mode='newest';"),'a remembered Top rated sort falls back to Newest when there is nothing to rate by');
+
 if(fails){ console.log(fails+' FAILED'); process.exit(1); }
 console.log('explore_check OK');
